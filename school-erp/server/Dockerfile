@@ -3,7 +3,7 @@
 #  Production-ready Node.js + Prisma + MySQL
 # =====================================================
 
-FROM node:18-alpine AS base
+FROM node:20-alpine AS base
 
 # Install dependencies for Prisma
 RUN apk add --no-cache openssl
@@ -24,7 +24,7 @@ COPY . .
 RUN npx prisma generate
 
 # =====================================================
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
@@ -40,7 +40,7 @@ COPY . .
 RUN npx prisma generate
 
 # =====================================================
-FROM node:18-alpine AS production
+FROM node:20-alpine AS production
 
 # Security: Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
