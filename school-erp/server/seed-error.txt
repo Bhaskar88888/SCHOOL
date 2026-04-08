@@ -1,0 +1,100 @@
+[dotenv@17.3.1] injecting env (27) from .env -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+🚀 Starting comprehensive mock data generation...
+
+🗑️  Clearing existing data...
+prisma:error 
+Invalid `model.deleteMany()` invocation in
+C:\Users\Bhaskar Tiwari\Desktop\SCHOOL\school-erp\server\models\_prismaModel.js:446:20
+
+  443 if (args.where) {
+  444   return model.deleteMany({ where: mapWhere(args.where, modelName) });
+  445 }
+→ 446 return model.deleteMany({
+        where: {
+          role: {
+            $ne: "superadmin",
+            ~~~
+      ?     equals?: String | StringFieldRefInput,
+      ?     in?: String[],
+      ?     notIn?: String[],
+      ?     lt?: String | StringFieldRefInput,
+      ?     lte?: String | StringFieldRefInput,
+      ?     gt?: String | StringFieldRefInput,
+      ?     gte?: String | StringFieldRefInput,
+      ?     contains?: String | StringFieldRefInput,
+      ?     startsWith?: String | StringFieldRefInput,
+      ?     endsWith?: String | StringFieldRefInput,
+      ?     search?: String,
+      ?     not?: String | NestedStringFilter
+          }
+        }
+      })
+
+Unknown argument `$ne`. Did you mean `in`? Available options are marked with ?.
+❌ Error generating mock data: 
+Invalid `model.deleteMany()` invocation in
+C:\Users\Bhaskar Tiwari\Desktop\SCHOOL\school-erp\server\models\_prismaModel.js:446:20
+
+  443 if (args.where) {
+  444   return model.deleteMany({ where: mapWhere(args.where, modelName) });
+  445 }
+→ 446 return model.deleteMany({
+        where: {
+          role: {
+            $ne: "superadmin",
+            ~~~
+      ?     equals?: String | StringFieldRefInput,
+      ?     in?: String[],
+      ?     notIn?: String[],
+      ?     lt?: String | StringFieldRefInput,
+      ?     lte?: String | StringFieldRefInput,
+      ?     gt?: String | StringFieldRefInput,
+      ?     gte?: String | StringFieldRefInput,
+      ?     contains?: String | StringFieldRefInput,
+      ?     startsWith?: String | StringFieldRefInput,
+      ?     endsWith?: String | StringFieldRefInput,
+      ?     search?: String,
+      ?     not?: String | NestedStringFilter
+          }
+        }
+      })
+
+Unknown argument `$ne`. Did you mean `in`? Available options are marked with ?.
+PrismaClientValidationError: 
+Invalid `model.deleteMany()` invocation in
+C:\Users\Bhaskar Tiwari\Desktop\SCHOOL\school-erp\server\models\_prismaModel.js:446:20
+
+  443 if (args.where) {
+  444   return model.deleteMany({ where: mapWhere(args.where, modelName) });
+  445 }
+→ 446 return model.deleteMany({
+        where: {
+          role: {
+            $ne: "superadmin",
+            ~~~
+      ?     equals?: String | StringFieldRefInput,
+      ?     in?: String[],
+      ?     notIn?: String[],
+      ?     lt?: String | StringFieldRefInput,
+      ?     lte?: String | StringFieldRefInput,
+      ?     gt?: String | StringFieldRefInput,
+      ?     gte?: String | StringFieldRefInput,
+      ?     contains?: String | StringFieldRefInput,
+      ?     startsWith?: String | StringFieldRefInput,
+      ?     endsWith?: String | StringFieldRefInput,
+      ?     search?: String,
+      ?     not?: String | NestedStringFilter
+          }
+        }
+      })
+
+Unknown argument `$ne`. Did you mean `in`? Available options are marked with ?.
+    at Nn (C:\Users\Bhaskar Tiwari\Desktop\SCHOOL\school-erp\server\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at ei.handleRequestError (C:\Users\Bhaskar Tiwari\Desktop\SCHOOL\school-erp\server\node_modules\@prisma\client\runtime\library.js:121:6911)
+    at ei.handleAndLogRequestError (C:\Users\Bhaskar Tiwari\Desktop\SCHOOL\school-erp\server\node_modules\@prisma\client\runtime\library.js:121:6593)
+    at ei.request (C:\Users\Bhaskar Tiwari\Desktop\SCHOOL\school-erp\server\node_modules\@prisma\client\runtime\library.js:121:6300)
+    at async Array.$allOperations (C:\Users\Bhaskar Tiwari\Desktop\SCHOOL\school-erp\server\config\prisma.js:301:26)
+    at async a (C:\Users\Bhaskar Tiwari\Desktop\SCHOOL\school-erp\server\node_modules\@prisma\client\runtime\library.js:130:9551)
+    at async generateMockData (C:\Users\Bhaskar Tiwari\Desktop\SCHOOL\school-erp\server\generate-mock-data.js:180:5)
+
+👋 Database connection closed

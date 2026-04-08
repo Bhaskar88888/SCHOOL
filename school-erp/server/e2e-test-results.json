@@ -1,0 +1,1887 @@
+{
+  "total": 218,
+  "passed": 178,
+  "failed": 0,
+  "skipped": 40,
+  "byModule": {
+    "Dashboard": {
+      "total": 22,
+      "passed": 22,
+      "failed": 0
+    },
+    "Students": {
+      "total": 25,
+      "passed": 25,
+      "failed": 0
+    },
+    "Attendance": {
+      "total": 10,
+      "passed": 6,
+      "failed": 0
+    },
+    "Fees": {
+      "total": 20,
+      "passed": 14,
+      "failed": 0
+    },
+    "Exams": {
+      "total": 10,
+      "passed": 10,
+      "failed": 0
+    },
+    "Library": {
+      "total": 20,
+      "passed": 20,
+      "failed": 0
+    },
+    "Canteen": {
+      "total": 11,
+      "passed": 11,
+      "failed": 0
+    },
+    "Transport": {
+      "total": 20,
+      "passed": 20,
+      "failed": 0
+    },
+    "Hostel": {
+      "total": 10,
+      "passed": 7,
+      "failed": 0
+    },
+    "HR": {
+      "total": 10,
+      "passed": 8,
+      "failed": 0
+    },
+    "Payroll": {
+      "total": 10,
+      "passed": 8,
+      "failed": 0
+    },
+    "Notices": {
+      "total": 10,
+      "passed": 10,
+      "failed": 0
+    },
+    "Complaints": {
+      "total": 10,
+      "passed": 10,
+      "failed": 0
+    },
+    "Remarks": {
+      "total": 10,
+      "passed": 4,
+      "failed": 0
+    },
+    "Import Data": {
+      "total": 10,
+      "passed": 1,
+      "failed": 0
+    },
+    "Archive": {
+      "total": 10,
+      "passed": 2,
+      "failed": 0
+    }
+  },
+  "byRole": {
+    "superadmin": {
+      "total": 23,
+      "passed": 23,
+      "failed": 0
+    },
+    "teacher": {
+      "total": 22,
+      "passed": 19,
+      "failed": 0
+    },
+    "student": {
+      "total": 23,
+      "passed": 19,
+      "failed": 0
+    },
+    "parent": {
+      "total": 22,
+      "passed": 18,
+      "failed": 0
+    },
+    "accounts": {
+      "total": 22,
+      "passed": 20,
+      "failed": 0
+    },
+    "hr": {
+      "total": 21,
+      "passed": 17,
+      "failed": 0
+    },
+    "canteen": {
+      "total": 22,
+      "passed": 16,
+      "failed": 0
+    },
+    "conductor": {
+      "total": 21,
+      "passed": 15,
+      "failed": 0
+    },
+    "driver": {
+      "total": 21,
+      "passed": 15,
+      "failed": 0
+    },
+    "staff": {
+      "total": 21,
+      "passed": 16,
+      "failed": 0
+    }
+  },
+  "criticalIssues": [],
+  "details": [
+    {
+      "module": "Dashboard",
+      "testName": "GET dashboard stats",
+      "status": "pass",
+      "message": "Stats endpoint working",
+      "role": "superadmin",
+      "timestamp": "2026-04-03T20:34:29.823Z"
+    },
+    {
+      "module": "Dashboard",
+      "testName": "Admin sees all stats",
+      "status": "pass",
+      "message": "totalStudents present",
+      "role": "superadmin",
+      "timestamp": "2026-04-03T20:34:29.823Z"
+    },
+    {
+      "module": "Dashboard",
+      "testName": "GET quick actions",
+      "status": "pass",
+      "message": "Quick actions working",
+      "role": "superadmin",
+      "timestamp": "2026-04-03T20:34:29.831Z"
+    },
+    {
+      "module": "Students",
+      "testName": "GET students list",
+      "status": "pass",
+      "message": "5001 students",
+      "role": "superadmin",
+      "timestamp": "2026-04-03T20:34:31.505Z"
+    },
+    {
+      "module": "Students",
+      "testName": "Authorized role can access",
+      "status": "pass",
+      "message": "Access granted",
+      "role": "superadmin",
+      "timestamp": "2026-04-03T20:34:31.506Z"
+    },
+    {
+      "module": "Students",
+      "testName": "GET student stats",
+      "status": "pass",
+      "message": "Stats endpoint working",
+      "role": "superadmin",
+      "timestamp": "2026-04-03T20:34:31.527Z"
+    },
+    {
+      "module": "Attendance",
+      "testName": "GET class attendance",
+      "status": "pass",
+      "message": "Attendance data retrieved",
+      "role": "superadmin",
+      "timestamp": "2026-04-03T20:34:34.617Z"
+    },
+    {
+      "module": "Fees",
+      "testName": "GET fee structures",
+      "status": "pass",
+      "message": "6000 structures",
+      "role": "superadmin",
+      "timestamp": "2026-04-03T20:34:35.054Z"
+    },
+    {
+      "module": "Fees",
+      "testName": "GET fee payments",
+      "status": "pass",
+      "message": "100 payments",
+      "role": "superadmin",
+      "timestamp": "2026-04-03T20:34:35.100Z"
+    },
+    {
+      "module": "Exams",
+      "testName": "GET exam schedule",
+      "status": "pass",
+      "message": "5008 exams",
+      "role": "superadmin",
+      "timestamp": "2026-04-03T20:34:35.475Z"
+    },
+    {
+      "module": "Library",
+      "testName": "GET library books",
+      "status": "pass",
+      "message": "2000 books",
+      "role": "superadmin",
+      "timestamp": "2026-04-03T20:34:35.557Z"
+    },
+    {
+      "module": "Library",
+      "testName": "GET library transactions",
+      "status": "pass",
+      "message": "5032 transactions",
+      "role": "superadmin",
+      "timestamp": "2026-04-03T20:34:37.075Z"
+    },
+    {
+      "module": "Canteen",
+      "testName": "GET canteen items",
+      "status": "pass",
+      "message": "1000 items",
+      "role": "superadmin",
+      "timestamp": "2026-04-03T20:34:37.126Z"
+    },
+    {
+      "module": "Transport",
+      "testName": "GET transport vehicles",
+      "status": "pass",
+      "message": "1000 vehicles",
+      "role": "superadmin",
+      "timestamp": "2026-04-03T20:34:37.303Z"
+    },
+    {
+      "module": "Transport",
+      "testName": "GET bus routes",
+      "status": "pass",
+      "message": "500 routes",
+      "role": "superadmin",
+      "timestamp": "2026-04-03T20:34:38.323Z"
+    },
+    {
+      "module": "Hostel",
+      "testName": "GET hostel dashboard",
+      "status": "pass",
+      "message": "Hostel data retrieved",
+      "role": "superadmin",
+      "timestamp": "2026-04-03T20:34:38.862Z"
+    },
+    {
+      "module": "HR",
+      "testName": "GET leave records",
+      "status": "pass",
+      "message": "1009 leaves",
+      "role": "superadmin",
+      "timestamp": "2026-04-03T20:34:38.983Z"
+    },
+    {
+      "module": "Payroll",
+      "testName": "GET payroll records",
+      "status": "pass",
+      "message": "2015 records",
+      "role": "superadmin",
+      "timestamp": "2026-04-03T20:34:39.268Z"
+    },
+    {
+      "module": "Notices",
+      "testName": "GET notices",
+      "status": "pass",
+      "message": "2716 notices",
+      "role": "superadmin",
+      "timestamp": "2026-04-03T20:34:39.632Z"
+    },
+    {
+      "module": "Complaints",
+      "testName": "GET complaints",
+      "status": "pass",
+      "message": "2003 complaints",
+      "role": "superadmin",
+      "timestamp": "2026-04-03T20:34:40.033Z"
+    },
+    {
+      "module": "Remarks",
+      "testName": "GET remarks",
+      "status": "pass",
+      "message": "3040 remarks",
+      "role": "superadmin",
+      "timestamp": "2026-04-03T20:34:40.451Z"
+    },
+    {
+      "module": "Import Data",
+      "testName": "GET import templates",
+      "status": "pass",
+      "message": "Template download working",
+      "role": "superadmin",
+      "timestamp": "2026-04-03T20:34:40.466Z"
+    },
+    {
+      "module": "Archive",
+      "testName": "GET archive data",
+      "status": "pass",
+      "message": "Archive accessible",
+      "role": "superadmin",
+      "timestamp": "2026-04-03T20:34:40.522Z"
+    },
+    {
+      "module": "Dashboard",
+      "testName": "GET dashboard stats",
+      "status": "pass",
+      "message": "Stats endpoint working",
+      "role": "teacher",
+      "timestamp": "2026-04-03T20:34:40.879Z"
+    },
+    {
+      "module": "Dashboard",
+      "testName": "GET quick actions",
+      "status": "pass",
+      "message": "Quick actions working",
+      "role": "teacher",
+      "timestamp": "2026-04-03T20:34:40.906Z"
+    },
+    {
+      "module": "Students",
+      "testName": "GET students list",
+      "status": "pass",
+      "message": "0 students",
+      "role": "teacher",
+      "timestamp": "2026-04-03T20:34:40.916Z"
+    },
+    {
+      "module": "Students",
+      "testName": "Authorized role can access",
+      "status": "pass",
+      "message": "Access granted",
+      "role": "teacher",
+      "timestamp": "2026-04-03T20:34:40.916Z"
+    },
+    {
+      "module": "Students",
+      "testName": "GET student stats",
+      "status": "pass",
+      "message": "Stats endpoint working",
+      "role": "teacher",
+      "timestamp": "2026-04-03T20:34:40.937Z"
+    },
+    {
+      "module": "Attendance",
+      "testName": "GET class attendance",
+      "status": "pass",
+      "message": "Attendance data retrieved",
+      "role": "teacher",
+      "timestamp": "2026-04-03T20:34:40.985Z"
+    },
+    {
+      "module": "Fees",
+      "testName": "GET fee structures",
+      "status": "pass",
+      "message": "6000 structures",
+      "role": "teacher",
+      "timestamp": "2026-04-03T20:34:41.434Z"
+    },
+    {
+      "module": "Fees",
+      "testName": "Fee payment access",
+      "status": "skip",
+      "message": "Payment records are restricted for this role",
+      "role": "teacher",
+      "timestamp": "2026-04-03T20:34:41.434Z"
+    },
+    {
+      "module": "Exams",
+      "testName": "GET exam schedule",
+      "status": "pass",
+      "message": "0 exams",
+      "role": "teacher",
+      "timestamp": "2026-04-03T20:34:41.449Z"
+    },
+    {
+      "module": "Library",
+      "testName": "GET library books",
+      "status": "pass",
+      "message": "2000 books",
+      "role": "teacher",
+      "timestamp": "2026-04-03T20:34:41.519Z"
+    },
+    {
+      "module": "Library",
+      "testName": "GET library transactions",
+      "status": "pass",
+      "message": "5032 transactions",
+      "role": "teacher",
+      "timestamp": "2026-04-03T20:34:42.833Z"
+    },
+    {
+      "module": "Canteen",
+      "testName": "GET canteen items",
+      "status": "pass",
+      "message": "1000 items",
+      "role": "teacher",
+      "timestamp": "2026-04-03T20:34:42.879Z"
+    },
+    {
+      "module": "Transport",
+      "testName": "GET transport vehicles",
+      "status": "pass",
+      "message": "1000 vehicles",
+      "role": "teacher",
+      "timestamp": "2026-04-03T20:34:43.028Z"
+    },
+    {
+      "module": "Transport",
+      "testName": "GET bus routes",
+      "status": "pass",
+      "message": "500 routes",
+      "role": "teacher",
+      "timestamp": "2026-04-03T20:34:43.914Z"
+    },
+    {
+      "module": "Hostel",
+      "testName": "GET hostel dashboard",
+      "status": "pass",
+      "message": "Hostel data retrieved",
+      "role": "teacher",
+      "timestamp": "2026-04-03T20:34:44.427Z"
+    },
+    {
+      "module": "HR",
+      "testName": "GET own leave records",
+      "status": "pass",
+      "message": "5 leaves",
+      "role": "teacher",
+      "timestamp": "2026-04-03T20:34:44.440Z"
+    },
+    {
+      "module": "Payroll",
+      "testName": "GET own payroll records",
+      "status": "pass",
+      "message": "5 records",
+      "role": "teacher",
+      "timestamp": "2026-04-03T20:34:44.453Z"
+    },
+    {
+      "module": "Notices",
+      "testName": "GET notices",
+      "status": "pass",
+      "message": "907 notices",
+      "role": "teacher",
+      "timestamp": "2026-04-03T20:34:44.738Z"
+    },
+    {
+      "module": "Complaints",
+      "testName": "GET complaints",
+      "status": "pass",
+      "message": "5 complaints",
+      "role": "teacher",
+      "timestamp": "2026-04-03T20:34:44.793Z"
+    },
+    {
+      "module": "Remarks",
+      "testName": "GET teacher remarks",
+      "status": "pass",
+      "message": "41 remarks",
+      "role": "teacher",
+      "timestamp": "2026-04-03T20:34:44.812Z"
+    },
+    {
+      "module": "Import Data",
+      "testName": "Non-SuperAdmin access",
+      "status": "skip",
+      "message": "SuperAdmin only",
+      "role": "teacher",
+      "timestamp": "2026-04-03T20:34:44.812Z"
+    },
+    {
+      "module": "Archive",
+      "testName": "Non-authorized role access",
+      "status": "skip",
+      "message": "SuperAdmin/Accounts only",
+      "role": "teacher",
+      "timestamp": "2026-04-03T20:34:44.812Z"
+    },
+    {
+      "module": "Dashboard",
+      "testName": "GET dashboard stats",
+      "status": "pass",
+      "message": "Stats endpoint working",
+      "role": "student",
+      "timestamp": "2026-04-03T20:34:45.126Z"
+    },
+    {
+      "module": "Dashboard",
+      "testName": "Student sees own data",
+      "status": "pass",
+      "message": "linkedStudent present",
+      "role": "student",
+      "timestamp": "2026-04-03T20:34:45.126Z"
+    },
+    {
+      "module": "Dashboard",
+      "testName": "GET quick actions",
+      "status": "pass",
+      "message": "Quick actions working",
+      "role": "student",
+      "timestamp": "2026-04-03T20:34:45.129Z"
+    },
+    {
+      "module": "Students",
+      "testName": "GET students list",
+      "status": "pass",
+      "message": "1 students",
+      "role": "student",
+      "timestamp": "2026-04-03T20:34:45.154Z"
+    },
+    {
+      "module": "Students",
+      "testName": "Student sees only own record",
+      "status": "pass",
+      "message": "Student data is scoped",
+      "role": "student",
+      "timestamp": "2026-04-03T20:34:45.154Z"
+    },
+    {
+      "module": "Students",
+      "testName": "GET student stats",
+      "status": "pass",
+      "message": "Stats endpoint working",
+      "role": "student",
+      "timestamp": "2026-04-03T20:34:45.192Z"
+    },
+    {
+      "module": "Attendance",
+      "testName": "student can view attendance",
+      "status": "pass",
+      "message": "Attendance visible",
+      "role": "student",
+      "timestamp": "2026-04-03T20:34:45.233Z"
+    },
+    {
+      "module": "Fees",
+      "testName": "GET fee structures",
+      "status": "pass",
+      "message": "6000 structures",
+      "role": "student",
+      "timestamp": "2026-04-03T20:34:45.586Z"
+    },
+    {
+      "module": "Fees",
+      "testName": "Student/Parent can view own fees",
+      "status": "pass",
+      "message": "Own fees visible",
+      "role": "student",
+      "timestamp": "2026-04-03T20:34:45.601Z"
+    },
+    {
+      "module": "Exams",
+      "testName": "GET exam schedule",
+      "status": "pass",
+      "message": "67 exams",
+      "role": "student",
+      "timestamp": "2026-04-03T20:34:45.624Z"
+    },
+    {
+      "module": "Library",
+      "testName": "GET library books",
+      "status": "pass",
+      "message": "2000 books",
+      "role": "student",
+      "timestamp": "2026-04-03T20:34:45.704Z"
+    },
+    {
+      "module": "Library",
+      "testName": "GET library transactions",
+      "status": "pass",
+      "message": "5032 transactions",
+      "role": "student",
+      "timestamp": "2026-04-03T20:34:47.240Z"
+    },
+    {
+      "module": "Canteen",
+      "testName": "GET canteen items",
+      "status": "pass",
+      "message": "1000 items",
+      "role": "student",
+      "timestamp": "2026-04-03T20:34:47.295Z"
+    },
+    {
+      "module": "Transport",
+      "testName": "GET transport vehicles",
+      "status": "pass",
+      "message": "0 vehicles",
+      "role": "student",
+      "timestamp": "2026-04-03T20:34:47.304Z"
+    },
+    {
+      "module": "Transport",
+      "testName": "GET bus routes",
+      "status": "pass",
+      "message": "500 routes",
+      "role": "student",
+      "timestamp": "2026-04-03T20:34:49.949Z"
+    },
+    {
+      "module": "Hostel",
+      "testName": "GET hostel dashboard",
+      "status": "pass",
+      "message": "Hostel data retrieved",
+      "role": "student",
+      "timestamp": "2026-04-03T20:34:50.000Z"
+    },
+    {
+      "module": "HR",
+      "testName": "HR access",
+      "status": "skip",
+      "message": "HR module not available for this role",
+      "role": "student",
+      "timestamp": "2026-04-03T20:34:50.001Z"
+    },
+    {
+      "module": "Payroll",
+      "testName": "Payroll access",
+      "status": "skip",
+      "message": "Payroll module not available for this role",
+      "role": "student",
+      "timestamp": "2026-04-03T20:34:50.001Z"
+    },
+    {
+      "module": "Notices",
+      "testName": "GET notices",
+      "status": "pass",
+      "message": "1370 notices",
+      "role": "student",
+      "timestamp": "2026-04-03T20:34:50.579Z"
+    },
+    {
+      "module": "Complaints",
+      "testName": "GET complaints",
+      "status": "pass",
+      "message": "0 complaints",
+      "role": "student",
+      "timestamp": "2026-04-03T20:34:50.586Z"
+    },
+    {
+      "module": "Remarks",
+      "testName": "GET own remarks",
+      "status": "pass",
+      "message": "4 remarks",
+      "role": "student",
+      "timestamp": "2026-04-03T20:34:50.596Z"
+    },
+    {
+      "module": "Import Data",
+      "testName": "Non-SuperAdmin access",
+      "status": "skip",
+      "message": "SuperAdmin only",
+      "role": "student",
+      "timestamp": "2026-04-03T20:34:50.597Z"
+    },
+    {
+      "module": "Archive",
+      "testName": "Non-authorized role access",
+      "status": "skip",
+      "message": "SuperAdmin/Accounts only",
+      "role": "student",
+      "timestamp": "2026-04-03T20:34:50.597Z"
+    },
+    {
+      "module": "Dashboard",
+      "testName": "GET dashboard stats",
+      "status": "pass",
+      "message": "Stats endpoint working",
+      "role": "parent",
+      "timestamp": "2026-04-03T20:34:51.020Z"
+    },
+    {
+      "module": "Dashboard",
+      "testName": "GET quick actions",
+      "status": "pass",
+      "message": "Quick actions working",
+      "role": "parent",
+      "timestamp": "2026-04-03T20:34:51.023Z"
+    },
+    {
+      "module": "Students",
+      "testName": "GET students list",
+      "status": "pass",
+      "message": "3 students",
+      "role": "parent",
+      "timestamp": "2026-04-03T20:34:51.043Z"
+    },
+    {
+      "module": "Students",
+      "testName": "Parent student data is scoped",
+      "status": "pass",
+      "message": "3 linked student record(s)",
+      "role": "parent",
+      "timestamp": "2026-04-03T20:34:51.043Z"
+    },
+    {
+      "module": "Students",
+      "testName": "GET student stats",
+      "status": "pass",
+      "message": "Stats endpoint working",
+      "role": "parent",
+      "timestamp": "2026-04-03T20:34:51.058Z"
+    },
+    {
+      "module": "Attendance",
+      "testName": "parent can view attendance",
+      "status": "pass",
+      "message": "Attendance visible",
+      "role": "parent",
+      "timestamp": "2026-04-03T20:34:51.080Z"
+    },
+    {
+      "module": "Fees",
+      "testName": "GET fee structures",
+      "status": "pass",
+      "message": "6000 structures",
+      "role": "parent",
+      "timestamp": "2026-04-03T20:34:51.434Z"
+    },
+    {
+      "module": "Fees",
+      "testName": "Student/Parent can view own fees",
+      "status": "pass",
+      "message": "Own fees visible",
+      "role": "parent",
+      "timestamp": "2026-04-03T20:34:51.501Z"
+    },
+    {
+      "module": "Exams",
+      "testName": "GET exam schedule",
+      "status": "pass",
+      "message": "129 exams",
+      "role": "parent",
+      "timestamp": "2026-04-03T20:34:51.536Z"
+    },
+    {
+      "module": "Library",
+      "testName": "GET library books",
+      "status": "pass",
+      "message": "2000 books",
+      "role": "parent",
+      "timestamp": "2026-04-03T20:34:51.634Z"
+    },
+    {
+      "module": "Library",
+      "testName": "GET library transactions",
+      "status": "pass",
+      "message": "5032 transactions",
+      "role": "parent",
+      "timestamp": "2026-04-03T20:34:52.841Z"
+    },
+    {
+      "module": "Canteen",
+      "testName": "GET canteen items",
+      "status": "pass",
+      "message": "1000 items",
+      "role": "parent",
+      "timestamp": "2026-04-03T20:34:52.879Z"
+    },
+    {
+      "module": "Transport",
+      "testName": "GET transport vehicles",
+      "status": "pass",
+      "message": "0 vehicles",
+      "role": "parent",
+      "timestamp": "2026-04-03T20:34:52.904Z"
+    },
+    {
+      "module": "Transport",
+      "testName": "GET bus routes",
+      "status": "pass",
+      "message": "500 routes",
+      "role": "parent",
+      "timestamp": "2026-04-03T20:34:53.744Z"
+    },
+    {
+      "module": "Hostel",
+      "testName": "GET hostel dashboard",
+      "status": "pass",
+      "message": "Hostel data retrieved",
+      "role": "parent",
+      "timestamp": "2026-04-03T20:34:53.772Z"
+    },
+    {
+      "module": "HR",
+      "testName": "HR access",
+      "status": "skip",
+      "message": "HR module not available for this role",
+      "role": "parent",
+      "timestamp": "2026-04-03T20:34:53.773Z"
+    },
+    {
+      "module": "Payroll",
+      "testName": "Payroll access",
+      "status": "skip",
+      "message": "Payroll module not available for this role",
+      "role": "parent",
+      "timestamp": "2026-04-03T20:34:53.773Z"
+    },
+    {
+      "module": "Notices",
+      "testName": "GET notices",
+      "status": "pass",
+      "message": "1363 notices",
+      "role": "parent",
+      "timestamp": "2026-04-03T20:34:54.134Z"
+    },
+    {
+      "module": "Complaints",
+      "testName": "GET complaints",
+      "status": "pass",
+      "message": "10 complaints",
+      "role": "parent",
+      "timestamp": "2026-04-03T20:34:54.151Z"
+    },
+    {
+      "module": "Remarks",
+      "testName": "GET own remarks",
+      "status": "pass",
+      "message": "6 remarks",
+      "role": "parent",
+      "timestamp": "2026-04-03T20:34:54.180Z"
+    },
+    {
+      "module": "Import Data",
+      "testName": "Non-SuperAdmin access",
+      "status": "skip",
+      "message": "SuperAdmin only",
+      "role": "parent",
+      "timestamp": "2026-04-03T20:34:54.180Z"
+    },
+    {
+      "module": "Archive",
+      "testName": "Non-authorized role access",
+      "status": "skip",
+      "message": "SuperAdmin/Accounts only",
+      "role": "parent",
+      "timestamp": "2026-04-03T20:34:54.180Z"
+    },
+    {
+      "module": "Dashboard",
+      "testName": "GET dashboard stats",
+      "status": "pass",
+      "message": "Stats endpoint working",
+      "role": "accounts",
+      "timestamp": "2026-04-03T20:34:54.523Z"
+    },
+    {
+      "module": "Dashboard",
+      "testName": "GET quick actions",
+      "status": "pass",
+      "message": "Quick actions working",
+      "role": "accounts",
+      "timestamp": "2026-04-03T20:34:54.525Z"
+    },
+    {
+      "module": "Students",
+      "testName": "GET students list",
+      "status": "pass",
+      "message": "5001 students",
+      "role": "accounts",
+      "timestamp": "2026-04-03T20:34:56.007Z"
+    },
+    {
+      "module": "Students",
+      "testName": "Authorized role can access",
+      "status": "pass",
+      "message": "Access granted",
+      "role": "accounts",
+      "timestamp": "2026-04-03T20:34:56.007Z"
+    },
+    {
+      "module": "Students",
+      "testName": "GET student stats",
+      "status": "pass",
+      "message": "Stats endpoint working",
+      "role": "accounts",
+      "timestamp": "2026-04-03T20:34:56.037Z"
+    },
+    {
+      "module": "Attendance",
+      "testName": "GET class attendance",
+      "status": "pass",
+      "message": "Attendance data retrieved",
+      "role": "accounts",
+      "timestamp": "2026-04-03T20:34:59.185Z"
+    },
+    {
+      "module": "Fees",
+      "testName": "GET fee structures",
+      "status": "pass",
+      "message": "6000 structures",
+      "role": "accounts",
+      "timestamp": "2026-04-03T20:34:59.623Z"
+    },
+    {
+      "module": "Fees",
+      "testName": "GET fee payments",
+      "status": "pass",
+      "message": "100 payments",
+      "role": "accounts",
+      "timestamp": "2026-04-03T20:34:59.659Z"
+    },
+    {
+      "module": "Exams",
+      "testName": "GET exam schedule",
+      "status": "pass",
+      "message": "5008 exams",
+      "role": "accounts",
+      "timestamp": "2026-04-03T20:35:00.366Z"
+    },
+    {
+      "module": "Library",
+      "testName": "GET library books",
+      "status": "pass",
+      "message": "2000 books",
+      "role": "accounts",
+      "timestamp": "2026-04-03T20:35:00.442Z"
+    },
+    {
+      "module": "Library",
+      "testName": "GET library transactions",
+      "status": "pass",
+      "message": "5032 transactions",
+      "role": "accounts",
+      "timestamp": "2026-04-03T20:35:01.768Z"
+    },
+    {
+      "module": "Canteen",
+      "testName": "GET canteen items",
+      "status": "pass",
+      "message": "1000 items",
+      "role": "accounts",
+      "timestamp": "2026-04-03T20:35:01.814Z"
+    },
+    {
+      "module": "Transport",
+      "testName": "GET transport vehicles",
+      "status": "pass",
+      "message": "1000 vehicles",
+      "role": "accounts",
+      "timestamp": "2026-04-03T20:35:02.016Z"
+    },
+    {
+      "module": "Transport",
+      "testName": "GET bus routes",
+      "status": "pass",
+      "message": "500 routes",
+      "role": "accounts",
+      "timestamp": "2026-04-03T20:35:02.799Z"
+    },
+    {
+      "module": "Hostel",
+      "testName": "GET hostel dashboard",
+      "status": "pass",
+      "message": "Hostel data retrieved",
+      "role": "accounts",
+      "timestamp": "2026-04-03T20:35:03.382Z"
+    },
+    {
+      "module": "HR",
+      "testName": "GET own leave records",
+      "status": "pass",
+      "message": "0 leaves",
+      "role": "accounts",
+      "timestamp": "2026-04-03T20:35:03.397Z"
+    },
+    {
+      "module": "Payroll",
+      "testName": "GET payroll records",
+      "status": "pass",
+      "message": "2015 records",
+      "role": "accounts",
+      "timestamp": "2026-04-03T20:35:03.592Z"
+    },
+    {
+      "module": "Notices",
+      "testName": "GET notices",
+      "status": "pass",
+      "message": "464 notices",
+      "role": "accounts",
+      "timestamp": "2026-04-03T20:35:03.869Z"
+    },
+    {
+      "module": "Complaints",
+      "testName": "GET complaints",
+      "status": "pass",
+      "message": "0 complaints",
+      "role": "accounts",
+      "timestamp": "2026-04-03T20:35:03.877Z"
+    },
+    {
+      "module": "Remarks",
+      "testName": "Remarks access",
+      "status": "skip",
+      "message": "Remarks module not available for this role",
+      "role": "accounts",
+      "timestamp": "2026-04-03T20:35:03.877Z"
+    },
+    {
+      "module": "Import Data",
+      "testName": "Non-SuperAdmin access",
+      "status": "skip",
+      "message": "SuperAdmin only",
+      "role": "accounts",
+      "timestamp": "2026-04-03T20:35:03.877Z"
+    },
+    {
+      "module": "Archive",
+      "testName": "GET archive data",
+      "status": "pass",
+      "message": "Archive accessible",
+      "role": "accounts",
+      "timestamp": "2026-04-03T20:35:03.934Z"
+    },
+    {
+      "module": "Dashboard",
+      "testName": "GET dashboard stats",
+      "status": "pass",
+      "message": "Stats endpoint working",
+      "role": "hr",
+      "timestamp": "2026-04-03T20:35:04.231Z"
+    },
+    {
+      "module": "Dashboard",
+      "testName": "GET quick actions",
+      "status": "pass",
+      "message": "Quick actions working",
+      "role": "hr",
+      "timestamp": "2026-04-03T20:35:04.239Z"
+    },
+    {
+      "module": "Students",
+      "testName": "GET students list",
+      "status": "pass",
+      "message": "5001 students",
+      "role": "hr",
+      "timestamp": "2026-04-03T20:35:05.958Z"
+    },
+    {
+      "module": "Students",
+      "testName": "GET student stats",
+      "status": "pass",
+      "message": "Stats endpoint working",
+      "role": "hr",
+      "timestamp": "2026-04-03T20:35:05.979Z"
+    },
+    {
+      "module": "Attendance",
+      "testName": "GET class attendance",
+      "status": "pass",
+      "message": "Attendance data retrieved",
+      "role": "hr",
+      "timestamp": "2026-04-03T20:35:08.378Z"
+    },
+    {
+      "module": "Fees",
+      "testName": "GET fee structures",
+      "status": "pass",
+      "message": "6000 structures",
+      "role": "hr",
+      "timestamp": "2026-04-03T20:35:08.766Z"
+    },
+    {
+      "module": "Fees",
+      "testName": "Fee payment access",
+      "status": "skip",
+      "message": "Payment records are restricted for this role",
+      "role": "hr",
+      "timestamp": "2026-04-03T20:35:08.766Z"
+    },
+    {
+      "module": "Exams",
+      "testName": "GET exam schedule",
+      "status": "pass",
+      "message": "5008 exams",
+      "role": "hr",
+      "timestamp": "2026-04-03T20:35:09.283Z"
+    },
+    {
+      "module": "Library",
+      "testName": "GET library books",
+      "status": "pass",
+      "message": "2000 books",
+      "role": "hr",
+      "timestamp": "2026-04-03T20:35:09.396Z"
+    },
+    {
+      "module": "Library",
+      "testName": "GET library transactions",
+      "status": "pass",
+      "message": "5032 transactions",
+      "role": "hr",
+      "timestamp": "2026-04-03T20:35:11.096Z"
+    },
+    {
+      "module": "Canteen",
+      "testName": "GET canteen items",
+      "status": "pass",
+      "message": "1000 items",
+      "role": "hr",
+      "timestamp": "2026-04-03T20:35:11.138Z"
+    },
+    {
+      "module": "Transport",
+      "testName": "GET transport vehicles",
+      "status": "pass",
+      "message": "1000 vehicles",
+      "role": "hr",
+      "timestamp": "2026-04-03T20:35:11.425Z"
+    },
+    {
+      "module": "Transport",
+      "testName": "GET bus routes",
+      "status": "pass",
+      "message": "500 routes",
+      "role": "hr",
+      "timestamp": "2026-04-03T20:35:12.223Z"
+    },
+    {
+      "module": "Hostel",
+      "testName": "GET hostel dashboard",
+      "status": "pass",
+      "message": "Hostel data retrieved",
+      "role": "hr",
+      "timestamp": "2026-04-03T20:35:12.772Z"
+    },
+    {
+      "module": "HR",
+      "testName": "GET leave records",
+      "status": "pass",
+      "message": "1009 leaves",
+      "role": "hr",
+      "timestamp": "2026-04-03T20:35:12.891Z"
+    },
+    {
+      "module": "Payroll",
+      "testName": "GET own payroll records",
+      "status": "pass",
+      "message": "0 records",
+      "role": "hr",
+      "timestamp": "2026-04-03T20:35:12.898Z"
+    },
+    {
+      "module": "Notices",
+      "testName": "GET notices",
+      "status": "pass",
+      "message": "464 notices",
+      "role": "hr",
+      "timestamp": "2026-04-03T20:35:13.207Z"
+    },
+    {
+      "module": "Complaints",
+      "testName": "GET complaints",
+      "status": "pass",
+      "message": "0 complaints",
+      "role": "hr",
+      "timestamp": "2026-04-03T20:35:13.214Z"
+    },
+    {
+      "module": "Remarks",
+      "testName": "Remarks access",
+      "status": "skip",
+      "message": "Remarks module not available for this role",
+      "role": "hr",
+      "timestamp": "2026-04-03T20:35:13.214Z"
+    },
+    {
+      "module": "Import Data",
+      "testName": "Non-SuperAdmin access",
+      "status": "skip",
+      "message": "SuperAdmin only",
+      "role": "hr",
+      "timestamp": "2026-04-03T20:35:13.214Z"
+    },
+    {
+      "module": "Archive",
+      "testName": "Non-authorized role access",
+      "status": "skip",
+      "message": "SuperAdmin/Accounts only",
+      "role": "hr",
+      "timestamp": "2026-04-03T20:35:13.214Z"
+    },
+    {
+      "module": "Dashboard",
+      "testName": "GET dashboard stats",
+      "status": "pass",
+      "message": "Stats endpoint working",
+      "role": "canteen",
+      "timestamp": "2026-04-03T20:35:13.489Z"
+    },
+    {
+      "module": "Dashboard",
+      "testName": "GET quick actions",
+      "status": "pass",
+      "message": "Quick actions working",
+      "role": "canteen",
+      "timestamp": "2026-04-03T20:35:13.492Z"
+    },
+    {
+      "module": "Students",
+      "testName": "GET students list",
+      "status": "pass",
+      "message": "5001 students",
+      "role": "canteen",
+      "timestamp": "2026-04-03T20:35:14.781Z"
+    },
+    {
+      "module": "Students",
+      "testName": "GET student stats",
+      "status": "pass",
+      "message": "Stats endpoint working",
+      "role": "canteen",
+      "timestamp": "2026-04-03T20:35:14.801Z"
+    },
+    {
+      "module": "Attendance",
+      "testName": "Attendance access",
+      "status": "skip",
+      "message": "Attendance module not available for this role",
+      "role": "canteen",
+      "timestamp": "2026-04-03T20:35:14.801Z"
+    },
+    {
+      "module": "Fees",
+      "testName": "GET fee structures",
+      "status": "pass",
+      "message": "6000 structures",
+      "role": "canteen",
+      "timestamp": "2026-04-03T20:35:15.204Z"
+    },
+    {
+      "module": "Fees",
+      "testName": "Fee payment access",
+      "status": "skip",
+      "message": "Payment records are restricted for this role",
+      "role": "canteen",
+      "timestamp": "2026-04-03T20:35:15.204Z"
+    },
+    {
+      "module": "Exams",
+      "testName": "GET exam schedule",
+      "status": "pass",
+      "message": "5008 exams",
+      "role": "canteen",
+      "timestamp": "2026-04-03T20:35:15.722Z"
+    },
+    {
+      "module": "Library",
+      "testName": "GET library books",
+      "status": "pass",
+      "message": "2000 books",
+      "role": "canteen",
+      "timestamp": "2026-04-03T20:35:15.789Z"
+    },
+    {
+      "module": "Library",
+      "testName": "GET library transactions",
+      "status": "pass",
+      "message": "5032 transactions",
+      "role": "canteen",
+      "timestamp": "2026-04-03T20:35:17.124Z"
+    },
+    {
+      "module": "Canteen",
+      "testName": "GET canteen items",
+      "status": "pass",
+      "message": "1000 items",
+      "role": "canteen",
+      "timestamp": "2026-04-03T20:35:17.213Z"
+    },
+    {
+      "module": "Canteen",
+      "testName": "Canteen can view sales",
+      "status": "pass",
+      "message": "5030 sales",
+      "role": "canteen",
+      "timestamp": "2026-04-03T20:35:18.046Z"
+    },
+    {
+      "module": "Transport",
+      "testName": "GET transport vehicles",
+      "status": "pass",
+      "message": "1000 vehicles",
+      "role": "canteen",
+      "timestamp": "2026-04-03T20:35:18.211Z"
+    },
+    {
+      "module": "Transport",
+      "testName": "GET bus routes",
+      "status": "pass",
+      "message": "500 routes",
+      "role": "canteen",
+      "timestamp": "2026-04-03T20:35:19.211Z"
+    },
+    {
+      "module": "Hostel",
+      "testName": "Hostel access",
+      "status": "skip",
+      "message": "Hostel module not available for this role",
+      "role": "canteen",
+      "timestamp": "2026-04-03T20:35:19.211Z"
+    },
+    {
+      "module": "HR",
+      "testName": "GET own leave records",
+      "status": "pass",
+      "message": "0 leaves",
+      "role": "canteen",
+      "timestamp": "2026-04-03T20:35:19.217Z"
+    },
+    {
+      "module": "Payroll",
+      "testName": "GET own payroll records",
+      "status": "pass",
+      "message": "0 records",
+      "role": "canteen",
+      "timestamp": "2026-04-03T20:35:19.226Z"
+    },
+    {
+      "module": "Notices",
+      "testName": "GET notices",
+      "status": "pass",
+      "message": "464 notices",
+      "role": "canteen",
+      "timestamp": "2026-04-03T20:35:19.469Z"
+    },
+    {
+      "module": "Complaints",
+      "testName": "GET complaints",
+      "status": "pass",
+      "message": "0 complaints",
+      "role": "canteen",
+      "timestamp": "2026-04-03T20:35:19.481Z"
+    },
+    {
+      "module": "Remarks",
+      "testName": "Remarks access",
+      "status": "skip",
+      "message": "Remarks module not available for this role",
+      "role": "canteen",
+      "timestamp": "2026-04-03T20:35:19.481Z"
+    },
+    {
+      "module": "Import Data",
+      "testName": "Non-SuperAdmin access",
+      "status": "skip",
+      "message": "SuperAdmin only",
+      "role": "canteen",
+      "timestamp": "2026-04-03T20:35:19.481Z"
+    },
+    {
+      "module": "Archive",
+      "testName": "Non-authorized role access",
+      "status": "skip",
+      "message": "SuperAdmin/Accounts only",
+      "role": "canteen",
+      "timestamp": "2026-04-03T20:35:19.481Z"
+    },
+    {
+      "module": "Dashboard",
+      "testName": "GET dashboard stats",
+      "status": "pass",
+      "message": "Stats endpoint working",
+      "role": "conductor",
+      "timestamp": "2026-04-03T20:35:19.747Z"
+    },
+    {
+      "module": "Dashboard",
+      "testName": "GET quick actions",
+      "status": "pass",
+      "message": "Quick actions working",
+      "role": "conductor",
+      "timestamp": "2026-04-03T20:35:19.750Z"
+    },
+    {
+      "module": "Students",
+      "testName": "GET students list",
+      "status": "pass",
+      "message": "5001 students",
+      "role": "conductor",
+      "timestamp": "2026-04-03T20:35:21.204Z"
+    },
+    {
+      "module": "Students",
+      "testName": "GET student stats",
+      "status": "pass",
+      "message": "Stats endpoint working",
+      "role": "conductor",
+      "timestamp": "2026-04-03T20:35:21.228Z"
+    },
+    {
+      "module": "Attendance",
+      "testName": "Attendance access",
+      "status": "skip",
+      "message": "Attendance module not available for this role",
+      "role": "conductor",
+      "timestamp": "2026-04-03T20:35:21.228Z"
+    },
+    {
+      "module": "Fees",
+      "testName": "GET fee structures",
+      "status": "pass",
+      "message": "6000 structures",
+      "role": "conductor",
+      "timestamp": "2026-04-03T20:35:21.638Z"
+    },
+    {
+      "module": "Fees",
+      "testName": "Fee payment access",
+      "status": "skip",
+      "message": "Payment records are restricted for this role",
+      "role": "conductor",
+      "timestamp": "2026-04-03T20:35:21.638Z"
+    },
+    {
+      "module": "Exams",
+      "testName": "GET exam schedule",
+      "status": "pass",
+      "message": "5008 exams",
+      "role": "conductor",
+      "timestamp": "2026-04-03T20:35:21.978Z"
+    },
+    {
+      "module": "Library",
+      "testName": "GET library books",
+      "status": "pass",
+      "message": "2000 books",
+      "role": "conductor",
+      "timestamp": "2026-04-03T20:35:22.043Z"
+    },
+    {
+      "module": "Library",
+      "testName": "GET library transactions",
+      "status": "pass",
+      "message": "5032 transactions",
+      "role": "conductor",
+      "timestamp": "2026-04-03T20:35:23.348Z"
+    },
+    {
+      "module": "Canteen",
+      "testName": "GET canteen items",
+      "status": "pass",
+      "message": "1000 items",
+      "role": "conductor",
+      "timestamp": "2026-04-03T20:35:23.387Z"
+    },
+    {
+      "module": "Transport",
+      "testName": "GET transport vehicles",
+      "status": "pass",
+      "message": "5 vehicles",
+      "role": "conductor",
+      "timestamp": "2026-04-03T20:35:23.397Z"
+    },
+    {
+      "module": "Transport",
+      "testName": "GET bus routes",
+      "status": "pass",
+      "message": "500 routes",
+      "role": "conductor",
+      "timestamp": "2026-04-03T20:35:24.299Z"
+    },
+    {
+      "module": "Hostel",
+      "testName": "Hostel access",
+      "status": "skip",
+      "message": "Hostel module not available for this role",
+      "role": "conductor",
+      "timestamp": "2026-04-03T20:35:24.299Z"
+    },
+    {
+      "module": "HR",
+      "testName": "GET own leave records",
+      "status": "pass",
+      "message": "0 leaves",
+      "role": "conductor",
+      "timestamp": "2026-04-03T20:35:24.305Z"
+    },
+    {
+      "module": "Payroll",
+      "testName": "GET own payroll records",
+      "status": "pass",
+      "message": "0 records",
+      "role": "conductor",
+      "timestamp": "2026-04-03T20:35:24.311Z"
+    },
+    {
+      "module": "Notices",
+      "testName": "GET notices",
+      "status": "pass",
+      "message": "464 notices",
+      "role": "conductor",
+      "timestamp": "2026-04-03T20:35:24.563Z"
+    },
+    {
+      "module": "Complaints",
+      "testName": "GET complaints",
+      "status": "pass",
+      "message": "0 complaints",
+      "role": "conductor",
+      "timestamp": "2026-04-03T20:35:24.570Z"
+    },
+    {
+      "module": "Remarks",
+      "testName": "Remarks access",
+      "status": "skip",
+      "message": "Remarks module not available for this role",
+      "role": "conductor",
+      "timestamp": "2026-04-03T20:35:24.570Z"
+    },
+    {
+      "module": "Import Data",
+      "testName": "Non-SuperAdmin access",
+      "status": "skip",
+      "message": "SuperAdmin only",
+      "role": "conductor",
+      "timestamp": "2026-04-03T20:35:24.570Z"
+    },
+    {
+      "module": "Archive",
+      "testName": "Non-authorized role access",
+      "status": "skip",
+      "message": "SuperAdmin/Accounts only",
+      "role": "conductor",
+      "timestamp": "2026-04-03T20:35:24.570Z"
+    },
+    {
+      "module": "Dashboard",
+      "testName": "GET dashboard stats",
+      "status": "pass",
+      "message": "Stats endpoint working",
+      "role": "driver",
+      "timestamp": "2026-04-03T20:35:24.828Z"
+    },
+    {
+      "module": "Dashboard",
+      "testName": "GET quick actions",
+      "status": "pass",
+      "message": "Quick actions working",
+      "role": "driver",
+      "timestamp": "2026-04-03T20:35:24.831Z"
+    },
+    {
+      "module": "Students",
+      "testName": "GET students list",
+      "status": "pass",
+      "message": "5001 students",
+      "role": "driver",
+      "timestamp": "2026-04-03T20:35:26.243Z"
+    },
+    {
+      "module": "Students",
+      "testName": "GET student stats",
+      "status": "pass",
+      "message": "Stats endpoint working",
+      "role": "driver",
+      "timestamp": "2026-04-03T20:35:26.292Z"
+    },
+    {
+      "module": "Attendance",
+      "testName": "Attendance access",
+      "status": "skip",
+      "message": "Attendance module not available for this role",
+      "role": "driver",
+      "timestamp": "2026-04-03T20:35:26.292Z"
+    },
+    {
+      "module": "Fees",
+      "testName": "GET fee structures",
+      "status": "pass",
+      "message": "6000 structures",
+      "role": "driver",
+      "timestamp": "2026-04-03T20:35:26.650Z"
+    },
+    {
+      "module": "Fees",
+      "testName": "Fee payment access",
+      "status": "skip",
+      "message": "Payment records are restricted for this role",
+      "role": "driver",
+      "timestamp": "2026-04-03T20:35:26.650Z"
+    },
+    {
+      "module": "Exams",
+      "testName": "GET exam schedule",
+      "status": "pass",
+      "message": "5008 exams",
+      "role": "driver",
+      "timestamp": "2026-04-03T20:35:26.986Z"
+    },
+    {
+      "module": "Library",
+      "testName": "GET library books",
+      "status": "pass",
+      "message": "2000 books",
+      "role": "driver",
+      "timestamp": "2026-04-03T20:35:27.090Z"
+    },
+    {
+      "module": "Library",
+      "testName": "GET library transactions",
+      "status": "pass",
+      "message": "5032 transactions",
+      "role": "driver",
+      "timestamp": "2026-04-03T20:35:28.387Z"
+    },
+    {
+      "module": "Canteen",
+      "testName": "GET canteen items",
+      "status": "pass",
+      "message": "1000 items",
+      "role": "driver",
+      "timestamp": "2026-04-03T20:35:28.440Z"
+    },
+    {
+      "module": "Transport",
+      "testName": "GET transport vehicles",
+      "status": "pass",
+      "message": "2 vehicles",
+      "role": "driver",
+      "timestamp": "2026-04-03T20:35:28.449Z"
+    },
+    {
+      "module": "Transport",
+      "testName": "GET bus routes",
+      "status": "pass",
+      "message": "500 routes",
+      "role": "driver",
+      "timestamp": "2026-04-03T20:35:29.244Z"
+    },
+    {
+      "module": "Hostel",
+      "testName": "Hostel access",
+      "status": "skip",
+      "message": "Hostel module not available for this role",
+      "role": "driver",
+      "timestamp": "2026-04-03T20:35:29.244Z"
+    },
+    {
+      "module": "HR",
+      "testName": "GET own leave records",
+      "status": "pass",
+      "message": "0 leaves",
+      "role": "driver",
+      "timestamp": "2026-04-03T20:35:29.249Z"
+    },
+    {
+      "module": "Payroll",
+      "testName": "GET own payroll records",
+      "status": "pass",
+      "message": "0 records",
+      "role": "driver",
+      "timestamp": "2026-04-03T20:35:29.255Z"
+    },
+    {
+      "module": "Notices",
+      "testName": "GET notices",
+      "status": "pass",
+      "message": "464 notices",
+      "role": "driver",
+      "timestamp": "2026-04-03T20:35:29.502Z"
+    },
+    {
+      "module": "Complaints",
+      "testName": "GET complaints",
+      "status": "pass",
+      "message": "0 complaints",
+      "role": "driver",
+      "timestamp": "2026-04-03T20:35:29.519Z"
+    },
+    {
+      "module": "Remarks",
+      "testName": "Remarks access",
+      "status": "skip",
+      "message": "Remarks module not available for this role",
+      "role": "driver",
+      "timestamp": "2026-04-03T20:35:29.519Z"
+    },
+    {
+      "module": "Import Data",
+      "testName": "Non-SuperAdmin access",
+      "status": "skip",
+      "message": "SuperAdmin only",
+      "role": "driver",
+      "timestamp": "2026-04-03T20:35:29.519Z"
+    },
+    {
+      "module": "Archive",
+      "testName": "Non-authorized role access",
+      "status": "skip",
+      "message": "SuperAdmin/Accounts only",
+      "role": "driver",
+      "timestamp": "2026-04-03T20:35:29.519Z"
+    },
+    {
+      "module": "Dashboard",
+      "testName": "GET dashboard stats",
+      "status": "pass",
+      "message": "Stats endpoint working",
+      "role": "staff",
+      "timestamp": "2026-04-03T20:35:29.811Z"
+    },
+    {
+      "module": "Dashboard",
+      "testName": "GET quick actions",
+      "status": "pass",
+      "message": "Quick actions working",
+      "role": "staff",
+      "timestamp": "2026-04-03T20:35:29.814Z"
+    },
+    {
+      "module": "Students",
+      "testName": "GET students list",
+      "status": "pass",
+      "message": "5001 students",
+      "role": "staff",
+      "timestamp": "2026-04-03T20:35:31.333Z"
+    },
+    {
+      "module": "Students",
+      "testName": "GET student stats",
+      "status": "pass",
+      "message": "Stats endpoint working",
+      "role": "staff",
+      "timestamp": "2026-04-03T20:35:31.395Z"
+    },
+    {
+      "module": "Attendance",
+      "testName": "Attendance access",
+      "status": "skip",
+      "message": "Attendance module not available for this role",
+      "role": "staff",
+      "timestamp": "2026-04-03T20:35:31.395Z"
+    },
+    {
+      "module": "Fees",
+      "testName": "GET fee structures",
+      "status": "pass",
+      "message": "6000 structures",
+      "role": "staff",
+      "timestamp": "2026-04-03T20:35:31.800Z"
+    },
+    {
+      "module": "Fees",
+      "testName": "Fee payment access",
+      "status": "skip",
+      "message": "Payment records are restricted for this role",
+      "role": "staff",
+      "timestamp": "2026-04-03T20:35:31.800Z"
+    },
+    {
+      "module": "Exams",
+      "testName": "GET exam schedule",
+      "status": "pass",
+      "message": "5008 exams",
+      "role": "staff",
+      "timestamp": "2026-04-03T20:35:32.182Z"
+    },
+    {
+      "module": "Library",
+      "testName": "GET library books",
+      "status": "pass",
+      "message": "2000 books",
+      "role": "staff",
+      "timestamp": "2026-04-03T20:35:32.271Z"
+    },
+    {
+      "module": "Library",
+      "testName": "GET library transactions",
+      "status": "pass",
+      "message": "5032 transactions",
+      "role": "staff",
+      "timestamp": "2026-04-03T20:35:33.554Z"
+    },
+    {
+      "module": "Canteen",
+      "testName": "GET canteen items",
+      "status": "pass",
+      "message": "1000 items",
+      "role": "staff",
+      "timestamp": "2026-04-03T20:35:33.609Z"
+    },
+    {
+      "module": "Transport",
+      "testName": "GET transport vehicles",
+      "status": "pass",
+      "message": "1000 vehicles",
+      "role": "staff",
+      "timestamp": "2026-04-03T20:35:33.760Z"
+    },
+    {
+      "module": "Transport",
+      "testName": "GET bus routes",
+      "status": "pass",
+      "message": "500 routes",
+      "role": "staff",
+      "timestamp": "2026-04-03T20:35:34.653Z"
+    },
+    {
+      "module": "Hostel",
+      "testName": "GET hostel dashboard",
+      "status": "pass",
+      "message": "Hostel data retrieved",
+      "role": "staff",
+      "timestamp": "2026-04-03T20:35:35.225Z"
+    },
+    {
+      "module": "HR",
+      "testName": "GET own leave records",
+      "status": "pass",
+      "message": "4 leaves",
+      "role": "staff",
+      "timestamp": "2026-04-03T20:35:35.242Z"
+    },
+    {
+      "module": "Payroll",
+      "testName": "GET own payroll records",
+      "status": "pass",
+      "message": "5 records",
+      "role": "staff",
+      "timestamp": "2026-04-03T20:35:35.260Z"
+    },
+    {
+      "module": "Notices",
+      "testName": "GET notices",
+      "status": "pass",
+      "message": "923 notices",
+      "role": "staff",
+      "timestamp": "2026-04-03T20:35:35.601Z"
+    },
+    {
+      "module": "Complaints",
+      "testName": "GET complaints",
+      "status": "pass",
+      "message": "0 complaints",
+      "role": "staff",
+      "timestamp": "2026-04-03T20:35:35.615Z"
+    },
+    {
+      "module": "Remarks",
+      "testName": "Remarks access",
+      "status": "skip",
+      "message": "Remarks module not available for this role",
+      "role": "staff",
+      "timestamp": "2026-04-03T20:35:35.615Z"
+    },
+    {
+      "module": "Import Data",
+      "testName": "Non-SuperAdmin access",
+      "status": "skip",
+      "message": "SuperAdmin only",
+      "role": "staff",
+      "timestamp": "2026-04-03T20:35:35.615Z"
+    },
+    {
+      "module": "Archive",
+      "testName": "Non-authorized role access",
+      "status": "skip",
+      "message": "SuperAdmin/Accounts only",
+      "role": "staff",
+      "timestamp": "2026-04-03T20:35:35.615Z"
+    }
+  ]
+}

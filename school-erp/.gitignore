@@ -1,0 +1,12 @@
+node_modules/
+.env
+*.log
+err*.txt
+prisma_output.txt
+failures.txt
+server/uploads/
+server/backups/
+server/logs/
+build/
+dist/
+*.pdf

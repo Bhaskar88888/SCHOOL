@@ -1,0 +1,94 @@
+version: '3.8'
+
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: school_erp_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword123}
+      MYSQL_DATABASE: school_erp
+      MYSQL_USER: school_erp_user
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-school_erp_password}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./server/scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - school_erp_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  # Backend Server
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: school_erp_server
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      DATABASE_URL: mysql://school_erp_user:${MYSQL_PASSWORD:-school_erp_password}@mysql:3306/school_erp
+      JWT_SECRET: ${JWT_SECRET:-change-this-to-a-very-long-random-string}
+      JWT_EXPIRES_IN: 7d
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:80}
+      SEED_SUPERADMIN_PASSWORD: ${SEED_SUPERADMIN_PASSWORD:-admin123}
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_PHONE_NUMBER: ${TWILIO_PHONE_NUMBER:-}
+      SCHOOL_NAME: ${SCHOOL_NAME:-EduGlass School}
+      LOG_LEVEL: info
+    ports:
+      - "5000:5000"
+    volumes:
+      - server_uploads:/app/uploads
+      - server_logs:/app/logs
+      - server_ai:/app/ai
+    networks:
+      - school_erp_network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Frontend Client
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      args:
+        REACT_APP_API_URL: ${REACT_APP_API_URL:-http://localhost:5000/api}
+        REACT_APP_SCHOOL_NAME: ${SCHOOL_NAME:-EduGlass School}
+    container_name: school_erp_client
+    restart: unless-stopped
+    depends_on:
+      - server
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - school_erp_network
+
+volumes:
+  mysql_data:
+    driver: local
+  server_uploads:
+    driver: local
+  server_logs:
+    driver: local
+  server_ai:
+    driver: local
+
+networks:
+  school_erp_network:
+    driver: bridge

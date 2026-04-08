@@ -1,0 +1,49 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "node tests/master-test-runner.js",
+    "test:api": "node tests/comprehensive-api-test.js",
+    "test:buttons": "node tests/button-feature-test.js",
+    "test:seed": "node seed-comprehensive-test-data.js",
+    "dev": "nodemon --ignore 'ai/*' --ignore 'uploads/*' --ignore 'knowledgeBase*.json' server.js",
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "axios": "^1.14.0",
+    "bcryptjs": "^3.0.3",
+    "cheerio": "^1.2.0",
+    "compression": "^1.8.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.3.1",
+    "express-validator": "^7.3.2",
+    "flexsearch": "^0.8.212",
+    "helmet": "^8.1.0",
+    "joi": "^18.1.2",
+    "jsonwebtoken": "^9.0.3",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.7",
+    "morgan": "^1.10.1",
+    "multer": "^2.1.1",
+    "node-cache": "^5.1.2",
+    "node-cron": "^4.2.1",
+    "node-nlp": "^5.0.0-alpha.5",
+    "twilio": "^5.13.0",
+    "winston": "^3.19.0",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@prisma/client": "^6.11.1",
+    "nodemon": "^3.1.14",
+    "prisma": "^6.11.1"
+  }
+}

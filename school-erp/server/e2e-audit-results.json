@@ -1,0 +1,697 @@
+{
+  "pass": 138,
+  "fail": 0,
+  "skip": 0,
+  "details": [
+    {
+      "module": "Health",
+      "name": "GET /api/health returns 200",
+      "status": "PASS"
+    },
+    {
+      "module": "Auth",
+      "name": "Login returns token + user payload",
+      "status": "PASS"
+    },
+    {
+      "module": "Auth",
+      "name": "Invalid credentials returns 400",
+      "status": "PASS"
+    },
+    {
+      "module": "Auth",
+      "name": "No token returns 401",
+      "status": "PASS"
+    },
+    {
+      "module": "Auth",
+      "name": "GET /api/auth/users (superadmin)",
+      "status": "PASS"
+    },
+    {
+      "module": "Auth",
+      "name": "Register new user (superadmin only)",
+      "status": "PASS"
+    },
+    {
+      "module": "Auth",
+      "name": "Forgot password endpoint",
+      "status": "PASS"
+    },
+    {
+      "module": "Auth",
+      "name": "Logout endpoint",
+      "status": "PASS"
+    },
+    {
+      "module": "Dashboard",
+      "name": "GET /api/dashboard/stats (superadmin)",
+      "status": "PASS"
+    },
+    {
+      "module": "Dashboard",
+      "name": "GET /api/dashboard/quick-actions",
+      "status": "PASS"
+    },
+    {
+      "module": "Dashboard",
+      "name": "Student dashboard access",
+      "status": "PASS"
+    },
+    {
+      "module": "Dashboard",
+      "name": "Teacher dashboard access",
+      "status": "PASS"
+    },
+    {
+      "module": "Classes",
+      "name": "GET /api/classes list",
+      "status": "PASS"
+    },
+    {
+      "module": "Classes",
+      "name": "GET /api/classes/:id single",
+      "status": "PASS"
+    },
+    {
+      "module": "Classes",
+      "name": "GET /api/classes/stats/summary",
+      "status": "PASS"
+    },
+    {
+      "module": "Classes",
+      "name": "GET /api/classes/teachers/list",
+      "status": "PASS"
+    },
+    {
+      "module": "Classes",
+      "name": "CRUD: Create → Update → Delete class",
+      "status": "PASS"
+    },
+    {
+      "module": "Students",
+      "name": "GET /api/students list",
+      "status": "PASS"
+    },
+    {
+      "module": "Students",
+      "name": "GET /api/students/:id single",
+      "status": "PASS"
+    },
+    {
+      "module": "Students",
+      "name": "GET /api/students/stats/summary",
+      "status": "PASS"
+    },
+    {
+      "module": "Students",
+      "name": "GET /api/students/class/:classId",
+      "status": "PASS"
+    },
+    {
+      "module": "Attendance",
+      "name": "POST /api/attendance/bulk",
+      "status": "PASS"
+    },
+    {
+      "module": "Attendance",
+      "name": "GET /api/attendance/class/:id/:date",
+      "status": "PASS"
+    },
+    {
+      "module": "Attendance",
+      "name": "GET /api/attendance/student/:id",
+      "status": "PASS"
+    },
+    {
+      "module": "Attendance",
+      "name": "GET /api/attendance/report/daily",
+      "status": "PASS"
+    },
+    {
+      "module": "Attendance",
+      "name": "GET /api/attendance/report/monthly",
+      "status": "PASS"
+    },
+    {
+      "module": "Attendance",
+      "name": "GET /api/attendance/defaulters",
+      "status": "PASS"
+    },
+    {
+      "module": "Fee",
+      "name": "POST /api/fee/structure (create)",
+      "status": "PASS"
+    },
+    {
+      "module": "Fee",
+      "name": "GET /api/fee/structures",
+      "status": "PASS"
+    },
+    {
+      "module": "Fee",
+      "name": "POST /api/fee/collect",
+      "status": "PASS"
+    },
+    {
+      "module": "Fee",
+      "name": "GET /api/fee/payments",
+      "status": "PASS"
+    },
+    {
+      "module": "Fee",
+      "name": "GET /api/fee/student/:id",
+      "status": "PASS"
+    },
+    {
+      "module": "Fee",
+      "name": "GET /api/fee/defaulters",
+      "status": "PASS"
+    },
+    {
+      "module": "Fee",
+      "name": "GET /api/fee/collection-report",
+      "status": "PASS"
+    },
+    {
+      "module": "Fee",
+      "name": "GET /api/fee/my (student view)",
+      "status": "PASS"
+    },
+    {
+      "module": "Exams",
+      "name": "POST /api/exams/schedule (create)",
+      "status": "PASS"
+    },
+    {
+      "module": "Exams",
+      "name": "GET /api/exams/schedule",
+      "status": "PASS"
+    },
+    {
+      "module": "Exams",
+      "name": "POST /api/exams/results (save)",
+      "status": "PASS"
+    },
+    {
+      "module": "Exams",
+      "name": "GET /api/exams/results/exam/:id",
+      "status": "PASS"
+    },
+    {
+      "module": "Exams",
+      "name": "GET /api/exams/results/student/:id",
+      "status": "PASS"
+    },
+    {
+      "module": "Exams",
+      "name": "GET /api/exams/analytics",
+      "status": "PASS"
+    },
+    {
+      "module": "Library",
+      "name": "POST /api/library/manual (add book)",
+      "status": "PASS"
+    },
+    {
+      "module": "Library",
+      "name": "GET /api/library/books",
+      "status": "PASS"
+    },
+    {
+      "module": "Library",
+      "name": "GET /api/library/dashboard",
+      "status": "PASS"
+    },
+    {
+      "module": "Hostel",
+      "name": "POST /api/hostel/room-types (create)",
+      "status": "PASS"
+    },
+    {
+      "module": "Hostel",
+      "name": "GET /api/hostel/dashboard (returns all data)",
+      "status": "PASS"
+    },
+    {
+      "module": "Hostel",
+      "name": "POST /api/hostel/rooms (create)",
+      "status": "PASS"
+    },
+    {
+      "module": "Hostel",
+      "name": "POST /api/hostel/fee-structures",
+      "status": "PASS"
+    },
+    {
+      "module": "Transport",
+      "name": "POST /api/transport (create vehicle)",
+      "status": "PASS"
+    },
+    {
+      "module": "Transport",
+      "name": "GET /api/transport list",
+      "status": "PASS"
+    },
+    {
+      "module": "Transport",
+      "name": "PUT /api/transport/:id (update)",
+      "status": "PASS"
+    },
+    {
+      "module": "Transport",
+      "name": "PUT /api/transport/:id (assign student)",
+      "status": "PASS"
+    },
+    {
+      "module": "Transport",
+      "name": "POST /api/transport/:id/attendance",
+      "status": "PASS"
+    },
+    {
+      "module": "Transport",
+      "name": "GET /api/transport/:id/attendance",
+      "status": "PASS"
+    },
+    {
+      "module": "Transport",
+      "name": "GET /api/transport/student/:id/history",
+      "status": "PASS"
+    },
+    {
+      "module": "BusRoutes",
+      "name": "GET /api/bus-routes list",
+      "status": "PASS"
+    },
+    {
+      "module": "Payroll",
+      "name": "GET /api/payroll list",
+      "status": "PASS"
+    },
+    {
+      "module": "Payroll",
+      "name": "POST /api/payroll/generate-batch",
+      "status": "PASS"
+    },
+    {
+      "module": "Payroll",
+      "name": "GET /api/payroll/:staffId",
+      "status": "PASS"
+    },
+    {
+      "module": "SalarySetup",
+      "name": "GET /api/salary-setup list",
+      "status": "PASS"
+    },
+    {
+      "module": "SalarySetup",
+      "name": "POST /api/salary-setup (create)",
+      "status": "PASS"
+    },
+    {
+      "module": "StaffAttendance",
+      "name": "POST /api/staff-attendance",
+      "status": "PASS"
+    },
+    {
+      "module": "StaffAttendance",
+      "name": "GET /api/staff-attendance/:date",
+      "status": "PASS"
+    },
+    {
+      "module": "Canteen",
+      "name": "POST /api/canteen/items (create)",
+      "status": "PASS"
+    },
+    {
+      "module": "Canteen",
+      "name": "GET /api/canteen/items",
+      "status": "PASS"
+    },
+    {
+      "module": "Canteen",
+      "name": "PUT /api/canteen/items/:id (update)",
+      "status": "PASS"
+    },
+    {
+      "module": "Canteen",
+      "name": "POST /api/canteen/sell",
+      "status": "PASS"
+    },
+    {
+      "module": "Canteen",
+      "name": "GET /api/canteen/sales",
+      "status": "PASS"
+    },
+    {
+      "module": "Homework",
+      "name": "POST /api/homework (create)",
+      "status": "PASS"
+    },
+    {
+      "module": "Homework",
+      "name": "GET /api/homework",
+      "status": "PASS"
+    },
+    {
+      "module": "Homework",
+      "name": "GET /api/homework/my (student)",
+      "status": "PASS"
+    },
+    {
+      "module": "Routine",
+      "name": "GET /api/routine/:classId",
+      "status": "PASS"
+    },
+    {
+      "module": "Routine",
+      "name": "POST /api/routine/manual (create entry)",
+      "status": "PASS"
+    },
+    {
+      "module": "Leave",
+      "name": "POST /api/leave/request",
+      "status": "PASS"
+    },
+    {
+      "module": "Leave",
+      "name": "GET /api/leave (list)",
+      "status": "PASS"
+    },
+    {
+      "module": "Leave",
+      "name": "GET /api/leave/my",
+      "status": "PASS"
+    },
+    {
+      "module": "Leave",
+      "name": "GET /api/leave/balance",
+      "status": "PASS"
+    },
+    {
+      "module": "Leave",
+      "name": "PUT /api/leave/:id/approve",
+      "status": "PASS"
+    },
+    {
+      "module": "Remarks",
+      "name": "POST /api/remarks (create)",
+      "status": "PASS"
+    },
+    {
+      "module": "Remarks",
+      "name": "GET /api/remarks",
+      "status": "PASS"
+    },
+    {
+      "module": "Complaints",
+      "name": "POST /api/complaints (file)",
+      "status": "PASS"
+    },
+    {
+      "module": "Complaints",
+      "name": "GET /api/complaints",
+      "status": "PASS"
+    },
+    {
+      "module": "Complaints",
+      "name": "GET /api/complaints/staff-targets",
+      "status": "PASS"
+    },
+    {
+      "module": "Complaints",
+      "name": "PUT /api/complaints/:id (update status)",
+      "status": "PASS"
+    },
+    {
+      "module": "Notices",
+      "name": "POST /api/notices (create)",
+      "status": "PASS"
+    },
+    {
+      "module": "Notices",
+      "name": "GET /api/notices",
+      "status": "PASS"
+    },
+    {
+      "module": "Notices",
+      "name": "PUT /api/notices/:id (update)",
+      "status": "PASS"
+    },
+    {
+      "module": "Notifications",
+      "name": "GET /api/notifications",
+      "status": "PASS"
+    },
+    {
+      "module": "Notifications",
+      "name": "GET /api/notifications/unread-count",
+      "status": "PASS"
+    },
+    {
+      "module": "Export",
+      "name": "GET /api/export/students/excel",
+      "status": "PASS"
+    },
+    {
+      "module": "Export",
+      "name": "GET /api/export/fees/excel",
+      "status": "PASS"
+    },
+    {
+      "module": "Export",
+      "name": "GET /api/export/students/pdf",
+      "status": "PASS"
+    },
+    {
+      "module": "Import",
+      "name": "Import route accessible (not 404)",
+      "status": "PASS"
+    },
+    {
+      "module": "Tally",
+      "name": "GET /api/tally/vouchers",
+      "status": "PASS"
+    },
+    {
+      "module": "Tally",
+      "name": "POST /api/tally/export-fees",
+      "status": "PASS"
+    },
+    {
+      "module": "Chatbot",
+      "name": "POST /api/chatbot/chat",
+      "status": "PASS"
+    },
+    {
+      "module": "Chatbot",
+      "name": "GET /api/chatbot/history",
+      "status": "PASS"
+    },
+    {
+      "module": "Chatbot",
+      "name": "GET /api/chatbot/analytics",
+      "status": "PASS"
+    },
+    {
+      "module": "Archive",
+      "name": "GET /api/archive/students",
+      "status": "PASS"
+    },
+    {
+      "module": "PDF",
+      "name": "POST /api/pdf/payslip (route accessible)",
+      "status": "PASS"
+    },
+    {
+      "module": "PDF",
+      "name": "POST /api/pdf/transfer-certificate (route accessible)",
+      "status": "PASS"
+    },
+    {
+      "module": "RBAC",
+      "name": "Student cannot access /api/auth/users",
+      "status": "PASS"
+    },
+    {
+      "module": "RBAC",
+      "name": "Parent cannot access /api/auth/users",
+      "status": "PASS"
+    },
+    {
+      "module": "RBAC",
+      "name": "Teacher cannot register users",
+      "status": "PASS"
+    },
+    {
+      "module": "RBAC",
+      "name": "Superadmin CAN access users",
+      "status": "PASS"
+    },
+    {
+      "module": "RBAC",
+      "name": "Student cannot access admin import",
+      "status": "PASS"
+    },
+    {
+      "module": "DB",
+      "name": "Model User â€“ count() succeeds",
+      "status": "PASS"
+    },
+    {
+      "module": "DB",
+      "name": "Model Class â€“ count() succeeds",
+      "status": "PASS"
+    },
+    {
+      "module": "DB",
+      "name": "Model Student â€“ count() succeeds",
+      "status": "PASS"
+    },
+    {
+      "module": "DB",
+      "name": "Model Attendance â€“ count() succeeds",
+      "status": "PASS"
+    },
+    {
+      "module": "DB",
+      "name": "Model FeeStructure â€“ count() succeeds",
+      "status": "PASS"
+    },
+    {
+      "module": "DB",
+      "name": "Model FeePayment â€“ count() succeeds",
+      "status": "PASS"
+    },
+    {
+      "module": "DB",
+      "name": "Model Exam â€“ count() succeeds",
+      "status": "PASS"
+    },
+    {
+      "module": "DB",
+      "name": "Model ExamResult â€“ count() succeeds",
+      "status": "PASS"
+    },
+    {
+      "module": "DB",
+      "name": "Model LibraryBook â€“ count() succeeds",
+      "status": "PASS"
+    },
+    {
+      "module": "DB",
+      "name": "Model LibraryTransaction â€“ count() succeeds",
+      "status": "PASS"
+    },
+    {
+      "module": "DB",
+      "name": "Model HostelRoomType â€“ count() succeeds",
+      "status": "PASS"
+    },
+    {
+      "module": "DB",
+      "name": "Model HostelRoom â€“ count() succeeds",
+      "status": "PASS"
+    },
+    {
+      "module": "DB",
+      "name": "Model HostelAllocation â€“ count() succeeds",
+      "status": "PASS"
+    },
+    {
+      "module": "DB",
+      "name": "Model HostelFeeStructure â€“ count() succeeds",
+      "status": "PASS"
+    },
+    {
+      "module": "DB",
+      "name": "Model TransportVehicle â€“ count() succeeds",
+      "status": "PASS"
+    },
+    {
+      "module": "DB",
+      "name": "Model TransportAttendance â€“ count() succeeds",
+      "status": "PASS"
+    },
+    {
+      "module": "DB",
+      "name": "Model BusRoute â€“ count() succeeds",
+      "status": "PASS"
+    },
+    {
+      "module": "DB",
+      "name": "Model CanteenItem â€“ count() succeeds",
+      "status": "PASS"
+    },
+    {
+      "module": "DB",
+      "name": "Model CanteenSale â€“ count() succeeds",
+      "status": "PASS"
+    },
+    {
+      "module": "DB",
+      "name": "Model Homework â€“ count() succeeds",
+      "status": "PASS"
+    },
+    {
+      "module": "DB",
+      "name": "Model Routine â€“ count() succeeds",
+      "status": "PASS"
+    },
+    {
+      "module": "DB",
+      "name": "Model Leave â€“ count() succeeds",
+      "status": "PASS"
+    },
+    {
+      "module": "DB",
+      "name": "Model Remark â€“ count() succeeds",
+      "status": "PASS"
+    },
+    {
+      "module": "DB",
+      "name": "Model Complaint â€“ count() succeeds",
+      "status": "PASS"
+    },
+    {
+      "module": "DB",
+      "name": "Model Notice â€“ count() succeeds",
+      "status": "PASS"
+    },
+    {
+      "module": "DB",
+      "name": "Model Notification â€“ count() succeeds",
+      "status": "PASS"
+    },
+    {
+      "module": "DB",
+      "name": "Model Payroll â€“ count() succeeds",
+      "status": "PASS"
+    },
+    {
+      "module": "DB",
+      "name": "Model SalaryStructure â€“ count() succeeds",
+      "status": "PASS"
+    },
+    {
+      "module": "DB",
+      "name": "Model StaffAttendance â€“ count() succeeds",
+      "status": "PASS"
+    },
+    {
+      "module": "DB",
+      "name": "Model ChatbotLog â€“ count() succeeds",
+      "status": "PASS"
+    },
+    {
+      "module": "DB",
+      "name": "Model AuditLog â€“ count() succeeds",
+      "status": "PASS"
+    },
+    {
+      "module": "404",
+      "name": "Unknown route returns 404",
+      "status": "PASS"
+    }
+  ]
+}

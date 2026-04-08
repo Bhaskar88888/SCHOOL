@@ -1,0 +1,11 @@
+node_modules/
+.env
+uploads/
+*.log
+model.nlp
+ai/knowledgeBase.json
+ai/knowledgeBase.version.json
+ai/model.nlp
+ai/model.version.json
+
+/generated/prisma
