@@ -51,6 +51,7 @@ if (file_exists($envFile)) {
 // Define fallback defaults for missing values
 $defaults = [
     'DB_HOST' => 'localhost',
+    'DB_PORT' => 3306,
     'DB_NAME' => 'school_erp',
     'DB_USER' => 'root',
     'DB_PASS' => '',
