@@ -4,7 +4,7 @@ require_once __DIR__ . '/includes/rate_limiter.php';
 
 // Redirect to dashboard if already logged in
 if (is_logged_in()) {
-    header('Location: /dashboard.php');
+    header('Location: ' . BASE_URL . '/dashboard.php');
     exit;
 }
 
@@ -25,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($user && password_verify($password, $user['password'])) {
                 login_user_enhanced($user);
                 audit_log('LOGIN', 'auth', 'User logged in successfully');
-                header('Location: /dashboard.php');
+                header('Location: ' . BASE_URL . '/dashboard.php');
                 exit;
             } else {
                 // Record failed login attempt
@@ -237,7 +237,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="alert alert-danger">⚠️ <?= htmlspecialchars($error) ?></div>
                 <?php endif; ?>
 
-                <form method="POST" action="/index.php">
+                <form method="POST" action="index.php">
                     <div class="form-group">
                         <label class="form-label">Email Address</label>
                         <input type="email" name="email" class="form-control" placeholder="your@email.com"
@@ -246,7 +246,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="form-group">
                         <label class="form-label" style="display:flex;justify-content:space-between">
                             <span>Password</span>
-                            <a href="/forgot-password.php" style="font-weight:400;font-size:11px">Forgot password?</a>
+                            <a href="forgot-password.php" style="font-weight:400;font-size:11px">Forgot password?</a>
                         </label>
                         <input type="password" name="password" class="form-control" placeholder="••••••••" required>
                     </div>
