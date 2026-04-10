@@ -35,9 +35,7 @@ Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains
 # ============================================
 
 # Block access to config, includes, tmp directories
-<DirectoryMatch "^/.*/(config|includes|tmp|tests)/">
-    Require all denied
-</DirectoryMatch>
+RewriteRule ^(config|includes|tmp|tests)/ - [F,L]
 
 # Block access to .env files
 <FilesMatch "^\.env">
@@ -45,9 +43,7 @@ Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains
 </FilesMatch>
 
 # Block access to .git
-<DirectoryMatch "^/.*/\.git/">
-    Require all denied
-</DirectoryMatch>
+RewriteRule ^\.git/ - [F,L]
 
 # Block access to SQL files
 <FilesMatch "\.sql$">
@@ -69,12 +65,7 @@ Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains
 # ============================================
 
 # Disable PHP execution in uploads directory
-<Directory "uploads">
-    php_flag engine off
-    <FilesMatch "\.php$">
-        Require all denied
-    </FilesMatch>
-</Directory>
+RewriteRule ^uploads/.*\.php$ - [F,L]
 
 # File size limits
 LimitRequestBody 5242880
