@@ -25,7 +25,7 @@ require_once __DIR__ . '/includes/data.php';
                     <option value="">All Roles</option>
                     <option value="admin">Admin</option>
                     <option value="teacher">Teacher</option>
-                    <option value="accountant">Accountant</option>
+                    <option value="accounts">Accounts</option>
                     <option value="librarian">Librarian</option>
                 </select>
             </div>
@@ -55,7 +55,7 @@ require_once __DIR__ . '/includes/data.php';
                     <select class="form-control" id="staffRole" name="role" required>
                         <option value="teacher">Teacher</option>
                         <option value="admin">Admin</option>
-                        <option value="accountant">Accountant</option>
+                        <option value="accounts">Accounts</option>
                         <option value="librarian">Librarian</option>
                     </select>
                 </div>

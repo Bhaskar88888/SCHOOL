@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot Local Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .chat-container {
+            width: 100%;
+            max-width: 800px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .chat-header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        .chat-header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        .chat-messages {
+            height: 500px;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+        .message.user {
+            align-items: flex-end;
+        }
+        .message.bot {
+            align-items: flex-start;
+        }
+        .message-content {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            line-height: 1.5;
+        }
+        .message.user .message-content {
+            background: #667eea;
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+        .message.bot .message-content {
+            background: white;
+            color: #333;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .message-time {
+            font-size: 11px;
+            color: #999;
+            margin-top: 4px;
+        }
+        .chat-input {
+            display: flex;
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+        }
+        .chat-input input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        .chat-input input:focus {
+            border-color: #667eea;
+        }
+        .chat-input button {
+            margin-left: 10px;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .chat-input button:hover {
+            transform: scale(1.05);
+        }
+        .chat-input button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .typing-indicator {
+            display: none;
+            padding: 12px 16px;
+            background: white;
+            border-radius: 18px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            margin-bottom: 15px;
+        }
+        .typing-indicator span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #999;
+            border-radius: 50%;
+            margin: 0 2px;
+            animation: typing 1.4s infinite;
+        }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-10px); }
+        }
+        .quick-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 10px 20px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+        }
+        .quick-action {
+            padding: 8px 16px;
+            background: #f0f0f0;
+            border: 1px solid #e0e0e0;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .quick-action:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        .status-bar {
+            padding: 8px 20px;
+            background: #f9f9f9;
+            border-top: 1px solid #e0e0e0;
+            font-size: 12px;
+            color: #666;
+            display: flex;
+            justify-content: space-between;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h1>🤖 School ERP Chatbot</h1>
+            <p>Local Testing Environment</p>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+            <div class="message bot">
+                <div class="message-content">
+                    👋 Hello! I'm your School ERP assistant. Ask me about students, fees, attendance, exams, library, or anything else!
+                </div>
+                <div class="message-time">Just now</div>
+            </div>
+        </div>
+        <div class="typing-indicator" id="typingIndicator">
+            <span></span><span></span><span></span>
+        </div>
+        <div class="quick-actions">
+            <div class="quick-action" onclick="sendQuickMessage('How many students?')">👨‍🎓 Student Count</div>
+            <div class="quick-action" onclick="sendQuickMessage('Pending fees')">💰 Fee Status</div>
+            <div class="quick-action" onclick="sendQuickMessage('Today attendance')">✅ Attendance</div>
+            <div class="quick-action" onclick="sendQuickMessage('Library status')">📚 Library</div>
+            <div class="quick-action" onclick="sendQuickMessage('Exam info')">📝 Exams</div>
+            <div class="quick-action" onclick="sendQuickMessage('Help')">❓ Help</div>
+        </div>
+        <div class="chat-input">
+            <input type="text" id="messageInput" placeholder="Type your message..." onkeypress="handleKeyPress(event)">
+            <button onclick="sendMessage()" id="sendBtn">Send</button>
+        </div>
+        <div class="status-bar">
+            <span id="responseTime">Response Time: -</span>
+            <span id="messageCount">Messages: 0</span>
+        </div>
+    </div>
+
+    <script>
+        let messageCount = 0;
+        const chatMessages = document.getElementById('chatMessages');
+        const messageInput = document.getElementById('messageInput');
+        const typingIndicator = document.getElementById('typingIndicator');
+        const sendBtn = document.getElementById('sendBtn');
+        const responseTimeEl = document.getElementById('responseTime');
+        const messageCountEl = document.getElementById('messageCount');
+
+        function addMessage(content, isUser = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.textContent = content;
+            
+            const timeDiv = document.createElement('div');
+            timeDiv.className = 'message-time';
+            timeDiv.textContent = new Date().toLocaleTimeString();
+            
+            messageDiv.appendChild(contentDiv);
+            messageDiv.appendChild(timeDiv);
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            messageCount++;
+            messageCountEl.textContent = `Messages: ${messageCount}`;
+        }
+
+        function showTyping() {
+            typingIndicator.style.display = 'block';
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function hideTyping() {
+            typingIndicator.style.display = 'none';
+        }
+
+        async function sendMessage() {
+            const message = messageInput.value.trim();
+            if (!message) return;
+
+            addMessage(message, true);
+            messageInput.value = '';
+            sendBtn.disabled = true;
+            showTyping();
+
+            const startTime = Date.now();
+
+            try {
+                // LOCAL TESTING MODE - Simulated responses
+                // In production, this would call the actual API
+                const response = await simulateChatbot(message);
+                
+                const responseTime = Date.now() - startTime;
+                hideTyping();
+                addMessage(response);
+                responseTimeEl.textContent = `Response Time: ${responseTime}ms`;
+            } catch (error) {
+                hideTyping();
+                addMessage('❌ Sorry, I encountered an error. Please try again.');
+                console.error('Chatbot error:', error);
+            }
+
+            sendBtn.disabled = false;
+            messageInput.focus();
+        }
+
+        async function simulateChatbot(message) {
+            // Simulate network delay
+            await new Promise(resolve => setTimeout(resolve, 300));
+            
+            const msg = message.toLowerCase();
+            
+            // Simulated responses (matching PHP chatbot logic)
+            if (/\b(hi|hello|hey|namaste)\b/.test(msg)) {
+                return 'Hello! 👋 How can I help you today?';
+            }
+            if (/\b(help|what can you do)\b/.test(msg)) {
+                return '🤖 I can help with:\n• Student info & count\n• Fee status & collection\n• Today\'s attendance\n• Staff information\n• Library status\n• Exams & results\n• Complaints summary\n• Hostel & Transport\n• Leave applications\n• Payroll info\n• Canteen menu\n• Homework & notices\n• School policies';
+            }
+            if (/\b(how many|total|count).*student/.test(msg)) {
+                return '📊 There are currently **5,000** active students enrolled in the school.';
+            }
+            if (/\b(fee|pending|due|unpaid)\b/.test(msg)) {
+                return '💰 Pending Fees\n• 150 students have pending dues\n• Total pending: ₹750,000\n\nVisit the Fee module for details.';
+            }
+            if (/\b(attendance|present|absent).*today/.test(msg)) {
+                return '✅ Today\'s Attendance\n• Present: 4,500\n• Absent: 500\n\nFor detailed attendance, go to the Attendance module.';
+            }
+            if (/\b(library|books?|borrow)\b/.test(msg)) {
+                return '📚 Library Status\n• Total Books: 2,500\n• Currently Issued: 150\n• Overdue: 25\n\nFine: ₹5/day for overdue books.';
+            }
+            if (/\b(exam|result|marks|test)\b/.test(msg)) {
+                return '📝 Exams Summary\n• Upcoming: 5\n• Completed: 15\n\nVisit Exams module for full details.';
+            }
+            if (/\b(complaint|grievance)\b/.test(msg)) {
+                return '📣 Complaints Summary\n• Pending: 10\n• Resolved: 45\n\nVisit the Complaints module to take action.';
+            }
+            if (/\b(leave|absent request)\b/.test(msg)) {
+                return '📅 Leave Applications\n• Leave requests are for staff only.\n\nStudents should contact the school office for absence notifications.';
+            }
+            if (/\b(staff|teacher|employee)\b/.test(msg)) {
+                return '👔 Staff Summary\n• Teachers: 250\n• Total Staff: 500';
+            }
+            if (/\b(hostel|room)\b/.test(msg)) {
+                return '🏠 Hostel Status\n• Total Rooms: 100\n• Occupied Beds: 85';
+            }
+            if (/\b(transport|bus|route)\b/.test(msg)) {
+                return '🚌 Transport Summary\n• Total Buses: 25\n• Active Routes: 15\n\nVisit Transport module for route details.';
+            }
+            if (/\b(canteen|menu|food)\b/.test(msg)) {
+                return '🍔 Canteen Status\n• Available Items: 20\n\nVisit the Canteen module for menu and pricing. Payment via cash or RFID wallet.';
+            }
+            if (/\b(homework|assignment)\b/.test(msg)) {
+                return '📚 Homework Status\n• Active Assignments: 35\n\nHomework must be submitted by due date. Late submissions may receive reduced marks.';
+            }
+            if (/\b(notice|announcement)\b/.test(msg)) {
+                return '📢 Recent Notices\n• Holiday Notice (high)\n• Exam Schedule (medium)\n• PTM Invitation (low)\n\nVisit Notices module for full details.';
+            }
+            if (/\b(school hours?|timing|time)\b/.test(msg)) {
+                return '🕐 School Hours\n• Monday-Friday: 8:00 AM - 3:00 PM\n• Saturday: 8:00 AM - 12:00 PM\n• Assembly: 7:50 AM\n• Lunch: 12:00-12:30 PM';
+            }
+            if (/\b(holiday|vacation|break)\b/.test(msg)) {
+                return '🏖️ School Holidays\n• Summer: May-June\n• Diwali: October\n• Winter: December-January\n\nFull calendar published at start of academic year.';
+            }
+            if (/\b(uniform|dress code)\b/.test(msg)) {
+                return '👔 Uniform Policy\n• Summer: Light blue shirt/salwar, dark blue pants/skirt\n• Winter: Grey sweater with regular uniform\n• Sports uniform on PT days\n• Black shoes mandatory\n• Name badge must be worn';
+            }
+            if (/\b(admission|admit|enroll)\b/.test(msg)) {
+                return '📝 Admission Process\n1. Fill online admission form\n2. Submit documents (Birth cert, Aadhaar, photos)\n3. Take entrance exam\n4. Interview (if selected)\n5. Admission confirmation\n\nEntrance exam: English, Maths, GK';
+            }
+            if (/\b(grading|grade|marks|percentage)\b/.test(msg)) {
+                return '📊 Grading System\n• A+ (90-100%), A (80-89%), B+ (70-79%)\n• B (60-69%), C (50-59%), D (40-49%)\n• E (33-39%), F (Below 33%)\n• Minimum passing: 33%\n• Report cards available as PDF';
+            }
+            if (/\b(emergency|urgent|accident)\b/.test(msg)) {
+                return '🚨 Emergency Contacts\n• Principal: School Office\n• Medical Room: Extension 101\n• Transport: Extension 102\n\nIn medical emergency, student taken to nearest hospital. Parents informed immediately.';
+            }
+            if (/\b(wallet|balance|recharge)\b/.test(msg)) {
+                return '💳 Wallet Info\n• Recharge at canteen counter in multiples of ₹100\n• Min: ₹100, Max: ₹2000\n• Lost card replacement: ₹50\n\nVisit Canteen module for your balance.';
+            }
+            
+            return "I'm not sure about that. Try asking about:\n• Student count\n• Fee status\n• Today's attendance\n• Library books\n• Upcoming exams\n• School policies\n• Homework guidelines";
+        }
+
+        function sendQuickMessage(message) {
+            messageInput.value = message;
+            sendMessage();
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+
+        // Focus input on load
+        messageInput.focus();
+    </script>
+</body>
+</html>

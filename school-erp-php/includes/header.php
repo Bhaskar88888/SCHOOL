@@ -22,9 +22,9 @@ $pageTitle = $pageTitle ?? 'Dashboard';
         </button>
         <div class="user-dropdown" onclick="toggleUserMenu()">
             <div class="topbar-avatar">
-                <?= strtoupper(substr(get_current_user()['name'], 0, 1)) ?>
+                <?= strtoupper(substr(get_authenticated_user()['name'], 0, 1)) ?>
             </div>
-            <span class="topbar-username"><?= htmlspecialchars(get_current_user()['name']) ?></span>
+            <span class="topbar-username"><?= htmlspecialchars(get_authenticated_user()['name']) ?></span>
             <span>▾</span>
             <div class="dropdown-menu" id="userMenu">
                 <a href="/profile.php">👤 Profile</a>

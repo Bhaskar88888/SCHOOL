@@ -1,250 +1,242 @@
 <?php
 /**
- * PDF Export API - Module-level PDF exports
+ * PDF Export API
  * School ERP PHP v3.0
  */
+
 require_once __DIR__ . '/../../includes/db.php';
 require_once __DIR__ . '/../../includes/auth.php';
+require_once __DIR__ . '/../../includes/pdf_helpers.php';
 
 require_auth();
 
 $module = $_GET['module'] ?? '';
-$dateFrom = $_GET['date_from'] ?? null;
-$dateTo = $_GET['date_to'] ?? null;
+$dateFrom = $_GET['date_from'] ?? date('Y-m-01');
+$dateTo = $_GET['date_to'] ?? date('Y-m-d');
 
-// Helper to generate HTML table for PDF
-function generate_pdf_html($title, $headers, $rows) {
-    $html = "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>$title</title>";
-    $html .= "<style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        h1 { text-align: center; color: #333; border-bottom: 2px solid #333; padding-bottom: 10px; }
-        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 12px; }
-        th { background-color: #f5f5f5; font-weight: bold; }
-        .footer { text-align: center; margin-top: 30px; color: #666; font-size: 10px; }
-        @media print { body { margin: 0; } }
-    </style></head><body>";
-    $html .= "<h1>$title</h1>";
-    $html .= "<table><thead><tr>";
-    foreach ($headers as $h) {
-        $html .= "<th>" . htmlspecialchars($h) . "</th>";
-    }
-    $html .= "</tr></thead><tbody>";
-    foreach ($rows as $row) {
-        $html .= "<tr>";
-        foreach ($headers as $h) {
-            $val = $row[$h] ?? '-';
-            $html .= "<td>" . htmlspecialchars($val) . "</td>";
-        }
-        $html .= "</tr>";
-    }
-    $html .= "</tbody></table>";
-    $html .= "<div class='footer'>Generated on " . date('d M Y, h:i A') . " - " . APP_NAME . "</div>";
-    $html .= "</body></html>";
-    
-    return $html;
+switch ($module) {
+    case 'students':
+        export_students_pdf();
+        break;
+    case 'attendance':
+        export_attendance_pdf($dateFrom, $dateTo);
+        break;
+    case 'fees':
+        export_fees_pdf($dateFrom, $dateTo);
+        break;
+    case 'exams':
+        export_exams_pdf();
+        break;
+    case 'library':
+        export_library_pdf();
+        break;
+    case 'staff':
+        export_staff_pdf();
+        break;
+    default:
+        json_response(['error' => 'Invalid module. Use: students, attendance, fees, exams, library, staff'], 400);
 }
 
-// Students PDF
-if ($module === 'students') {
-    $sql = "SELECT s.admission_no, s.name, s.roll_number, s.dob, s.gender, s.parent_name, s.parent_phone, s.phone, s.email, s.address, c.name as class_name 
-            FROM students s 
-            LEFT JOIN classes c ON s.class_id = c.id 
-            WHERE s.is_active = 1 
-            ORDER BY s.admission_no";
-    $students = db_fetchAll($sql);
-    
-    $headers = ['Admission No', 'Name', 'Roll No', 'DOB', 'Gender', 'Class', 'Parent Name', 'Parent Phone', 'Phone', 'Email', 'Address'];
-    $rows = [];
-    foreach ($students as $s) {
-        $rows[] = [
-            'Admission No' => $s['admission_no'],
-            'Name' => $s['name'],
-            'Roll No' => $s['roll_number'],
-            'DOB' => $s['dob'],
-            'Gender' => ucfirst($s['gender']),
-            'Class' => $s['class_name'],
-            'Parent Name' => $s['parent_name'],
-            'Parent Phone' => $s['parent_phone'],
-            'Phone' => $s['phone'],
-            'Email' => $s['email'],
-            'Address' => $s['address'],
+function export_students_pdf()
+{
+    $parentPhoneExpr = db_column_exists('students', 'parent_phone') ? 's.parent_phone' : 's.phone';
+    $rows = db_fetchAll(
+        "SELECT s.admission_no, s.name, s.roll_number, s.dob, s.gender, s.parent_name,
+                $parentPhoneExpr AS parent_phone, s.phone, s.email, c.name AS class_name
+         FROM students s
+         LEFT JOIN classes c ON s.class_id = c.id
+         WHERE " . (db_column_exists('students', 'is_active') ? 's.is_active = 1' : '1=1') . "
+         ORDER BY s.admission_no"
+    );
+
+    $tableRows = array_map(function ($row) {
+        return [
+            'Admission No' => $row['admission_no'],
+            'Name' => $row['name'],
+            'Class' => $row['class_name'] ?? '-',
+            'DOB' => $row['dob'] ?: '-',
+            'Gender' => ucfirst($row['gender'] ?? ''),
+            'Parent' => $row['parent_name'] ?: '-',
+            'Parent Phone' => $row['parent_phone'] ?: '-',
         ];
-    }
-    
-    header('Content-Type: text/html');
-    header('Content-Disposition: attachment; filename="students_' . date('Y-m-d') . '.html"');
-    echo generate_pdf_html('Students List', $headers, $rows);
-    exit;
+    }, $rows);
+
+    audit_log('EXPORT', 'students', 'PDF export: ' . count($tableRows) . ' rows');
+    pdf_output_sections(
+        safe_download_filename('students', 'pdf'),
+        'Students List',
+        [pdf_table_section('Students', ['Admission No', 'Name', 'Class', 'DOB', 'Gender', 'Parent', 'Parent Phone'], $tableRows)],
+        'Generated by ' . APP_NAME
+    );
 }
 
-// Attendance PDF
-if ($module === 'attendance') {
-    $dateFrom = $dateFrom ?? date('Y-m-01');
-    $dateTo = $dateTo ?? date('Y-m-d');
-    
-    $sql = "SELECT a.date, s.name as student_name, s.admission_no, c.name as class_name, a.status, a.subject, a.note 
-            FROM attendance a 
-            LEFT JOIN students s ON a.student_id = s.id 
-            LEFT JOIN classes c ON a.class_id = c.id 
-            WHERE a.date BETWEEN ? AND ? 
-            ORDER BY a.date DESC, s.name";
-    $attendance = db_fetchAll($sql, [$dateFrom, $dateTo]);
-    
-    $headers = ['Date', 'Student Name', 'Admission No', 'Class', 'Status', 'Subject', 'Note'];
-    $rows = [];
-    foreach ($attendance as $a) {
-        $rows[] = [
-            'Date' => $a['date'],
-            'Student Name' => $a['student_name'],
-            'Admission No' => $a['admission_no'],
-            'Class' => $a['class_name'],
-            'Status' => ucfirst($a['status']),
-            'Subject' => $a['subject'] ?? '-',
-            'Note' => $a['note'] ?? '-',
+function export_attendance_pdf($dateFrom, $dateTo)
+{
+    $subjectExpr = db_column_exists('attendance', 'subject') ? 'a.subject' : "'-'";
+    $rows = db_fetchAll(
+        "SELECT a.date, a.status, a.note, $subjectExpr AS subject,
+                s.name AS student_name, s.admission_no, c.name AS class_name
+         FROM attendance a
+         LEFT JOIN students s ON a.student_id = s.id
+         LEFT JOIN classes c ON a.class_id = c.id
+         WHERE a.date BETWEEN ? AND ?
+         ORDER BY a.date DESC, s.name ASC",
+        [$dateFrom, $dateTo]
+    );
+
+    $tableRows = array_map(function ($row) {
+        return [
+            'Date' => $row['date'],
+            'Student' => $row['student_name'] ?? '-',
+            'Admission No' => $row['admission_no'] ?? '-',
+            'Class' => $row['class_name'] ?? '-',
+            'Status' => ucfirst($row['status'] ?? ''),
+            'Subject' => $row['subject'] ?: '-',
         ];
-    }
-    
-    header('Content-Type: text/html');
-    header('Content-Disposition: attachment; filename="attendance_' . $dateFrom . '_to_' . $dateTo . '.html"');
-    echo generate_pdf_html('Attendance Report', $headers, $rows);
-    exit;
+    }, $rows);
+
+    audit_log('EXPORT', 'attendance', 'PDF export: ' . count($tableRows) . ' rows');
+    pdf_output_sections(
+        safe_download_filename('attendance', 'pdf'),
+        'Attendance Report',
+        [pdf_table_section('Attendance', ['Date', 'Student', 'Admission No', 'Class', 'Status', 'Subject'], $tableRows)],
+        "Date range: {$dateFrom} to {$dateTo}"
+    );
 }
 
-// Fees PDF
-if ($module === 'fees') {
-    $dateFrom = $dateFrom ?? date('Y-m-01');
-    $dateTo = $dateTo ?? date('Y-m-d');
-    
-    $sql = "SELECT f.receipt_no, f.fee_type, f.total_amount, f.amount_paid, f.discount, f.balance_amount, f.payment_method, f.paid_date, s.name as student_name, s.admission_no, c.name as class_name 
-            FROM fees f 
-            LEFT JOIN students s ON f.student_id = s.id 
-            LEFT JOIN classes c ON s.class_id = c.id 
-            WHERE f.paid_date BETWEEN ? AND ? 
-            ORDER BY f.paid_date DESC";
-    $fees = db_fetchAll($sql, [$dateFrom, $dateTo]);
-    
-    $headers = ['Receipt No', 'Fee Type', 'Total', 'Paid', 'Discount', 'Balance', 'Method', 'Paid Date', 'Student', 'Class'];
-    $rows = [];
-    foreach ($fees as $f) {
-        $rows[] = [
-            'Receipt No' => $f['receipt_no'],
-            'Fee Type' => $f['fee_type'],
-            'Total' => $f['total_amount'],
-            'Paid' => $f['amount_paid'],
-            'Discount' => $f['discount'] ?? 0,
-            'Balance' => $f['balance_amount'],
-            'Method' => ucfirst($f['payment_method']),
-            'Paid Date' => $f['paid_date'],
-            'Student' => $f['student_name'],
-            'Class' => $f['class_name'],
+function export_fees_pdf($dateFrom, $dateTo)
+{
+    $discountExpr = db_column_exists('fees', 'discount') ? 'f.discount' : '0';
+    $rows = db_fetchAll(
+        "SELECT f.receipt_no, f.fee_type, f.total_amount, f.amount_paid, $discountExpr AS discount,
+                f.balance_amount, f.payment_method, f.paid_date,
+                s.name AS student_name, c.name AS class_name
+         FROM fees f
+         LEFT JOIN students s ON f.student_id = s.id
+         LEFT JOIN classes c ON s.class_id = c.id
+         WHERE f.paid_date BETWEEN ? AND ?
+         ORDER BY f.paid_date DESC",
+        [$dateFrom, $dateTo]
+    );
+
+    $tableRows = array_map(function ($row) {
+        return [
+            'Receipt No' => $row['receipt_no'] ?: '-',
+            'Student' => $row['student_name'] ?: '-',
+            'Class' => $row['class_name'] ?: '-',
+            'Fee Type' => $row['fee_type'] ?: '-',
+            'Paid' => pdf_money($row['amount_paid']),
+            'Balance' => pdf_money($row['balance_amount']),
+            'Date' => $row['paid_date'] ?: '-',
         ];
-    }
-    
-    header('Content-Type: text/html');
-    header('Content-Disposition: attachment; filename="fees_' . $dateFrom . '_to_' . $dateTo . '.html"');
-    echo generate_pdf_html('Fee Collection Report', $headers, $rows);
-    exit;
+    }, $rows);
+
+    audit_log('EXPORT', 'fees', 'PDF export: ' . count($tableRows) . ' rows');
+    pdf_output_sections(
+        safe_download_filename('fees', 'pdf'),
+        'Fee Collection Report',
+        [pdf_table_section('Fee Payments', ['Receipt No', 'Student', 'Class', 'Fee Type', 'Paid', 'Balance', 'Date'], $tableRows)],
+        "Date range: {$dateFrom} to {$dateTo}"
+    );
 }
 
-// Exams PDF
-if ($module === 'exams') {
-    $sql = "SELECT e.name as exam_name, e.subject, e.exam_date, e.max_marks, s.name as student_name, s.admission_no, c.name as class_name, er.marks_obtained, er.total_marks, er.grade, er.status 
-            FROM exam_results er 
-            LEFT JOIN exams e ON er.exam_id = e.id 
-            LEFT JOIN students s ON er.student_id = s.id 
-            LEFT JOIN classes c ON e.class_id = c.id 
-            ORDER BY e.exam_date DESC, s.name";
-    $exams = db_fetchAll($sql);
-    
-    $headers = ['Exam', 'Subject', 'Date', 'Max Marks', 'Student', 'Admission No', 'Class', 'Marks', 'Total', 'Grade', 'Status'];
-    $rows = [];
-    foreach ($exams as $e) {
-        $rows[] = [
-            'Exam' => $e['exam_name'],
-            'Subject' => $e['subject'],
-            'Date' => $e['exam_date'],
-            'Max Marks' => $e['max_marks'],
-            'Student' => $e['student_name'],
-            'Admission No' => $e['admission_no'],
-            'Class' => $e['class_name'],
-            'Marks' => $e['marks_obtained'],
-            'Total' => $e['total_marks'] ?? $e['max_marks'],
-            'Grade' => $e['grade'] ?? '-',
-            'Status' => ucfirst($e['status']),
+function export_exams_pdf()
+{
+    $rows = db_fetchAll(
+        "SELECT e.name AS exam_name, e.subject, e.exam_date, e.max_marks,
+                s.name AS student_name, s.admission_no, c.name AS class_name,
+                er.marks_obtained, er.grade, er.status
+         FROM exam_results er
+         LEFT JOIN exams e ON er.exam_id = e.id
+         LEFT JOIN students s ON er.student_id = s.id
+         LEFT JOIN classes c ON e.class_id = c.id
+         ORDER BY e.exam_date DESC, s.name ASC"
+    );
+
+    $tableRows = array_map(function ($row) {
+        return [
+            'Exam' => $row['exam_name'] ?: '-',
+            'Subject' => $row['subject'] ?: '-',
+            'Date' => $row['exam_date'] ?: '-',
+            'Student' => $row['student_name'] ?: '-',
+            'Class' => $row['class_name'] ?: '-',
+            'Marks' => $row['marks_obtained'] ?? '-',
+            'Status' => ucfirst($row['status'] ?? ''),
         ];
-    }
-    
-    header('Content-Type: text/html');
-    header('Content-Disposition: attachment; filename="exams_' . date('Y-m-d') . '.html"');
-    echo generate_pdf_html('Exam Results', $headers, $rows);
-    exit;
+    }, $rows);
+
+    audit_log('EXPORT', 'exams', 'PDF export: ' . count($tableRows) . ' rows');
+    pdf_output_sections(
+        safe_download_filename('exams', 'pdf'),
+        'Exam Results',
+        [pdf_table_section('Results', ['Exam', 'Subject', 'Date', 'Student', 'Class', 'Marks', 'Status'], $tableRows)],
+        'Historical exam result export'
+    );
 }
 
-// Library PDF
-if ($module === 'library') {
-    $sql = "SELECT b.title, b.author, b.isbn, b.category, b.total_copies, b.available_copies, li.issue_date, li.due_date, li.return_date, li.fine_amount, li.is_returned, s.name as student_name 
-            FROM library_books b 
-            LEFT JOIN library_issues li ON b.id = li.book_id 
-            LEFT JOIN students s ON li.student_id = s.id 
-            ORDER BY b.title";
-    $library = db_fetchAll($sql);
-    
-    $headers = ['Title', 'Author', 'ISBN', 'Category', 'Total', 'Available', 'Issue Date', 'Due Date', 'Return Date', 'Fine', 'Returned', 'Student'];
-    $rows = [];
-    foreach ($library as $l) {
-        $rows[] = [
-            'Title' => $l['title'],
-            'Author' => $l['author'],
-            'ISBN' => $l['isbn'],
-            'Category' => $l['category'],
-            'Total' => $l['total_copies'],
-            'Available' => $l['available_copies'],
-            'Issue Date' => $l['issue_date'] ?? '-',
-            'Due Date' => $l['due_date'] ?? '-',
-            'Return Date' => $l['return_date'] ?? '-',
-            'Fine' => $l['fine_amount'] ?? 0,
-            'Returned' => $l['is_returned'] ? 'Yes' : 'No',
-            'Student' => $l['student_name'] ?? '-',
+function export_library_pdf()
+{
+    $rows = db_fetchAll(
+        "SELECT b.title, b.author, b.isbn, b.category, b.total_copies, b.available_copies,
+                li.issue_date, li.due_date, li.return_date, s.name AS student_name
+         FROM library_books b
+         LEFT JOIN library_issues li ON b.id = li.book_id
+         LEFT JOIN students s ON li.student_id = s.id
+         ORDER BY b.title ASC"
+    );
+
+    $tableRows = array_map(function ($row) {
+        return [
+            'Title' => $row['title'] ?: '-',
+            'Author' => $row['author'] ?: '-',
+            'ISBN' => $row['isbn'] ?: '-',
+            'Category' => $row['category'] ?: '-',
+            'Available' => ($row['available_copies'] ?? '-') . '/' . ($row['total_copies'] ?? '-'),
+            'Issued To' => $row['student_name'] ?: '-',
         ];
-    }
-    
-    header('Content-Type: text/html');
-    header('Content-Disposition: attachment; filename="library_' . date('Y-m-d') . '.html"');
-    echo generate_pdf_html('Library Catalog', $headers, $rows);
-    exit;
+    }, $rows);
+
+    audit_log('EXPORT', 'library', 'PDF export: ' . count($tableRows) . ' rows');
+    pdf_output_sections(
+        safe_download_filename('library', 'pdf'),
+        'Library Inventory',
+        [pdf_table_section('Books and Issues', ['Title', 'Author', 'ISBN', 'Category', 'Available', 'Issued To'], $tableRows)],
+        'Library stock and issue overview'
+    );
 }
 
-// Staff PDF
-if ($module === 'staff') {
-    require_once __DIR__ . '/../../includes/auth.php';
-    
-    $sql = "SELECT employee_id, name, email, role, department, designation, phone, is_active, created_at 
-            FROM users 
-            WHERE role IN ('teacher', 'admin', 'hr', 'accounts', 'librarian', 'canteen', 'conductor', 'driver') AND is_active = 1 
-            ORDER BY employee_id";
-    $staff = db_fetchAll($sql);
-    
-    $headers = ['Employee ID', 'Name', 'Email', 'Role', 'Department', 'Designation', 'Phone', 'Active', 'Created At'];
-    $rows = [];
-    foreach ($staff as $s) {
-        $rows[] = [
-            'Employee ID' => $s['employee_id'],
-            'Name' => $s['name'],
-            'Email' => $s['email'],
-            'Role' => role_label($s['role']),
-            'Department' => $s['department'] ?? '-',
-            'Designation' => $s['designation'] ?? '-',
-            'Phone' => $s['phone'] ?? '-',
-            'Active' => $s['is_active'] ? 'Yes' : 'No',
-            'Created At' => $s['created_at'],
+function export_staff_pdf()
+{
+    $employeeExpr = db_column_exists('users', 'employee_id') ? 'u.employee_id' : 'NULL';
+    $departmentExpr = db_column_exists('users', 'department') ? 'u.department' : "''";
+    $designationExpr = db_column_exists('users', 'designation') ? 'u.designation' : "''";
+    $phoneExpr = db_column_exists('users', 'phone') ? 'u.phone' : "''";
+    $activeWhere = db_column_exists('users', 'is_active') ? 'AND u.is_active = 1' : '';
+
+    $rows = db_fetchAll(
+        "SELECT $employeeExpr AS employee_id, u.name, u.email, u.role,
+                $departmentExpr AS department, $designationExpr AS designation, $phoneExpr AS phone
+         FROM users u
+         WHERE u.role NOT IN ('student', 'parent') $activeWhere
+         ORDER BY u.name ASC"
+    );
+
+    $tableRows = array_map(function ($row) {
+        return [
+            'Employee ID' => $row['employee_id'] ?: '-',
+            'Name' => $row['name'] ?: '-',
+            'Email' => $row['email'] ?: '-',
+            'Role' => role_label($row['role'] ?? ''),
+            'Department' => $row['department'] ?: $row['designation'] ?: '-',
+            'Phone' => $row['phone'] ?: '-',
         ];
-    }
-    
-    header('Content-Type: text/html');
-    header('Content-Disposition: attachment; filename="staff_' . date('Y-m-d') . '.html"');
-    echo generate_pdf_html('Staff Directory', $headers, $rows);
-    exit;
-}
+    }, $rows);
 
-json_response(['error' => 'Invalid module. Use: students, attendance, fees, exams, library, staff'], 400);
+    audit_log('EXPORT', 'staff', 'PDF export: ' . count($tableRows) . ' rows');
+    pdf_output_sections(
+        safe_download_filename('staff', 'pdf'),
+        'Staff Directory',
+        [pdf_table_section('Staff', ['Employee ID', 'Name', 'Email', 'Role', 'Department', 'Phone'], $tableRows)],
+        'Active staff export'
+    );
+}

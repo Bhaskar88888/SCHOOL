@@ -27,8 +27,8 @@ Header always set Referrer-Policy "strict-origin-when-cross-origin"
 # Content Security Policy (adjust as needed)
 Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://fonts.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self';"
 
-# HSTS (enable after testing with HTTPS)
-# Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+# HSTS (force HTTPS for school.kashliv.com)
+Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
 
 # ============================================
 # PROTECT SENSITIVE FILES

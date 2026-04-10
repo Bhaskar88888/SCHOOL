@@ -12,7 +12,7 @@ source setup_complete.sql;
 Edit `config/env.php` if you need to change database credentials.
 
 ### Step 3: Access
-Open browser and go to your project URL (e.g., `http://localhost/school-erp-php/`)
+Open browser and go to: **https://school.kashliv.com**
 
 ### Step 4: Login
 - **Super Admin**: `admin@school.com` / `admin123`

@@ -5,7 +5,7 @@ $pageTitle = 'Dashboard';
 
 // Fetch quick stats
 $totalStudents  = db_count("SELECT COUNT(*) FROM students WHERE is_active = 1");
-$totalStaff     = db_count("SELECT COUNT(*) FROM users WHERE role IN ('teacher','admin','accountant','librarian') AND is_active = 1");
+$totalStaff     = db_count("SELECT COUNT(*) FROM users WHERE role IN ('teacher','admin','accountant','accounts','librarian','hr','canteen','conductor','driver','staff') AND is_active = 1");
 $totalFeeThisMonth = db_count("SELECT COALESCE(SUM(amount_paid),0) FROM fees WHERE MONTH(paid_date)=MONTH(NOW()) AND YEAR(paid_date)=YEAR(NOW())");
 $pendingFee     = db_count("SELECT COALESCE(SUM(balance_amount),0) FROM fees WHERE balance_amount > 0");
 $todayAttendance = db_count("SELECT COUNT(*) FROM attendance WHERE date = CURDATE() AND status = 'present'");

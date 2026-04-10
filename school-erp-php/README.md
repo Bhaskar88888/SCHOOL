@@ -1,5 +1,8 @@
 # School ERP PHP v3.0 - Complete Implementation Guide
 
+**Live URL:** https://school.kashliv.com  
+**Domain:** school.kashliv.com  
+
 ## Overview
 This is the PHP version of the School ERP system, matching all features of the Node.js version.
 
@@ -16,12 +19,26 @@ This is the PHP version of the School ERP system, matching all features of the N
 ```bash
 # Run the complete schema setup
 mysql -u username -p database_name < setup_complete.sql
+
+# Add performance indexes
+mysql -u username -p database_name < add_indexes.sql
 ```
 
 ### 2. Configuration
-Edit `config/env.php` and update:
+```bash
+# Copy environment file
+cp .env.example .env.php
+
+# Edit with your credentials
+nano .env.php
+
+# Secure the file
+chmod 600 .env.php
+```
+
+Update in `.env.php`:
 - Database credentials
-- Session secrets
+- Session secrets (auto-generated)
 - Email SMTP (optional)
 - SMS Twilio credentials (optional)
 - Gemini API key (optional)
@@ -30,13 +47,48 @@ Edit `config/env.php` and update:
 ```bash
 chmod 755 uploads/
 chmod 755 tmp/
-chmod 755 uploads/imports/
+chmod 755 backups/
+mkdir -p uploads/students uploads/staff uploads/books tmp/cache
 ```
 
-### 4. Web Server Setup
+### 4. Web Server Setup (Apache)
 - Point document root to project directory
 - Ensure `.htaccess` is enabled (Apache mod_rewrite)
+- Enable SSL certificate for HTTPS
 - PHP 7.4+ required
+
+#### Apache Virtual Host Example:
+```apache
+<VirtualHost *:80>
+    ServerName school.kashliv.com
+    Redirect permanent / https://school.kashliv.com/
+</VirtualHost>
+
+<VirtualHost *:443>
+    ServerName school.kashliv.com
+    DocumentRoot /var/www/school-erp-php
+    
+    SSLEngine on
+    SSLCertificateFile /path/to/cert.pem
+    SSLCertificateKeyFile /path/to/privkey.pem
+    
+    <Directory /var/www/school-erp-php>
+        AllowOverride All
+        Require all granted
+    </Directory>
+</VirtualHost>
+```
+
+### 5. Automated Backups
+```bash
+# Add to crontab
+crontab -e
+
+# Daily backup at 2 AM
+0 2 * * * /usr/bin/php /var/www/school-erp-php/scripts/backup-db.php
+# Cleanup old backups weekly
+0 3 * * 0 /usr/bin/php /var/www/school-erp-php/scripts/backup-db.php --cleanup
+```
 
 ## Security Features (v3.0)
 ✅ CSRF Protection

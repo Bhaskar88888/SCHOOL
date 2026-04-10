@@ -3,6 +3,7 @@
  * Authentication Helpers
  */
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/audit_logger.php';
 
 // Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {
@@ -57,7 +58,7 @@ function get_current_role()
     return $_SESSION['user_role'] ?? null;
 }
 
-function get_current_user()
+function get_authenticated_user()
 {
     if (!is_logged_in())
         return null;
@@ -224,6 +225,39 @@ function db_column_exists($table, $column)
     return $cache[$key];
 }
 
+function db_existing_columns($table, array $columns)
+{
+    $existing = [];
+    foreach ($columns as $column) {
+        if (db_column_exists($table, $column)) {
+            $existing[] = $column;
+        }
+    }
+    return $existing;
+}
+
+function db_filter_data_for_table($table, array $data)
+{
+    $filtered = [];
+    foreach ($data as $column => $value) {
+        if (db_column_exists($table, $column)) {
+            $filtered[$column] = $value;
+        }
+    }
+    return $filtered;
+}
+
+function pagination_limit($requested = null)
+{
+    $default = defined('PAGINATION_DEFAULT') ? (int) PAGINATION_DEFAULT : 20;
+    $max = defined('PAGINATION_MAX') ? (int) PAGINATION_MAX : 100;
+    $limit = (int) ($requested ?: $default);
+    if ($limit < 1) {
+        $limit = $default;
+    }
+    return min($limit, $max);
+}
+
 function pagination_payload($rows, $page, $limit, $total, $extra = [])
 {
     return array_merge([
@@ -282,21 +316,16 @@ function xml_escape($value)
     return htmlspecialchars((string) $value, ENT_XML1 | ENT_QUOTES, 'UTF-8');
 }
 
-function audit_log($action, $module, $description = '')
+function audit_log($action, $module, $recordIdOrDescription = null, $oldValue = null, $newValue = null)
 {
-    if (!db_table_exists('audit_logs')) {
+    $args = func_get_args();
+
+    if (count($args) <= 3) {
+        AuditLogger::log($action, $module, null, null, null, (string) ($recordIdOrDescription ?? ''));
         return;
     }
-    db_query(
-        "INSERT INTO audit_logs (user_id, action, module, description, ip_address, created_at) VALUES (?, ?, ?, ?, ?, NOW())",
-        [
-            get_current_user_id(),
-            substr((string) $action, 0, 100),
-            substr((string) $module, 0, 100),
-            (string) $description,
-            $_SERVER['REMOTE_ADDR'] ?? '',
-        ]
-    );
+
+    AuditLogger::log($action, $module, $recordIdOrDescription, $oldValue, $newValue);
 }
 
 /**

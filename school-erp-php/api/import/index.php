@@ -1,337 +1,646 @@
 <?php
 /**
- * Import API - CSV/Excel Import for Students, Staff, Fees
+ * Import API
  * School ERP PHP v3.0
  */
 
 require_once __DIR__ . '/../../includes/db.php';
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/validator.php';
-require_once __DIR__ . '/../../includes/audit_logger.php';
 
 require_auth();
 require_role(['admin', 'superadmin', 'hr']);
 
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    json_response(['error' => 'Method not allowed'], 405);
+}
+
+$mode = $_GET['mode'] ?? '';
 $module = $_GET['module'] ?? '';
 
-// Handle file upload
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($mode === 'upload') {
+    handle_upload_preview();
+}
+
+if ($module !== '') {
+    handle_import($module);
+}
+
+json_response(['error' => 'Invalid import request'], 400);
+
+function handle_upload_preview()
+{
+    $saved = save_import_upload();
+    $rows = read_import_rows($saved['path']);
+    $preview = array_slice($rows, 0, 5);
+
+    json_response([
+        'message' => 'File uploaded successfully',
+        'importData' => [
+            'filepath' => $saved['token'],
+            'originalName' => $saved['original_name'],
+            'preview' => $preview,
+            'totalRows' => count($rows),
+        ],
+    ]);
+}
+
+function handle_import($module)
+{
+    $payload = get_post_json();
+    $defaultPassword = trim((string) ($payload['defaultPassword'] ?? 'Password123'));
+
+    if ($defaultPassword === '') {
+        $defaultPassword = 'Password123';
+    }
+
+    try {
+        if (!empty($payload['filepath'])) {
+            $filepath = resolve_import_token($payload['filepath']);
+        } else {
+            $saved = save_import_upload();
+            $filepath = $saved['path'];
+        }
+
+        $rows = read_import_rows($filepath);
+
+        switch ($module) {
+            case 'students':
+                $result = import_students($rows, $defaultPassword);
+                break;
+            case 'staff':
+                $result = import_staff($rows, $defaultPassword);
+                break;
+            case 'fees':
+                $result = import_fees($rows);
+                break;
+            default:
+                json_response(['error' => 'Invalid module'], 400);
+        }
+
+        AuditLogger::import($module, $result['imported']);
+        @unlink($filepath);
+        json_response($result);
+    } catch (Exception $e) {
+        @unlink($filepath);
+        json_response(['error' => $e->getMessage()], 400);
+    }
+}
+
+function save_import_upload()
+{
     if (!isset($_FILES['file'])) {
         json_response(['error' => 'No file uploaded'], 400);
     }
-    
+
     $file = $_FILES['file'];
-    
-    // Validate file
     if ($file['error'] !== UPLOAD_ERR_OK) {
         json_response(['error' => 'File upload error'], 400);
     }
-    
+
     if ($file['size'] > UPLOAD_MAX_SIZE) {
-        json_response(['error' => 'File size exceeds limit (5MB)'], 400);
+        json_response(['error' => 'File size exceeds limit'], 400);
     }
-    
-    $allowedTypes = ['text/csv', 'application/csv', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
-    if (!in_array($file['type'], $allowedTypes) && pathinfo($file['name'], PATHINFO_EXTENSION) !== 'csv') {
-        json_response(['error' => 'Only CSV and Excel files allowed'], 400);
+
+    $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+    if (!in_array($extension, ['csv', 'xlsx', 'xls'], true)) {
+        json_response(['error' => 'Only CSV, XLSX, and XLS files are allowed'], 400);
     }
-    
-    // Create uploads directory if not exists
-    $uploadDir = __DIR__ . '/../../uploads/imports';
+
+    if ($extension === 'xls') {
+        json_response(['error' => 'Legacy XLS files are not supported by this PHP build. Please resave the file as XLSX or CSV.'], 400);
+    }
+
+    $uploadDir = import_upload_dir();
     if (!is_dir($uploadDir)) {
         mkdir($uploadDir, 0755, true);
     }
-    
-    $filename = uniqid('import_') . '_' . basename($file['name']);
-    $filepath = $uploadDir . '/' . $filename;
-    
-    if (!move_uploaded_file($file['tmp_name'], $filepath)) {
-        json_response(['error' => 'Failed to save file'], 500);
-    }
-    
-    // Process import based on module
-    if ($module === 'students') {
-        $result = import_students($filepath);
-    } elseif ($module === 'staff') {
-        $result = import_staff($filepath);
-    } elseif ($module === 'fees') {
-        $result = import_fees($filepath);
-    } else {
-        json_response(['error' => 'Invalid module'], 400);
-    }
-    
-    // Clean up uploaded file
-    @unlink($filepath);
-    
-    audit_log('IMPORT', $module, "Imported " . $result['imported'] . " records");
-    
-    json_response($result);
-}
 
-/**
- * Import students from CSV
- */
-function import_students($filepath) {
-    $handle = fopen($filepath, 'r');
-    if (!$handle) {
-        return ['error' => 'Failed to open file'];
+    $token = uniqid('import_', true) . '.' . $extension;
+    $destination = $uploadDir . DIRECTORY_SEPARATOR . $token;
+    if (!move_uploaded_file($file['tmp_name'], $destination)) {
+        json_response(['error' => 'Failed to save uploaded file'], 500);
     }
-    
-    $headers = fgetcsv($handle);
-    $imported = 0;
-    $errors = [];
-    $rowNum = 1;
-    
-    while (($row = fgetcsv($handle)) !== false) {
-        $rowNum++;
-        
-        if (count($row) < 3) {
-            $errors[] = "Row $rowNum: Insufficient data";
-            continue;
-        }
-        
-        $data = array_combine($headers, $row);
-        
-        $name = trim($data['Name'] ?? $data['name'] ?? '');
-        $admissionNo = trim($data['Admission No'] ?? $data['admission_no'] ?? '');
-        $className = trim($data['Class'] ?? $data['class'] ?? '');
-        $dob = trim($data['DOB'] ?? $data['dob'] ?? '');
-        $gender = trim($data['Gender'] ?? $data['gender'] ?? 'male');
-        $parentName = trim($data['Parent Name'] ?? $data['parent_name'] ?? '');
-        $parentPhone = trim($data['Parent Phone'] ?? $data['parent_phone'] ?? '');
-        $phone = trim($data['Phone'] ?? $data['phone'] ?? '');
-        $email = trim($data['Email'] ?? $data['email'] ?? '');
-        $address = trim($data['Address'] ?? $data['address'] ?? '');
-        
-        if (empty($name) || empty($className)) {
-            $errors[] = "Row $rowNum: Name and Class are required";
-            continue;
-        }
-        
-        // Get class ID
-        $class = db_fetch("SELECT id FROM classes WHERE name = ?", [$className]);
-        if (!$class) {
-            $errors[] = "Row $rowNum: Class '$className' not found";
-            continue;
-        }
-        
-        // Generate admission number if not provided
-        if (empty($admissionNo)) {
-            $admissionNo = 'ADM' . date('Y') . str_pad(mt_rand(1, 99999), 5, '0', STR_PAD_LEFT);
-        }
-        
-        // Check if admission number already exists
-        $existing = db_fetch("SELECT id FROM students WHERE admission_no = ?", [$admissionNo]);
-        if ($existing) {
-            $errors[] = "Row $rowNum: Admission number '$admissionNo' already exists";
-            continue;
-        }
-        
-        // Insert student
-        try {
-            $sql = "INSERT INTO students (admission_no, name, class_id, dob, gender, parent_name, parent_phone, phone, email, address) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-            
-            db_query($sql, [
-                $admissionNo,
-                $name,
-                $class['id'],
-                !empty($dob) ? $dob : null,
-                strtolower($gender),
-                $parentName,
-                $parentPhone,
-                $phone,
-                $email,
-                $address,
-            ]);
-            
-            $imported++;
-        } catch (Exception $e) {
-            $errors[] = "Row $rowNum: " . $e->getMessage();
-        }
-    }
-    
-    fclose($handle);
-    
+
     return [
-        'message' => "Import completed. $imported students imported.",
-        'imported' => $imported,
-        'errors' => $errors,
-        'total_rows' => $rowNum - 1,
+        'token' => $token,
+        'path' => $destination,
+        'original_name' => $file['name'],
     ];
 }
 
-/**
- * Import staff from CSV
- */
-function import_staff($filepath) {
+function resolve_import_token($token)
+{
+    $safeToken = basename((string) $token);
+    if ($safeToken === '') {
+        throw new RuntimeException('Invalid import file reference');
+    }
+
+    $path = import_upload_dir() . DIRECTORY_SEPARATOR . $safeToken;
+    if (!is_file($path)) {
+        throw new RuntimeException('Import file not found. Upload the file again.');
+    }
+
+    return $path;
+}
+
+function import_upload_dir()
+{
+    return __DIR__ . '/../../uploads/imports';
+}
+
+function read_import_rows($filepath)
+{
+    $extension = strtolower(pathinfo($filepath, PATHINFO_EXTENSION));
+    if ($extension === 'csv') {
+        return read_csv_rows($filepath);
+    }
+    if ($extension === 'xlsx') {
+        return read_xlsx_rows($filepath);
+    }
+    throw new RuntimeException('Unsupported file format');
+}
+
+function read_csv_rows($filepath)
+{
     $handle = fopen($filepath, 'r');
     if (!$handle) {
-        return ['error' => 'Failed to open file'];
+        throw new RuntimeException('Unable to open CSV file');
     }
-    
+
     $headers = fgetcsv($handle);
-    $imported = 0;
-    $errors = [];
-    $rowNum = 1;
-    
+    if (!$headers) {
+        fclose($handle);
+        return [];
+    }
+    $headers = normalize_headers($headers);
+
+    $rows = [];
     while (($row = fgetcsv($handle)) !== false) {
-        $rowNum++;
-        
-        if (count($row) < 3) {
-            $errors[] = "Row $rowNum: Insufficient data";
+        if (row_is_empty($row)) {
             continue;
         }
-        
-        $data = array_combine($headers, $row);
-        
-        $name = trim($data['Name'] ?? $data['name'] ?? '');
-        $email = trim($data['Email'] ?? $data['email'] ?? '');
-        $role = trim($data['Role'] ?? $data['role'] ?? 'teacher');
-        $employeeId = trim($data['Employee ID'] ?? $data['employee_id'] ?? '');
-        $department = trim($data['Department'] ?? $data['department'] ?? '');
-        $designation = trim($data['Designation'] ?? $data['designation'] ?? '');
-        $phone = trim($data['Phone'] ?? $data['phone'] ?? '');
-        $password = trim($data['Password'] ?? $data['password'] ?? 'password123');
-        
-        if (empty($name) || empty($email)) {
-            $errors[] = "Row $rowNum: Name and Email are required";
-            continue;
-        }
-        
-        // Validate email
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $errors[] = "Row $rowNum: Invalid email format";
-            continue;
-        }
-        
-        // Check if email already exists
-        $existing = db_fetch("SELECT id FROM users WHERE email = ?", [$email]);
-        if ($existing) {
-            $errors[] = "Row $rowNum: Email '$email' already exists";
-            continue;
-        }
-        
-        // Generate employee ID if not provided
-        if (empty($employeeId)) {
-            $employeeId = 'EMP' . date('Y') . str_pad(mt_rand(1, 9999), 4, '0', STR_PAD_LEFT);
-        }
-        
-        // Hash password
-        $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
-        
-        // Insert staff
-        try {
-            $sql = "INSERT INTO users (employee_id, name, email, password, role, department, designation, phone) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-            
-            db_query($sql, [
-                $employeeId,
-                $name,
-                $email,
-                $hashedPassword,
-                strtolower($role),
-                $department,
-                $designation,
-                $phone,
-            ]);
-            
-            $imported++;
-        } catch (Exception $e) {
-            $errors[] = "Row $rowNum: " . $e->getMessage();
+        $rows[] = combine_row($headers, $row);
+    }
+
+    fclose($handle);
+    return $rows;
+}
+
+function read_xlsx_rows($filepath)
+{
+    if (!class_exists('ZipArchive')) {
+        throw new RuntimeException('ZipArchive is not available for XLSX import');
+    }
+
+    $zip = new ZipArchive();
+    if ($zip->open($filepath) !== true) {
+        throw new RuntimeException('Unable to open XLSX file');
+    }
+
+    $sharedStrings = [];
+    $sharedXml = $zip->getFromName('xl/sharedStrings.xml');
+    if ($sharedXml !== false) {
+        $xml = simplexml_load_string($sharedXml);
+        if ($xml && isset($xml->si)) {
+            foreach ($xml->si as $item) {
+                $parts = [];
+                if (isset($item->t)) {
+                    $parts[] = (string) $item->t;
+                }
+                if (isset($item->r)) {
+                    foreach ($item->r as $run) {
+                        $parts[] = (string) $run->t;
+                    }
+                }
+                $sharedStrings[] = implode('', $parts);
+            }
         }
     }
-    
-    fclose($handle);
-    
+
+    $sheetXml = $zip->getFromName('xl/worksheets/sheet1.xml');
+    $zip->close();
+    if ($sheetXml === false) {
+        throw new RuntimeException('Worksheet data not found in XLSX file');
+    }
+
+    $sheet = simplexml_load_string($sheetXml);
+    if (!$sheet || !isset($sheet->sheetData->row)) {
+        return [];
+    }
+
+    $allRows = [];
+    foreach ($sheet->sheetData->row as $row) {
+        $values = [];
+        foreach ($row->c as $cell) {
+            $reference = (string) $cell['r'];
+            $columnIndex = column_index_from_reference($reference);
+            $value = '';
+
+            if (isset($cell->is->t)) {
+                $value = (string) $cell->is->t;
+            } elseif ((string) $cell['t'] === 's') {
+                $sharedIndex = (int) $cell->v;
+                $value = $sharedStrings[$sharedIndex] ?? '';
+            } elseif (isset($cell->v)) {
+                $value = (string) $cell->v;
+            }
+
+            $values[$columnIndex] = $value;
+        }
+
+        if (!empty($values)) {
+            ksort($values);
+            $maxIndex = max(array_keys($values));
+            $ordered = [];
+            for ($i = 0; $i <= $maxIndex; $i++) {
+                $ordered[] = $values[$i] ?? '';
+            }
+            $allRows[] = $ordered;
+        }
+    }
+
+    if (empty($allRows)) {
+        return [];
+    }
+
+    $headers = normalize_headers(array_shift($allRows));
+    $rows = [];
+    foreach ($allRows as $row) {
+        if (row_is_empty($row)) {
+            continue;
+        }
+        $rows[] = combine_row($headers, $row);
+    }
+
+    return $rows;
+}
+
+function column_index_from_reference($reference)
+{
+    $letters = preg_replace('/[^A-Z]/', '', strtoupper((string) $reference));
+    $index = 0;
+    for ($i = 0; $i < strlen($letters); $i++) {
+        $index = ($index * 26) + (ord($letters[$i]) - 64);
+    }
+    return max(0, $index - 1);
+}
+
+function normalize_headers(array $headers)
+{
+    return array_map(function ($header) {
+        return trim((string) $header);
+    }, $headers);
+}
+
+function combine_row(array $headers, array $row)
+{
+    $data = [];
+    foreach ($headers as $index => $header) {
+        if ($header === '') {
+            continue;
+        }
+        $data[$header] = trim((string) ($row[$index] ?? ''));
+    }
+    return $data;
+}
+
+function row_is_empty(array $row)
+{
+    foreach ($row as $value) {
+        if (trim((string) $value) !== '') {
+            return false;
+        }
+    }
+    return true;
+}
+
+function import_students(array $rows, $defaultPassword)
+{
+    $success = [];
+    $failed = [];
+
+    foreach ($rows as $index => $row) {
+        $rowNumber = $index + 2;
+        try {
+            $name = row_value($row, ['Name', 'name']);
+            $classValue = row_value($row, ['Class', 'class']);
+            $admissionNo = row_value($row, ['Admission No', 'admission_no']);
+
+            if ($name === '' || $classValue === '') {
+                throw new RuntimeException('Name and Class are required');
+            }
+
+            $class = resolve_class($classValue);
+            if (!$class) {
+                throw new RuntimeException("Class '{$classValue}' not found");
+            }
+
+            if ($admissionNo === '') {
+                $admissionNo = generate_admission_no();
+            }
+
+            $existing = db_fetch("SELECT id FROM students WHERE admission_no = ?", [$admissionNo]);
+            if ($existing) {
+                throw new RuntimeException("Admission number '{$admissionNo}' already exists");
+            }
+
+            db_beginTransaction();
+
+            $studentUserId = null;
+            $email = row_value($row, ['Email', 'email']);
+            if ($email !== '' && db_column_exists('students', 'user_id')) {
+                $existingUser = db_fetch("SELECT id FROM users WHERE email = ?", [$email]);
+                if (!$existingUser) {
+                    $userData = db_filter_data_for_table('users', [
+                        'name' => $name,
+                        'email' => $email,
+                        'password' => password_hash($defaultPassword, PASSWORD_BCRYPT),
+                        'role' => storage_role_name('student'),
+                        'phone' => row_value($row, ['Phone', 'phone']),
+                        'is_active' => 1,
+                    ]);
+
+                    $columns = array_keys($userData);
+                    $studentUserId = db_insert(
+                        "INSERT INTO users (" . implode(', ', array_map(function ($column) {
+                            return "`$column`";
+                        }, $columns)) . ") VALUES (" . implode(', ', array_fill(0, count($columns), '?')) . ")",
+                        array_values($userData)
+                    );
+                } else {
+                    $studentUserId = $existingUser['id'];
+                }
+            }
+
+            $studentData = db_filter_data_for_table('students', [
+                'admission_no' => $admissionNo,
+                'name' => $name,
+                'class_id' => $class['id'],
+                'dob' => normalize_date_or_null(row_value($row, ['DOB', 'dob'])),
+                'gender' => normalize_gender(row_value($row, ['Gender', 'gender'], 'male')),
+                'parent_name' => row_value($row, ['Parent Name', 'parent_name']),
+                'parent_phone' => row_value($row, ['Parent Phone', 'parent_phone']),
+                'parent_email' => row_value($row, ['Parent Email', 'parent_email']),
+                'phone' => row_value($row, ['Phone', 'phone']),
+                'email' => $email,
+                'address' => row_value($row, ['Address', 'address']),
+                'admission_date' => normalize_date_or_null(row_value($row, ['Admission Date', 'admission_date'])),
+                'user_id' => $studentUserId,
+                'is_active' => 1,
+            ]);
+
+            $columns = array_keys($studentData);
+            $studentId = db_insert(
+                "INSERT INTO students (" . implode(', ', array_map(function ($column) {
+                    return "`$column`";
+                }, $columns)) . ") VALUES (" . implode(', ', array_fill(0, count($columns), '?')) . ")",
+                array_values($studentData)
+            );
+
+            db_commit();
+            $success[] = [
+                'row' => $rowNumber,
+                'name' => $name,
+                'admissionNo' => $admissionNo,
+                'studentId' => $studentId,
+            ];
+        } catch (Exception $e) {
+            if (db_inTransaction()) {
+                db_rollback();
+            }
+            $failed[] = [
+                'row' => $rowNumber,
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+
+    return build_import_response('students', $success, $failed);
+}
+
+function import_staff(array $rows, $defaultPassword)
+{
+    $success = [];
+    $failed = [];
+
+    foreach ($rows as $index => $row) {
+        $rowNumber = $index + 2;
+        try {
+            $name = row_value($row, ['Name', 'name']);
+            $email = row_value($row, ['Email', 'email']);
+            $role = normalize_role_name(row_value($row, ['Role', 'role'], 'teacher'));
+
+            if ($name === '' || $email === '' || $role === '') {
+                throw new RuntimeException('Name, Email, and Role are required');
+            }
+
+            Validator::reset();
+            Validator::email($email);
+            Validator::in($role, all_school_roles(), 'role');
+            if (Validator::hasErrors()) {
+                throw new RuntimeException(implode(', ', Validator::errors()));
+            }
+
+            $existing = db_fetch("SELECT id FROM users WHERE email = ?", [$email]);
+            if ($existing) {
+                throw new RuntimeException("Email '{$email}' already exists");
+            }
+
+            $employeeId = row_value($row, ['Employee ID', 'employee_id']);
+            if ($employeeId === '') {
+                $employeeId = generate_employee_id();
+            }
+
+            $password = row_value($row, ['Password', 'password'], $defaultPassword);
+            if ($password === '') {
+                $password = $defaultPassword;
+            }
+
+            $insertData = db_filter_data_for_table('users', [
+                'employee_id' => $employeeId,
+                'name' => $name,
+                'email' => $email,
+                'password' => password_hash($password, PASSWORD_BCRYPT),
+                'role' => storage_role_name($role),
+                'department' => row_value($row, ['Department', 'department']),
+                'designation' => row_value($row, ['Designation', 'designation']),
+                'phone' => row_value($row, ['Phone', 'phone']),
+                'is_active' => 1,
+            ]);
+
+            $columns = array_keys($insertData);
+            $userId = db_insert(
+                "INSERT INTO users (" . implode(', ', array_map(function ($column) {
+                    return "`$column`";
+                }, $columns)) . ") VALUES (" . implode(', ', array_fill(0, count($columns), '?')) . ")",
+                array_values($insertData)
+            );
+
+            $success[] = [
+                'row' => $rowNumber,
+                'name' => $name,
+                'employeeId' => $employeeId,
+                'userId' => $userId,
+            ];
+        } catch (Exception $e) {
+            $failed[] = [
+                'row' => $rowNumber,
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+
+    return build_import_response('staff', $success, $failed);
+}
+
+function import_fees(array $rows)
+{
+    $success = [];
+    $failed = [];
+
+    foreach ($rows as $index => $row) {
+        $rowNumber = $index + 2;
+        try {
+            $admissionNo = row_value($row, ['Admission No', 'admission_no']);
+            $totalAmount = row_value($row, ['Total Amount', 'total_amount']);
+            if ($admissionNo === '' || $totalAmount === '') {
+                throw new RuntimeException('Admission No and Total Amount are required');
+            }
+
+            $student = db_fetch("SELECT id FROM students WHERE admission_no = ?", [$admissionNo]);
+            if (!$student) {
+                throw new RuntimeException("Student '{$admissionNo}' not found");
+            }
+
+            $receiptNo = row_value($row, ['Receipt No', 'receipt_no']);
+            if ($receiptNo === '') {
+                $receiptNo = generate_receipt_no();
+            }
+
+            $insertData = db_filter_data_for_table('fees', [
+                'student_id' => $student['id'],
+                'fee_type' => row_value($row, ['Fee Type', 'fee_type'], 'Tuition Fee'),
+                'total_amount' => (float) $totalAmount,
+                'original_amount' => (float) row_value($row, ['Original Amount', 'original_amount'], $totalAmount),
+                'amount_paid' => (float) row_value($row, ['Amount Paid', 'amount_paid'], 0),
+                'payment_method' => strtolower(row_value($row, ['Payment Method', 'payment_method'], 'cash')),
+                'paid_date' => normalize_date_or_null(row_value($row, ['Paid Date', 'paid_date'], date('Y-m-d'))),
+                'month' => row_value($row, ['Month', 'month']),
+                'year' => (int) row_value($row, ['Year', 'year'], date('Y')),
+                'academic_year' => row_value($row, ['Academic Year', 'academic_year'], current_academic_year()),
+                'receipt_no' => $receiptNo,
+                'discount' => (float) row_value($row, ['Discount', 'discount'], 0),
+            ]);
+
+            $columns = array_keys($insertData);
+            $feeId = db_insert(
+                "INSERT INTO fees (" . implode(', ', array_map(function ($column) {
+                    return "`$column`";
+                }, $columns)) . ") VALUES (" . implode(', ', array_fill(0, count($columns), '?')) . ")",
+                array_values($insertData)
+            );
+
+            $success[] = [
+                'row' => $rowNumber,
+                'receiptNo' => $receiptNo,
+                'admissionNo' => $admissionNo,
+                'feeId' => $feeId,
+            ];
+        } catch (Exception $e) {
+            $failed[] = [
+                'row' => $rowNumber,
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+
+    return build_import_response('fees', $success, $failed);
+}
+
+function build_import_response($module, array $success, array $failed)
+{
+    $total = count($success) + count($failed);
     return [
-        'message' => "Import completed. $imported staff imported.",
-        'imported' => $imported,
-        'errors' => $errors,
-        'total_rows' => $rowNum - 1,
+        'message' => sprintf('Import completed. %d of %d %s imported.', count($success), $total, $module),
+        'imported' => count($success),
+        'errors' => array_map(function ($item) {
+            return 'Row ' . $item['row'] . ': ' . $item['error'];
+        }, $failed),
+        'total_rows' => $total,
+        'results' => [
+            'total' => $total,
+            'success' => $success,
+            'failed' => $failed,
+        ],
     ];
 }
 
-/**
- * Import fee payments from CSV
- */
-function import_fees($filepath) {
-    $handle = fopen($filepath, 'r');
-    if (!$handle) {
-        return ['error' => 'Failed to open file'];
-    }
-    
-    $headers = fgetcsv($handle);
-    $imported = 0;
-    $errors = [];
-    $rowNum = 1;
-    
-    while (($row = fgetcsv($handle)) !== false) {
-        $rowNum++;
-        
-        if (count($row) < 3) {
-            $errors[] = "Row $rowNum: Insufficient data";
-            continue;
-        }
-        
-        $data = array_combine($headers, $row);
-        
-        $admissionNo = trim($data['Admission No'] ?? $data['admission_no'] ?? '');
-        $feeType = trim($data['Fee Type'] ?? $data['fee_type'] ?? 'Tuition Fee');
-        $totalAmount = trim($data['Total Amount'] ?? $data['total_amount'] ?? '');
-        $amountPaid = trim($data['Amount Paid'] ?? $data['amount_paid'] ?? 0);
-        $paymentMethod = trim($data['Payment Method'] ?? $data['payment_method'] ?? 'cash');
-        $paidDate = trim($data['Paid Date'] ?? $data['paid_date'] ?? date('Y-m-d'));
-        $month = trim($data['Month'] ?? $data['month'] ?? '');
-        $year = trim($data['Year'] ?? $data['year'] ?? date('Y'));
-        $receiptNo = trim($data['Receipt No'] ?? $data['receipt_no'] ?? '');
-        
-        if (empty($admissionNo) || empty($totalAmount)) {
-            $errors[] = "Row $rowNum: Admission No and Total Amount are required";
-            continue;
-        }
-        
-        // Get student
-        $student = db_fetch("SELECT id FROM students WHERE admission_no = ?", [$admissionNo]);
-        if (!$student) {
-            $errors[] = "Row $rowNum: Student with admission no '$admissionNo' not found";
-            continue;
-        }
-        
-        // Generate receipt number if not provided
-        if (empty($receiptNo)) {
-            $receiptNo = 'REC' . date('Y') . str_pad(mt_rand(1, 99999), 5, '0', STR_PAD_LEFT);
-        }
-        
-        // Insert fee record
-        try {
-            $sql = "INSERT INTO fees (student_id, fee_type, total_amount, amount_paid, payment_method, paid_date, month, year, receipt_no) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-            
-            db_query($sql, [
-                $student['id'],
-                $feeType,
-                $totalAmount,
-                $amountPaid,
-                strtolower($paymentMethod),
-                !empty($paidDate) ? $paidDate : null,
-                $month,
-                $year,
-                $receiptNo,
-            ]);
-            
-            $imported++;
-        } catch (Exception $e) {
-            $errors[] = "Row $rowNum: " . $e->getMessage();
+function row_value(array $row, array $keys, $default = '')
+{
+    foreach ($keys as $key) {
+        if (array_key_exists($key, $row) && trim((string) $row[$key]) !== '') {
+            return trim((string) $row[$key]);
         }
     }
-    
-    fclose($handle);
-    
-    return [
-        'message' => "Import completed. $imported fee records imported.",
-        'imported' => $imported,
-        'errors' => $errors,
-        'total_rows' => $rowNum - 1,
-    ];
+    return $default;
+}
+
+function resolve_class($value)
+{
+    $value = trim((string) $value);
+    if ($value === '') {
+        return null;
+    }
+
+    if (ctype_digit($value)) {
+        $class = db_fetch("SELECT id, name, section FROM classes WHERE id = ?", [(int) $value]);
+        if ($class) {
+            return $class;
+        }
+    }
+
+    $class = db_fetch("SELECT id, name, section FROM classes WHERE name = ?", [$value]);
+    if ($class) {
+        return $class;
+    }
+
+    return db_fetch(
+        "SELECT id, name, section FROM classes WHERE TRIM(CONCAT(name, ' ', COALESCE(section, ''))) = ?",
+        [$value]
+    );
+}
+
+function normalize_date_or_null($value)
+{
+    $value = trim((string) $value);
+    if ($value === '') {
+        return null;
+    }
+    $timestamp = strtotime($value);
+    return $timestamp ? date('Y-m-d', $timestamp) : null;
+}
+
+function normalize_gender($value)
+{
+    $value = strtolower(trim((string) $value));
+    if (in_array($value, ['male', 'female', 'other'], true)) {
+        return $value;
+    }
+    return 'male';
+}
+
+function generate_admission_no()
+{
+    return 'ADM' . date('Y') . str_pad((string) random_int(1, 99999), 5, '0', STR_PAD_LEFT);
+}
+
+function generate_employee_id()
+{
+    return 'EMP' . date('Y') . str_pad((string) random_int(1, 9999), 4, '0', STR_PAD_LEFT);
+}
+
+function generate_receipt_no()
+{
+    return 'REC' . date('Y') . str_pad((string) random_int(1, 99999), 5, '0', STR_PAD_LEFT);
 }

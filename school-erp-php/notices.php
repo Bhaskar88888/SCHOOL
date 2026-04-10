@@ -27,7 +27,7 @@ $pageTitle  = 'Notices & Announcements';
         
         <div class="page-toolbar">
             <div style="font-size:18px;font-weight:700">📌 Notice Board</div>
-            <?php if(in_array(get_current_user()['role'], ['superadmin','admin','teacher'])): ?>
+            <?php if(in_array(get_authenticated_user()['role'], ['superadmin','admin','teacher'])): ?>
             <button class="btn btn-primary" onclick="openModal('addModal')">+ Publish Notice</button>
             <?php endif; ?>
         </div>
@@ -57,7 +57,7 @@ $pageTitle  = 'Notices & Announcements';
 
 <script src="/assets/js/main.js"></script>
 <script>
-const userRole = '<?= get_current_user()['role'] ?>';
+const userRole = '<?= get_authenticated_user()['role'] ?>';
 const isAdmin = ['superadmin','admin'].includes(userRole);
 
 async function loadNotices() {

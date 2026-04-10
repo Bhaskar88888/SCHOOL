@@ -4,7 +4,7 @@ require_auth();
 header('Content-Type: application/json');
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    $user = get_current_user();
+    $user = get_authenticated_user();
     $notifications = db_fetchAll("SELECT * FROM notifications WHERE target_user IS NULL OR target_user = ? ORDER BY created_at DESC LIMIT 20", [$user['id']]);
     json_response($notifications);
 }

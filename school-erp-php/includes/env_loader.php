@@ -18,6 +18,9 @@ if (!file_exists($envFile)) {
         $content = file_get_contents($envFile);
         $content = str_replace('CHANGE_THIS_TO_RANDOM_64_CHAR_STRING', bin2hex(random_bytes(32)), $content);
         file_put_contents($envFile, $content);
+
+        // WARNING: User must configure credentials
+        error_log("WARNING: .env.php was auto-generated from .env.example. Please configure your database credentials and security settings immediately!");
     }
 }
 
@@ -26,17 +29,19 @@ if (file_exists($envFile)) {
     $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($lines as $line) {
         // Skip comments
-        if (strpos(trim($line), '#') === 0) continue;
-        
+        if (strpos(trim($line), '#') === 0)
+            continue;
+
         // Parse key=value
         if (strpos($line, '=') !== false) {
             list($key, $value) = explode('=', $line, 2);
             $key = trim($key);
             $value = trim($value);
-            
+
             // Skip if already defined
-            if (defined($key)) continue;
-            
+            if (defined($key))
+                continue;
+
             // Define constant
             define($key, $value);
         }
@@ -53,7 +58,7 @@ $defaults = [
     'APP_NAME' => 'School ERP',
     'APP_VERSION' => '3.0',
     'APP_ENV' => 'production',
-    'APP_URL' => 'http://localhost',
+    'APP_URL' => 'https://school.kashliv.com',
     'APP_DEBUG' => 'false',
     'SESSION_SECRET' => bin2hex(random_bytes(32)),
     'CSRF_SECRET' => bin2hex(random_bytes(32)),

@@ -68,7 +68,7 @@ require_once __DIR__ . '/includes/data.php';
 
 <script src="/assets/js/main.js"></script>
 <script>
-const userRole = '<?= get_current_user()['role'] ?>';
+const userRole = '<?= get_authenticated_user()['role'] ?>';
 const isTeacherOrAdmin = ['superadmin','admin','teacher'].includes(userRole);
 
 async function loadHW() {
