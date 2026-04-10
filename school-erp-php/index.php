@@ -255,49 +255,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
         </div>
 
-        <div class="login-right">
-            <div style="text-align:center; margin-bottom:8px">
-                <div style="font-size:13px;color:var(--text-muted)">TRUSTED BY SCHOOLS ACROSS INDIA</div>
-                <div style="font-size:22px;font-weight:800;margin-top:4px">All-in-One School Management</div>
-            </div>
 
-            <div class="feature-item">
-                <div class="feature-icon" style="background:rgba(37,99,235,0.08)">👨‍🎓</div>
-                <div>
-                    <div class="feature-title">Student Management</div>
-                    <div class="feature-desc">Complete student lifecycle from admission to TC with attendance & results
-                    </div>
-                </div>
-            </div>
-            <div class="feature-item">
-                <div class="feature-icon" style="background:rgba(22,163,74,0.08)">💰</div>
-                <div>
-                    <div class="feature-title">Fee & Finance</div>
-                    <div class="feature-desc">Automated fee collection, receipts, payroll & expense tracking</div>
-                </div>
-            </div>
-            <div class="feature-item">
-                <div class="feature-icon" style="background:rgba(217,119,6,0.08)">📝</div>
-                <div>
-                    <div class="feature-title">Exams & Results</div>
-                    <div class="feature-desc">Schedule exams, enter marks, generate report cards automatically</div>
-                </div>
-            </div>
-            <div class="feature-item">
-                <div class="feature-icon" style="background:rgba(2,132,199,0.08)">🤖</div>
-                <div>
-                    <div class="feature-title">AI Chatbot Assistant</div>
-                    <div class="feature-desc">Instant answers about students, fees, attendance via natural language
-                    </div>
-                </div>
-            </div>
-
-            <div class="demo-creds">
-                <div class="demo-creds-title">🔑 Demo Credentials</div>
-                <div class="demo-cred"><span>Super Admin</span><span>admin@school.com / admin123</span></div>
-                <div class="demo-cred"><span>Teacher</span><span>teacher@school.com / teacher123</span></div>
-            </div>
-        </div>
     </div>
 </body>
 
