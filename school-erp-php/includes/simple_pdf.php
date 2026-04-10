@@ -119,7 +119,8 @@ class SimplePdfDocument {
     }
 
     private function escapeText($text) {
-        $text = preg_replace('/[^\x09\x0A\x0D\x20-\x7E]/', '?', (string)$text);
+        // Removed aggressive ASCII stripping to allow UTF-8 multi-byte characters
+        $text = (string)$text;
         $text = str_replace('\\', '\\\\', $text);
         $text = str_replace('(', '\\(', $text);
         $text = str_replace(')', '\\)', $text);

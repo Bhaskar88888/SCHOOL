@@ -7,29 +7,36 @@
  * Generate Auto ID (Admission Number, Employee ID, Receipt No, etc.)
  */
 function generate_auto_id($type, $prefix) {
-    $year = date('Y');
-    
-    // Get current sequence
-    $counter = db_fetch(
-        "SELECT sequence FROM counters WHERE name = ? AND year = ?",
-        [$type, $year]
-    );
-    
-    if ($counter) {
-        $newSequence = $counter['sequence'] + 1;
-        db_query(
-            "UPDATE counters SET sequence = ? WHERE name = ? AND year = ?",
-            [$newSequence, $type, $year]
+    try {
+        db_beginTransaction();
+        $year = date('Y');
+        
+        // Get current sequence with row lock
+        $counter = db_fetch(
+            "SELECT sequence FROM counters WHERE name = ? AND year = ? FOR UPDATE",
+            [$type, $year]
         );
-    } else {
-        $newSequence = 1;
-        db_query(
-            "INSERT INTO counters (name, year, sequence) VALUES (?, ?, ?)",
-            [$type, $year, $newSequence]
-        );
+        
+        if ($counter) {
+            $newSequence = $counter['sequence'] + 1;
+            db_query(
+                "UPDATE counters SET sequence = ? WHERE name = ? AND year = ?",
+                [$newSequence, $type, $year]
+            );
+        } else {
+            $newSequence = 1;
+            db_query(
+                "INSERT INTO counters (name, year, sequence) VALUES (?, ?, ?)",
+                [$type, $year, $newSequence]
+            );
+        }
+        db_commit();
+        return $prefix . $year . str_pad($newSequence, 5, '0', STR_PAD_LEFT);
+    } catch (Exception $e) {
+        db_rollback();
+        // Fallback
+        return $prefix . date('Y') . rand(10000, 99999);
     }
-    
-    return $prefix . $year . str_pad($newSequence, 5, '0', STR_PAD_LEFT);
 }
 
 /**

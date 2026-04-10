@@ -39,9 +39,15 @@ if (isset($_GET['action']) && $_GET['action'] === 'topup' && $method === 'POST')
         json_response(['errors' => Validator::errors()], 422);
     }
 
-    db_query("UPDATE students SET canteen_balance = canteen_balance + ? WHERE id = ?", [$data['amount'], $data['student_id']]);
-
-    $student = db_fetch("SELECT canteen_balance FROM students WHERE id = ?", [$data['student_id']]);
+    try {
+        db_beginTransaction();
+        db_query("UPDATE students SET canteen_balance = canteen_balance + ? WHERE id = ?", [$data['amount'], $data['student_id']]);
+        $student = db_fetch("SELECT canteen_balance FROM students WHERE id = ?", [$data['student_id']]);
+        db_commit();
+    } catch (Exception $e) {
+        db_rollback();
+        json_response(['error' => 'Database error during topup'], 500);
+    }
     audit_log('WALLET_TOPUP', 'canteen', $data['student_id'], null, ['amount' => $data['amount']]);
 
     json_response(['message' => 'Wallet topped up', 'new_balance' => $student['canteen_balance']]);
@@ -71,36 +77,47 @@ if (isset($_GET['action']) && $_GET['action'] === 'rfid-pay' && $method === 'POS
         json_response(['errors' => Validator::errors()], 422);
     }
 
-    // Find student by RFID
-    $student = db_fetch("SELECT id, name, canteen_balance FROM students WHERE rfid_tag_hex = ?", [$data['rfid_tag']]);
-    if (!$student) {
-        json_response(['error' => 'RFID tag not found'], 404);
-    }
-
-    if ($student['canteen_balance'] < $data['total']) {
-        json_response(['error' => 'Insufficient balance'], 400);
-    }
-
-    // Deduct from wallet
-    db_query("UPDATE students SET canteen_balance = canteen_balance - ? WHERE id = ?", [$data['total'], $student['id']]);
-
-    // Record sale
-    $sql = "INSERT INTO canteen_sales (total, payment_mode, sold_to, sold_by) VALUES (?, 'wallet', ?, ?)";
-    $saleId = db_insert($sql, [$data['total'], $student['id'], get_current_user_id()]);
-
-    // Add sale items
-    if (!empty($data['items'])) {
-        foreach ($data['items'] as $item) {
-            db_query(
-                "INSERT INTO canteen_sale_items (sale_id, item_id, quantity, price) VALUES (?, ?, ?, ?)",
-                [$saleId, $item['item_id'], $item['quantity'], $item['price']]
-            );
-            // Decrement stock
-            db_query(
-                "UPDATE canteen_items SET quantity_available = GREATEST(quantity_available - ?, 0) WHERE id = ?",
-                [$item['quantity'], $item['item_id']]
-            );
+    try {
+        db_beginTransaction();
+        
+        // Find student by RFID with pessimistic locking
+        $student = db_fetch("SELECT id, name, canteen_balance FROM students WHERE rfid_tag_hex = ? FOR UPDATE", [$data['rfid_tag']]);
+        if (!$student) {
+            db_rollback();
+            json_response(['error' => 'RFID tag not found'], 404);
         }
+
+        if ($student['canteen_balance'] < $data['total']) {
+            db_rollback();
+            json_response(['error' => 'Insufficient balance'], 400);
+        }
+
+        // Deduct from wallet
+        db_query("UPDATE students SET canteen_balance = canteen_balance - ? WHERE id = ?", [$data['total'], $student['id']]);
+
+        // Record sale
+        $sql = "INSERT INTO canteen_sales (total, payment_mode, sold_to, sold_by) VALUES (?, 'wallet', ?, ?)";
+        $saleId = db_insert($sql, [$data['total'], $student['id'], get_current_user_id()]);
+
+        // Add sale items
+        if (!empty($data['items'])) {
+            foreach ($data['items'] as $item) {
+                db_query(
+                    "INSERT INTO canteen_sale_items (sale_id, item_id, quantity, price) VALUES (?, ?, ?, ?)",
+                    [$saleId, $item['item_id'], $item['quantity'], $item['price']]
+                );
+                // Decrement stock
+                db_query(
+                    "UPDATE canteen_items SET quantity_available = GREATEST(quantity_available - ?, 0) WHERE id = ?",
+                    [$item['quantity'], $item['item_id']]
+                );
+            }
+        }
+        
+        db_commit();
+    } catch (Exception $e) {
+        db_rollback();
+        json_response(['error' => 'Transaction failed during payment'], 500);
     }
 
     audit_log('RFID_PAYMENT', 'canteen', $saleId, null, ['student_id' => $student['id'], 'amount' => $data['total']]);

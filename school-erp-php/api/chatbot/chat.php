@@ -147,16 +147,7 @@ elseif (preg_match('/\b(how many|total|count)\s*(students?|pupils)\b/u', $msg)) 
     }
 }
 
-// 6. HELP - Dashboard
-elseif (preg_match('/\b(help|what can you do|commands|options|capabilities)\b/u', $msg)) {
-    $intent = 'help';
-    $replies = [
-        'en' => "🤖 **I can help with:**\n• Student info & count\n• Fee status & collection\n• Today's attendance\n• Staff information\n• Library status\n• Exams & results\n• Complaints summary\n• Hostel & Transport\n• Leave applications\n• Payroll info\n• Canteen menu\n• Homework & notices\n• School policies\n\nJust ask naturally! 😊",
-        'hi' => "🤖 **मैं इनमें मदद कर सकता हूँ:**\n• छात्र जानकारी\n• फीस स्थिति\n• उपस्थिति\n• स्टाफ जानकारी\n• लाइब्रेरी\n• परीक्षा\n• शिकायतें\n• हॉस्टल और ट्रांसपोर्ट\n• छुट्टी\n• पेरोल\n• कैंटीन\n• होमवर्क और नोटिस\n• स्कूल नीतियां",
-        'as' => "🤖 **মই সহায় কৰিব পাৰোঁ:**\n• ছাত্ৰৰ তথ্য\n• মাছুল অৱস্থা\n• উপস্থিতি\n• কৰ্মচাৰী তথ্য\n• লাইব্ৰেৰী\n• পৰীক্ষা\n• অভিযোগ\n• হোষ্টেল আৰু পৰিবহণ\n• ছুটি\n• পেৰ'ল\n• কেন্টিন\n• গৃহকাৰ্য আৰু নোটিছ\n• বিদ্যালয় নীতি",
-    ];
-    $reply = $replies[$language] ?? $replies['en'];
-}
+
 
 // 7. FEE STATUS (Role-based filtering - FIX #2)
 elseif (preg_match('/\b(fee.*pending|pending.*fee|due|unpaid|defaulter)\b/u', $msg)) {
