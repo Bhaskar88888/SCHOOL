@@ -70,8 +70,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             align-items: center;
             justify-content: center;
             padding: 48px;
-            background: radial-gradient(ellipse at top left, rgba(79, 142, 247, 0.15) 0%, transparent 60%),
-                radial-gradient(ellipse at bottom right, rgba(79, 142, 247, 0.1) 0%, transparent 60%);
+            background: radial-gradient(ellipse at top left, rgba(37, 99, 235, 0.06) 0%, transparent 60%),
+                radial-gradient(ellipse at bottom right, rgba(37, 99, 235, 0.04) 0%, transparent 60%);
         }
 
         .login-card {
@@ -262,7 +262,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
 
             <div class="feature-item">
-                <div class="feature-icon" style="background:rgba(79,142,247,0.15)">👨‍🎓</div>
+                <div class="feature-icon" style="background:rgba(37,99,235,0.08)">👨‍🎓</div>
                 <div>
                     <div class="feature-title">Student Management</div>
                     <div class="feature-desc">Complete student lifecycle from admission to TC with attendance & results
@@ -270,21 +270,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
             </div>
             <div class="feature-item">
-                <div class="feature-icon" style="background:rgba(63,185,80,0.15)">💰</div>
+                <div class="feature-icon" style="background:rgba(22,163,74,0.08)">💰</div>
                 <div>
                     <div class="feature-title">Fee & Finance</div>
                     <div class="feature-desc">Automated fee collection, receipts, payroll & expense tracking</div>
                 </div>
             </div>
             <div class="feature-item">
-                <div class="feature-icon" style="background:rgba(210,153,34,0.15)">📝</div>
+                <div class="feature-icon" style="background:rgba(217,119,6,0.08)">📝</div>
                 <div>
                     <div class="feature-title">Exams & Results</div>
                     <div class="feature-desc">Schedule exams, enter marks, generate report cards automatically</div>
                 </div>
             </div>
             <div class="feature-item">
-                <div class="feature-icon" style="background:rgba(88,166,255,0.15)">🤖</div>
+                <div class="feature-icon" style="background:rgba(2,132,199,0.08)">🤖</div>
                 <div>
                     <div class="feature-title">AI Chatbot Assistant</div>
                     <div class="feature-desc">Instant answers about students, fees, attendance via natural language

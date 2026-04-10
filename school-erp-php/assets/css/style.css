@@ -1,42 +1,43 @@
 /* ===================================================
    School ERP PHP - Global Styles
-   Dark Premium Theme
+   Clean Professional White Theme
    =================================================== */
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 /* ---- Variables ---- */
 :root {
-  --bg-primary:    #0d1117;
-  --bg-secondary:  #161b22;
-  --bg-card:       #1c2333;
-  --bg-hover:      #21262d;
-  --bg-input:      #0d1117;
+  --bg-primary:    #f0f4f8;
+  --bg-secondary:  #ffffff;
+  --bg-card:       #ffffff;
+  --bg-hover:      #f0f4f8;
+  --bg-input:      #f8fafc;
 
-  --accent:        #4f8ef7;
-  --accent-light:  #6ea8fe;
-  --accent-dark:   #316feb;
-  --accent-glow:   rgba(79, 142, 247, 0.25);
+  --accent:        #2563eb;
+  --accent-light:  #3b82f6;
+  --accent-dark:   #1d4ed8;
+  --accent-glow:   rgba(37, 99, 235, 0.12);
 
-  --success:       #3fb950;
-  --warning:       #d29922;
-  --danger:        #f85149;
-  --info:          #58a6ff;
+  --success:       #16a34a;
+  --warning:       #d97706;
+  --danger:        #dc2626;
+  --info:          #0284c7;
 
-  --text-primary:  #e6edf3;
-  --text-secondary:#8b949e;
-  --text-muted:    #6e7681;
+  --text-primary:  #0f172a;
+  --text-secondary:#475569;
+  --text-muted:    #94a3b8;
 
-  --border:        #30363d;
-  --border-light:  #21262d;
+  --border:        #e2e8f0;
+  --border-light:  #f1f5f9;
 
   --sidebar-w:     260px;
   --topbar-h:      64px;
   --radius:        10px;
   --radius-sm:     6px;
   --radius-lg:     16px;
-  --shadow:        0 4px 20px rgba(0,0,0,0.4);
-  --shadow-sm:     0 2px 8px rgba(0,0,0,0.3);
+  --shadow:        0 4px 24px rgba(15,23,42,0.08);
+  --shadow-sm:     0 2px 8px rgba(15,23,42,0.06);
+  --shadow-lg:     0 8px 40px rgba(15,23,42,0.12);
   --transition:    all 0.2s ease;
 }
 
@@ -372,16 +373,16 @@ tbody td { padding: 12px 16px; color: var(--text-primary); }
   padding: 3px 10px; border-radius: 20px;
   font-size: 11px; font-weight: 600;
 }
-.badge-success { background: rgba(63,185,80,0.15); color: var(--success); }
-.badge-danger  { background: rgba(248,81,73,0.15);  color: var(--danger); }
-.badge-warning { background: rgba(210,153,34,0.15); color: var(--warning); }
-.badge-info    { background: rgba(88,166,255,0.15); color: var(--info); }
-.badge-primary { background: var(--accent-glow);    color: var(--accent-light); }
+.badge-success { background: rgba(22,163,74,0.1);   color: var(--success); }
+.badge-danger  { background: rgba(220,38,38,0.1);   color: var(--danger); }
+.badge-warning { background: rgba(217,119,6,0.1);   color: var(--warning); }
+.badge-info    { background: rgba(2,132,199,0.1);   color: var(--info); }
+.badge-primary { background: var(--accent-glow);    color: var(--accent); }
 
 /* ---- Modal ---- */
 .modal-overlay {
   position: fixed; inset: 0;
-  background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+  background: rgba(15,23,42,0.45); backdrop-filter: blur(4px);
   z-index: 300; display: flex; align-items: center; justify-content: center;
   opacity: 0; pointer-events: none; transition: opacity 0.2s;
 }
@@ -390,7 +391,7 @@ tbody td { padding: 12px 16px; color: var(--text-primary); }
   background: var(--bg-card); border: 1px solid var(--border);
   border-radius: var(--radius-lg); padding: 28px;
   width: 90%; max-width: 550px; max-height: 90vh; overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  box-shadow: 0 20px 60px rgba(15,23,42,0.15);
   transform: translateY(20px); transition: transform 0.2s;
 }
 .modal-overlay.open .modal { transform: translateY(0); }
@@ -450,10 +451,10 @@ tbody td { padding: 12px 16px; color: var(--text-primary); }
   font-size: 13px; display: flex; align-items: center; gap: 10px;
   margin-bottom: 16px;
 }
-.alert-success { background: rgba(63,185,80,0.1); border: 1px solid rgba(63,185,80,0.3); color: var(--success); }
-.alert-danger   { background: rgba(248,81,73,0.1); border: 1px solid rgba(248,81,73,0.3); color: var(--danger); }
-.alert-warning  { background: rgba(210,153,34,0.1);border: 1px solid rgba(210,153,34,0.3);color: var(--warning); }
-.alert-info     { background: rgba(88,166,255,0.1); border: 1px solid rgba(88,166,255,0.3);color: var(--info); }
+.alert-success { background: rgba(22,163,74,0.08);  border: 1px solid rgba(22,163,74,0.25);  color: var(--success); }
+.alert-danger  { background: rgba(220,38,38,0.08);  border: 1px solid rgba(220,38,38,0.25);  color: var(--danger); }
+.alert-warning { background: rgba(217,119,6,0.08);  border: 1px solid rgba(217,119,6,0.25);  color: var(--warning); }
+.alert-info    { background: rgba(2,132,199,0.08);  border: 1px solid rgba(2,132,199,0.25);  color: var(--info); }
 
 /* ---- Loader ---- */
 .spinner {
@@ -575,6 +576,66 @@ tbody td { padding: 12px 16px; color: var(--text-primary); }
 
 /* ---- Scrollbar ---- */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: var(--bg-primary); }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+::-webkit-scrollbar-track { background: #f1f5f9; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* ---- White Theme Specific Overrides ---- */
+.sidebar {
+  box-shadow: 2px 0 12px rgba(15,23,42,0.06);
+}
+.topbar {
+  box-shadow: 0 1px 8px rgba(15,23,42,0.06);
+  backdrop-filter: blur(10px);
+}
+.stat-card {
+  box-shadow: 0 2px 12px rgba(15,23,42,0.06);
+}
+.stat-card:hover {
+  box-shadow: 0 6px 24px rgba(15,23,42,0.1);
+}
+.card {
+  box-shadow: 0 2px 12px rgba(15,23,42,0.06);
+}
+thead th {
+  background: #f8fafc;
+  color: #475569;
+}
+tbody tr:last-child {
+  border-bottom: none;
+}
+.form-control {
+  background: #ffffff;
+  border-color: #e2e8f0;
+}
+.btn-secondary {
+  background: #f8fafc;
+  color: #0f172a;
+  border-color: #e2e8f0;
+}
+.btn-secondary:hover {
+  background: #f0f4f8;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.nav-item {
+  color: #475569;
+}
+.nav-item:hover {
+  background: #f0f4f8;
+  color: #0f172a;
+}
+.nav-item.active {
+  background: rgba(37,99,235,0.08);
+  color: var(--accent);
+  font-weight: 600;
+}
+.dropdown-menu {
+  box-shadow: 0 8px 24px rgba(15,23,42,0.1);
+}
+.notif-panel {
+  box-shadow: 0 8px 24px rgba(15,23,42,0.1);
+}
+.chatbot-window {
+  box-shadow: 0 12px 40px rgba(15,23,42,0.15);
+}
