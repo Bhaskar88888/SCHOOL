@@ -1,0 +1,26 @@
+# Security - Never commit these!
+.env.php
+config/*.php
+includes/db.php
+tmp/
+uploads/
+logs/
+backups/
+*.log
+*.sql
+*.bak
+vendor/
+composer.lock
+
+# IDE
+.vscode/
+.idea/
+*.sublime-*
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Tests (optional - keep if you want)
+tests/seed_data.php
