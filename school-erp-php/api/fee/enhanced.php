@@ -93,9 +93,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'collection-report') {
 
     // Summary
     $summary = db_fetch(
-        "SELECT COUNT(*) as total_payments, SUM(amount_paid) as total_collected 
-         FROM fees WHERE paid_date BETWEEN ?",
-        [[$dateFrom, $dateTo]]
+        "SELECT COUNT(*) as total_payments, SUM(amount_paid) as total_collected
+         FROM fees WHERE paid_date BETWEEN ? AND ?",
+        [$dateFrom, $dateTo]
     );
 
     json_response(['byType' => $byType, 'byMode' => $byMode, 'summary' => $summary]);
@@ -123,12 +123,49 @@ if (isset($_GET['action']) && $_GET['action'] === 'my') {
 
     if (is_array($studentId)) {
         $placeholders = implode(',', array_fill(0, count($studentId), '?'));
-        $payments = db_fetchAll("SELECT f.*, s.name as student_name FROM fees f LEFT JOIN students s ON f.student_id = s.id WHERE f.student_id IN ($placeholders) ORDER BY f.paid_date DESC", $studentId);
+        $payments = db_fetchAll("SELECT f.*, s.name as student_name, COALESCE(f.balance_amount, f.total_amount - f.amount_paid) AS balance_amount FROM fees f LEFT JOIN students s ON f.student_id = s.id WHERE f.student_id IN ($placeholders) ORDER BY f.paid_date DESC", $studentId);
     } else {
-        $payments = db_fetchAll("SELECT f.*, s.name as student_name FROM fees f LEFT JOIN students s ON f.student_id = s.id WHERE f.student_id = ? ORDER BY f.paid_date DESC", [$studentId]);
+        $payments = db_fetchAll("SELECT f.*, s.name as student_name, COALESCE(f.balance_amount, f.total_amount - f.amount_paid) AS balance_amount FROM fees f LEFT JOIN students s ON f.student_id = s.id WHERE f.student_id = ? ORDER BY f.paid_date DESC", [$studentId]);
     }
 
     json_response(['payments' => $payments]);
+}
+
+// ============================================
+// PAYMENTS LIST (Paginated with filters)
+// ============================================
+if (isset($_GET['action']) && $_GET['action'] === 'payments') {
+    require_role(['superadmin', 'admin', 'accounts']);
+    $page = max(1, (int) ($_GET['page'] ?? 1));
+    $limit = min(100, max(1, (int) ($_GET['limit'] ?? 50)));
+    $offset = ($page - 1) * $limit;
+    $where = ['1=1'];
+    $params = [];
+    if (!empty($_GET['student_id'])) {
+        $where[] = 'f.student_id = ?';
+        $params[] = (int) $_GET['student_id'];
+    }
+    if (!empty($_GET['fee_type'])) {
+        $where[] = 'f.fee_type = ?';
+        $params[] = sanitize($_GET['fee_type']);
+    }
+    if (!empty($_GET['start_date'])) {
+        $where[] = 'f.paid_date >= ?';
+        $params[] = sanitize($_GET['start_date']);
+    }
+    if (!empty($_GET['end_date'])) {
+        $where[] = 'f.paid_date <= ?';
+        $params[] = sanitize($_GET['end_date']);
+    }
+    if (!empty($_GET['class_id'])) {
+        $where[] = 's.class_id = ?';
+        $params[] = (int) $_GET['class_id'];
+    }
+    $whereSql = implode(' AND ', $where);
+    $total = db_count("SELECT COUNT(*) FROM fees f LEFT JOIN students s ON f.student_id=s.id WHERE $whereSql", $params);
+    $paramsPage = array_merge($params, [$limit, $offset]);
+    $payments = db_fetchAll("SELECT f.*, s.name as student_name, c.name as class_name, COALESCE(f.balance_amount, f.total_amount - f.amount_paid) AS balance_amount FROM fees f LEFT JOIN students s ON f.student_id=s.id LEFT JOIN classes c ON s.class_id=c.id WHERE $whereSql ORDER BY f.paid_date DESC LIMIT ? OFFSET ?", $paramsPage);
+    json_response(['data' => $payments, 'payments' => $payments, 'total' => (int) $total, 'page' => $page, 'pages' => (int) ceil($total / $limit)]);
 }
 
 // ============================================

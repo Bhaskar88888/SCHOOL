@@ -15,7 +15,7 @@ $currentRole = get_current_role();
 if ($method === 'GET') {
     // Analytics
     if (isset($_GET['analytics'])) {
-        $classId = $_GET['class_id'] ?? null;
+        $classId = (int)($_GET['class_id'] ?? 0);
         $where = ['1=1'];
         $params = [];
 
@@ -105,6 +105,7 @@ if ($method === 'GET') {
 
 // POST - Bulk save results
 if ($method === 'POST') {
+    require_role(['admin', 'superadmin', 'teacher']);
     $data = get_post_json();
 
     // Bulk results

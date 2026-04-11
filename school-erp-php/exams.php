@@ -10,8 +10,8 @@ require_once __DIR__ . '/includes/data.php';
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Exams — School ERP</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/assets/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css">
 </head>
 <body>
 <div class="app-layout">
@@ -55,13 +55,18 @@ require_once __DIR__ . '/includes/data.php';
                 </div>
                 <div class="form-group"><label class="form-label">Subject</label><input type="text" class="form-control" name="subject"></div>
             </div>
-            <div class="form-row">
+            <div class="form-row-3">
                 <div class="form-group"><label class="form-label">Date *</label><input type="date" class="form-control" name="exam_date" required></div>
                 <div class="form-group"><label class="form-label">Start Time</label><input type="time" class="form-control" name="start_time" value="09:00"></div>
+                <div class="form-group"><label class="form-label">End Time</label><input type="time" class="form-control" name="end_time" value="12:00"></div>
             </div>
             <div class="form-row">
                 <div class="form-group"><label class="form-label">Max Marks</label><input type="number" class="form-control" name="max_marks" value="100"></div>
                 <div class="form-group"><label class="form-label">Pass Marks</label><input type="number" class="form-control" name="pass_marks" value="33"></div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Description (Optional)</label>
+                <textarea class="form-control" name="description" rows="2" placeholder="Exam syllabus or instructions"></textarea>
             </div>
             <div style="display:flex;gap:10px;justify-content:flex-end">
                 <button type="button" class="btn btn-secondary" onclick="closeModal('addModal')">Cancel</button>
@@ -87,7 +92,7 @@ require_once __DIR__ . '/includes/data.php';
     <div class="chatbot-body" id="chatBody"></div>
     <div class="chatbot-footer"><input type="text" id="chatInput" placeholder="Ask about exams..."/><button class="chatbot-send" onclick="sendChatMessage()">➤</button></div>
 </div>
-<script src="/assets/js/main.js"></script>
+<script src="<?= BASE_URL ?>/assets/js/main.js"></script>
 <script>
 let currentExamId = null;
 
@@ -122,9 +127,30 @@ async function openResults(id, name, classId, maxMarks) {
 
     const studs = students.data || [];
     const results = {};
-    (data.results||[]).forEach(r => { results[r.student_id] = r; });
+    let sumMarks = 0, passed = 0, highest = 0, lowest = maxMarks, counts = 0;
+    (data.results||[]).forEach(r => { 
+        results[r.student_id] = r; 
+        if (r.marks_obtained != null) {
+            let m = parseFloat(r.marks_obtained);
+            sumMarks += m;
+            if (r.status === 'pass') passed++;
+            if (m > highest) highest = m;
+            if (m < lowest) lowest = m;
+            counts++;
+        }
+    });
+    if (counts === 0) lowest = 0;
+    let avg = counts > 0 ? (sumMarks / counts).toFixed(1) : 0;
+    let passRate = counts > 0 ? Math.round((passed / counts) * 100) : 0;
 
-    document.getElementById('resultsBody').innerHTML = `<div class="table-wrap"><table>
+    let statsHtml = `<div class="summary-grid" style="margin-bottom:16px;">
+        <div class="summary-tile"><div class="summary-kicker">Class Average</div><div class="summary-value">${avg}</div></div>
+        <div class="summary-tile"><div class="summary-kicker">Pass Rate</div><div class="summary-value">${passRate}%</div></div>
+        <div class="summary-tile"><div class="summary-kicker">Highest Score</div><div class="summary-value">${highest}</div></div>
+        <div class="summary-tile"><div class="summary-kicker">Lowest Score</div><div class="summary-value">${lowest}</div></div>
+    </div>`;
+
+    document.getElementById('resultsBody').innerHTML = statsHtml + `<div class="table-wrap"><table>
         <thead><tr><th>Student</th><th>Roll No</th><th>Marks / ${maxMarks}</th><th>Grade</th><th>Status</th></tr></thead>
         <tbody>${studs.map(s => {
             const r = results[s.id];

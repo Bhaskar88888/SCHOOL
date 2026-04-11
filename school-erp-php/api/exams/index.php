@@ -10,8 +10,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         json_response(['exam' => $exam, 'results' => $results]);
     }
     $classId = (int)($_GET['class_id'] ?? 0);
-    $where = $classId ? "WHERE class_id = $classId" : "";
-    $exams = db_fetchAll("SELECT e.*, c.name as class_name FROM exams e LEFT JOIN classes c ON e.class_id = c.id $where ORDER BY e.exam_date DESC");
+    if ($classId) {
+        $exams = db_fetchAll("SELECT e.*, c.name as class_name FROM exams e LEFT JOIN classes c ON e.class_id = c.id WHERE e.class_id = ? ORDER BY e.exam_date DESC", [$classId]);
+    } else {
+        $exams = db_fetchAll("SELECT e.*, c.name as class_name FROM exams e LEFT JOIN classes c ON e.class_id = c.id ORDER BY e.exam_date DESC");
+    }
     json_response($exams);
 }
 

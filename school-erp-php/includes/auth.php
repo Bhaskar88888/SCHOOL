@@ -7,7 +7,19 @@ require_once __DIR__ . '/audit_logger.php';
 
 // Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {
+    session_set_cookie_params([
+        'secure' => true,
+        'httponly' => true,
+        'samesite' => 'Lax'
+    ]);
     session_start();
+}
+
+if (!defined('BASE_URL')) {
+    $docRoot = rtrim(str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT']), '/');
+    $appRoot = rtrim(str_replace('\\', '/', dirname(__DIR__)), '/');
+    $basePath = str_replace($docRoot, '', $appRoot);
+    define('BASE_URL', $basePath);
 }
 
 function is_logged_in()
@@ -22,7 +34,7 @@ function require_auth()
             http_response_code(401);
             die(json_encode(['error' => 'Unauthorized. Please log in.']));
         }
-        header('Location: /index.php');
+        header('Location: ' . BASE_URL . '/index.php');
         exit;
     }
 }
@@ -38,7 +50,7 @@ function require_role($roles)
             http_response_code(403);
             die(json_encode(['error' => 'Forbidden. Insufficient permissions.']));
         }
-        header('Location: /dashboard.php?error=forbidden');
+        header('Location: ' . BASE_URL . '/dashboard.php?error=forbidden');
         exit;
     }
 }
@@ -83,6 +95,8 @@ function login_user($user)
 
 function logout_user()
 {
+    session_regenerate_id(true);
+    session_unset();
     session_destroy();
 }
 
@@ -113,6 +127,17 @@ function normalize_role_name($role)
         'accounts' => 'accounts',
         'super admin' => 'superadmin',
         'super-admin' => 'superadmin',
+        'superadmin' => 'superadmin',
+        'admin' => 'superadmin',
+        'driver' => 'driver',
+        'conductor' => 'conductor',
+        'teacher' => 'teacher',
+        'student' => 'student',
+        'parent' => 'parent',
+        'staff' => 'staff',
+        'hr' => 'hr',
+        'canteen' => 'canteen',
+        'librarian' => 'librarian',
     ];
     return $aliases[$role] ?? $role;
 }

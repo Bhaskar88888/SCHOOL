@@ -17,7 +17,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'wallet') {
         json_response(['error' => 'student_id required'], 400);
     }
 
-    $student = db_fetch("SELECT id, name, canteen_balance, rfid_tag FROM students WHERE id = ?", [$studentId]);
+    $student = db_fetch("SELECT id, name, canteen_balance, rfid_tag_hex FROM students WHERE id = ?", [$studentId]);
     if (!$student) {
         json_response(['error' => 'Student not found'], 404);
     }
@@ -26,7 +26,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'wallet') {
         'student_id' => $student['id'],
         'name' => $student['name'],
         'balance' => $student['canteen_balance'],
-        'rfid_tag' => $student['rfid_tag'],
+        'rfid_tag' => $student['rfid_tag_hex'],
     ]);
 }
 
@@ -37,6 +37,10 @@ if (isset($_GET['action']) && $_GET['action'] === 'topup' && $method === 'POST')
 
     if (Validator::hasErrors()) {
         json_response(['errors' => Validator::errors()], 422);
+    }
+
+    if ((float) $data['amount'] <= 0) {
+        json_response(['error' => 'Amount must be greater than zero'], 400);
     }
 
     try {
@@ -79,7 +83,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'rfid-pay' && $method === 'POS
 
     try {
         db_beginTransaction();
-        
+
         // Find student by RFID with pessimistic locking
         $student = db_fetch("SELECT id, name, canteen_balance FROM students WHERE rfid_tag_hex = ? FOR UPDATE", [$data['rfid_tag']]);
         if (!$student) {
@@ -113,7 +117,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'rfid-pay' && $method === 'POS
                 );
             }
         }
-        
+
         db_commit();
     } catch (Exception $e) {
         db_rollback();
@@ -129,6 +133,48 @@ if (isset($_GET['action']) && $_GET['action'] === 'rfid-pay' && $method === 'POS
         'amount' => $data['total'],
         'new_balance' => $student['canteen_balance'] - $data['total'],
     ]);
+}
+
+// POST - Atomic Sell with stock decrement
+if (isset($_GET['action']) && $_GET['action'] === 'sell' && $method === 'POST') {
+    require_role(['superadmin', 'admin', 'canteen']);
+    $data = get_post_json();
+    $items = is_array($data['items'] ?? null) ? $data['items'] : [];
+    $total = (float) ($data['total'] ?? 0);
+    $soldTo = sanitize($data['sold_to'] ?? '');
+    $paymentMode = sanitize($data['payment_mode'] ?? 'cash');
+    if (empty($items))
+        json_response(['error' => 'items required'], 400);
+
+    try {
+        db_beginTransaction();
+        foreach ($items as $item) {
+            $itemId = (int) ($item['item_id'] ?? 0);
+            $qty = max(0, (int) ($item['quantity'] ?? 0));
+            if ($itemId) {
+                $rows = db_query("UPDATE canteen_items SET quantity_available=quantity_available-? WHERE id=? AND quantity_available>=?", [$qty, $itemId, $qty]);
+                if ($rows === 0)
+                    throw new Exception('INSUFFICIENT_STOCK');
+            }
+        }
+        $saleId = db_insert(
+            "INSERT INTO canteen_sales (total_amount, sold_to, sold_by, payment_mode, created_at) VALUES (?,?,?,?,NOW())",
+            [$total, $soldTo, get_current_user_id(), $paymentMode]
+        );
+        foreach ($items as $item) {
+            db_insert(
+                "INSERT INTO canteen_sale_items (sale_id, item_id, quantity, price) VALUES (?,?,?,?)",
+                [$saleId, $item['item_id'] ?? null, (int) ($item['quantity'] ?? 0), (float) ($item['price'] ?? 0)]
+            );
+        }
+        db_commit();
+        json_response(['success' => true, 'sale_id' => $saleId], 201);
+    } catch (Exception $e) {
+        db_rollback();
+        if ($e->getMessage() === 'INSUFFICIENT_STOCK')
+            json_response(['error' => 'Insufficient stock'], 400);
+        json_response(['error' => $e->getMessage()], 500);
+    }
 }
 
 // PUT - Restock item
@@ -162,4 +208,4 @@ if (isset($_GET['action']) && $_GET['action'] === 'sales') {
     json_response(['sales' => $sales]);
 }
 
-require_once __DIR__ . '/index.php';
+// File ends here

@@ -9,8 +9,8 @@ $pageTitle = 'Export Data';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Export Data — School ERP</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/assets/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css">
     <style>
         .export-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px; }
         .export-card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; transition: var(--transition); }
@@ -186,7 +186,7 @@ $pageTitle = 'Export Data';
     </div>
 </div>
 
-<script src="/assets/js/main.js"></script>
+<script src="<?= BASE_URL ?>/assets/js/main.js"></script>
 <script>
 function buildParams(module) {
     const p = new URLSearchParams({module});

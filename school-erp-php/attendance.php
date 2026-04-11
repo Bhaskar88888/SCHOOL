@@ -1,24 +1,32 @@
 <?php
 require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/data.php';
+
 require_auth();
-$pageTitle = 'Attendance';
-$classes   = db_fetchAll("SELECT id, name FROM classes ORDER BY name");
+$pageTitle = 'Student Attendance';
+$currentRole = normalize_role_name(get_current_role());
+$isManager = in_array($currentRole, ['superadmin', 'admin', 'teacher']);
+
+$classes = db_fetchAll("SELECT id, name, section FROM classes WHERE is_active = 1 ORDER BY name ASC, section ASC");
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Attendance — School ERP</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/assets/css/style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance - School ERP</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css">
     <style>
-        .att-card { display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:8px; }
-        .att-name { font-weight:500; }
-        .att-btns { display:flex;gap:8px; }
-        .att-btn { padding:6px 16px;border:1px solid var(--border);border-radius:20px;cursor:pointer;font-size:13px;background:var(--bg-input);color:var(--text-secondary);transition:all 0.15s; }
-        .att-btn.present.sel { background:rgba(63,185,80,0.2);color:var(--success);border-color:var(--success); }
-        .att-btn.absent.sel  { background:rgba(248,81,73,0.2);color:var(--danger);border-color:var(--danger); }
-        .att-btn.late.sel    { background:rgba(210,153,34,0.2);color:var(--warning);border-color:var(--warning); }
+        .present { background-color: #e6f4ea; color: #1e8e3e; }
+        .absent { background-color: #fce8e6; color: #d93025; }
+        .late { background-color: #fef7e0; color: #e37400; }
+        .excused { background-color: #e8eaed; color: #5f6368; }
+        .student-chip {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 32px; height: 32px; border-radius: 50%; font-weight: 600;
+            background: var(--ink-border); font-size: 13px;
+        }
     </style>
 </head>
 <body>
@@ -27,131 +35,437 @@ $classes   = db_fetchAll("SELECT id, name FROM classes ORDER BY name");
     <div class="main-content">
         <?php include __DIR__ . '/includes/header.php'; ?>
 
-        <div class="page-toolbar">
-            <div class="toolbar-left">
-                <select class="form-control" id="classSelect" style="width:200px">
-                    <option value="">Select Class</option>
-                    <?php foreach ($classes as $c): ?>
-                    <option value="<?= $c['id'] ?>"><?= htmlspecialchars($c['name']) ?></option>
-                    <?php endforeach; ?>
-                </select>
-                <input type="date" class="form-control" id="dateSelect" value="<?= date('Y-m-d') ?>" style="width:160px">
-                <button class="btn btn-secondary" onclick="loadAttendance()">Load Students</button>
+        <?php if ($isManager): ?>
+        <div class="page-tabs">
+            <button class="page-tab active" id="tab-mark" onclick="switchTab('mark')">Mark Attendance</button>
+            <button class="page-tab" id="tab-view" onclick="switchTab('view')">View Records</button>
+            <button class="page-tab" id="tab-defaulters" onclick="switchTab('defaulters')">Defaulters</button>
+        </div>
+
+        <div id="panel-mark" class="card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">Mark Attendance</div>
+                    <div class="card-sub">Record daily student attendance by class.</div>
+                </div>
+                <div style="display:flex;gap:10px">
+                    <select class="form-control" id="markClass" style="width:150px" onchange="loadMarkList()">
+                        <option value="">Select Class</option>
+                        <?php foreach($classes as $c): ?>
+                            <option value="<?= $c['id'] ?>"><?= htmlspecialchars($c['name'] . ' ' . $c['section']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <input type="date" class="form-control" id="markDate" value="<?= date('Y-m-d') ?>" style="width:160px" onchange="loadMarkList()">
+                </div>
             </div>
-            <div class="toolbar-right">
-                <button class="btn btn-primary" onclick="markAll('present')" id="markAllBtn" style="display:none">✅ Mark All Present</button>
-                <button class="btn btn-success" onclick="saveAttendance()" id="saveBtn" style="display:none">💾 Save Attendance</button>
+            
+            <div id="markActionBar" style="display:none; padding:10px 20px; border-bottom:1px solid var(--ink-border); justify-content:space-between; align-items:center;">
+                <div style="display:flex;gap:10px;">
+                    <button class="btn btn-secondary btn-sm" onclick="markAll('present')">Mark All Present</button>
+                    <button class="btn btn-secondary btn-sm" onclick="markAll('absent')">Mark All Absent</button>
+                </div>
+                <button class="btn btn-primary" onclick="submitAttendance()">Save Attendance</button>
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Student</th>
+                            <th>Roll/Adm No</th>
+                            <th>Status</th>
+                            <th>Note (Optional)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="markTableBody">
+                        <tr><td colspan="4"><div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">Select a class to load students.</div></div></td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 
-        <!-- Summary Bar -->
-        <div style="display:flex;gap:12px;margin-bottom:20px" id="summaryBar" style="display:none">
-            <div class="card" style="flex:1;padding:12px;text-align:center">
-                <div style="font-size:22px;font-weight:800;color:var(--success)" id="presentCount">0</div>
-                <div style="font-size:12px;color:var(--text-muted)">Present</div>
+        <div id="panel-view" class="card" style="display:none">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">View Attendance Records</div>
+                    <div class="card-sub">Check previously submitted attendance for a class.</div>
+                </div>
+                <div style="display:flex;gap:10px">
+                    <select class="form-control" id="viewClass" style="width:150px" onchange="loadViewList()">
+                        <option value="">Select Class</option>
+                        <?php foreach($classes as $c): ?>
+                            <option value="<?= $c['id'] ?>"><?= htmlspecialchars($c['name'] . ' ' . $c['section']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <input type="date" class="form-control" id="viewDate" value="<?= date('Y-m-d') ?>" style="width:160px" onchange="loadViewList()">
+                    <button class="btn btn-secondary" onclick="exportCSV()">Export CSV</button>
+                </div>
             </div>
-            <div class="card" style="flex:1;padding:12px;text-align:center">
-                <div style="font-size:22px;font-weight:800;color:var(--danger)" id="absentCount">0</div>
-                <div style="font-size:12px;color:var(--text-muted)">Absent</div>
-            </div>
-            <div class="card" style="flex:1;padding:12px;text-align:center">
-                <div style="font-size:22px;font-weight:800;color:var(--warning)" id="lateCount">0</div>
-                <div style="font-size:12px;color:var(--text-muted)">Late</div>
-            </div>
-            <div class="card" style="flex:1;padding:12px;text-align:center">
-                <div style="font-size:22px;font-weight:800;color:var(--text-muted)" id="totalCount">0</div>
-                <div style="font-size:12px;color:var(--text-muted)">Total</div>
+            <div class="table-wrap">
+                <table id="viewTable">
+                    <thead>
+                        <tr>
+                            <th>Student</th>
+                            <th>Admission No</th>
+                            <th>Status</th>
+                            <th>Note</th>
+                        </tr>
+                    </thead>
+                    <tbody id="viewTableBody">
+                        <tr><td colspan="4"><div class="empty-state"><div class="empty-state-text">Select a class to view records.</div></div></td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 
-        <div class="card">
-            <div id="emptyState" class="empty-state"><div class="empty-state-icon">✅</div><div class="empty-state-text">Select a class and date to mark attendance</div></div>
-            <div id="studentList" style="display:none"></div>
+        <div id="panel-defaulters" class="card" style="display:none">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">Defaulters List</div>
+                    <div class="card-sub">Students with attendance below 75% in the last 30 days.</div>
+                </div>
+                <div style="display:flex;gap:10px; align-items:center;">
+                    <select class="form-control" id="defaulterClass" style="width:150px" onchange="loadDefaulters()">
+                        <option value="">Select Class</option>
+                        <?php foreach($classes as $c): ?>
+                            <option value="<?= $c['id'] ?>"><?= htmlspecialchars($c['name'] . ' ' . $c['section']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <div style="font-size:14px;color:var(--ink-4)">Threshold: 75%</div>
+                </div>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Student</th>
+                            <th>Admission No</th>
+                            <th>Parent Phone</th>
+                            <th>Present / Total Days</th>
+                            <th>Attendance %</th>
+                        </tr>
+                    </thead>
+                    <tbody id="defaultersTableBody">
+                        <tr><td colspan="5"><div class="empty-state"><div class="empty-state-text">Select a class to generate report.</div></div></td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
+
+        <?php else: ?>
+        <!-- My Attendance View for Students and Parents -->
+        <div id="panel-my" class="card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">My Attendance</div>
+                    <div class="card-sub">View overall attendance stats and daily history.</div>
+                </div>
+            </div>
+            
+            <div class="summary-grid" style="padding: 20px;">
+                <div class="summary-tile">
+                    <div class="summary-kicker">Attendance %</div>
+                    <div class="summary-value" id="myPercent">0%</div>
+                </div>
+                <div class="summary-tile">
+                    <div class="summary-kicker">Total Days</div>
+                    <div class="summary-value" id="myTotal">0</div>
+                </div>
+                <div class="summary-tile">
+                    <div class="summary-kicker">Present / Absent</div>
+                    <div class="summary-value" id="myPresentAbsent">0 / 0</div>
+                </div>
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Class</th>
+                            <th>Status</th>
+                            <th>Remarks</th>
+                        </tr>
+                    </thead>
+                    <tbody id="myTableBody">
+                        <tr><td colspan="4">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <?php endif; ?>
+
     </div>
 </div>
 
-<button class="chatbot-btn" onclick="toggleChatbot()" title="AI Assistant">🤖</button>
-<div class="chatbot-window" id="chatbotWindow">
-    <div class="chatbot-head"><span class="chatbot-head-icon">🤖</span><div><div class="chatbot-head-title">ERP Assistant</div></div><button class="chatbot-head-close" onclick="toggleChatbot()">✕</button></div>
-    <div class="chatbot-body" id="chatBody"></div>
-    <div class="chatbot-footer"><input type="text" id="chatInput" placeholder="Ask about attendance..."/><button class="chatbot-send" onclick="sendChatMessage()">➤</button></div>
-</div>
-
-<script src="/assets/js/main.js"></script>
+<script src="<?= BASE_URL ?>/assets/js/main.js"></script>
 <script>
-let attendanceData = {};
+const isManager = <?= $isManager ? 'true' : 'false' ?>;
+let activeTab = isManager ? 'mark' : 'my';
+let attendanceMap = {};
+let studentList = [];
 
-async function loadAttendance() {
-    const classId = document.getElementById('classSelect').value;
-    const date    = document.getElementById('dateSelect').value;
-    if (!classId) { showToast('Please select a class', 'warning'); return; }
-
-    const data = await apiGet(`/api/attendance/index.php?class_id=${classId}&date=${date}`);
-    attendanceData = {};
-
-    const list = document.getElementById('studentList');
-    list.innerHTML = data.students.map(s => {
-        attendanceData[s.id] = s.attendance_status === 'not_marked' ? 'present' : s.attendance_status;
-        return `
-            <div class="att-card" id="attCard${s.id}">
-                <div style="display:flex;align-items:center;gap:12px">
-                    <div class="user-avatar" style="width:34px;height:34px;font-size:13px">${s.name.charAt(0)}</div>
-                    <div><div class="att-name">${escHtml(s.name)}</div><div style="font-size:11px;color:var(--text-muted)">Roll: ${escHtml(s.roll_number||'-')}</div></div>
-                </div>
-                <div class="att-btns">
-                    <button class="att-btn present ${attendanceData[s.id]==='present'?'sel':''}" onclick="setStatus(${s.id},'present',this)">✅ Present</button>
-                    <button class="att-btn absent ${attendanceData[s.id]==='absent'?'sel':''}" onclick="setStatus(${s.id},'absent',this)">❌ Absent</button>
-                    <button class="att-btn late ${attendanceData[s.id]==='late'?'sel':''}" onclick="setStatus(${s.id},'late',this)">⏰ Late</button>
-                </div>
-            </div>
-        `;
-    }).join('');
-
-    document.getElementById('emptyState').style.display = 'none';
-    list.style.display = 'block';
-    document.getElementById('markAllBtn').style.display = 'inline-flex';
-    document.getElementById('saveBtn').style.display = 'inline-flex';
-    document.getElementById('summaryBar').style.display = 'flex';
-    updateSummary();
+function switchTab(tab) {
+    activeTab = tab;
+    document.querySelectorAll('.page-tab').forEach(b => b.classList.remove('active'));
+    document.getElementById(`tab-${tab}`).classList.add('active');
+    document.querySelectorAll('[id^="panel-"]').forEach(p => p.style.display = 'none');
+    document.getElementById(`panel-${tab}`).style.display = 'block';
+    
+    if (tab === 'mark') loadMarkList();
+    if (tab === 'view') loadViewList();
+    if (tab === 'defaulters') loadDefaulters();
 }
 
-function setStatus(id, status, btn) {
-    attendanceData[id] = status;
-    const card = document.getElementById('attCard'+id);
-    card.querySelectorAll('.att-btn').forEach(b => b.classList.remove('sel'));
-    btn.classList.add('sel');
-    updateSummary();
+function renderStatusSelect(studentId) {
+    const val = attendanceMap[studentId]?.status || 'present';
+    return `
+        <select class="form-control" style="width:130px; font-weight:500;" id="status_${studentId}" onchange="updateAttStatus(${studentId}, this.value)">
+            <option value="present" ${val==='present'?'selected':''}>Present</option>
+            <option value="absent" ${val==='absent'?'selected':''}>Absent</option>
+            <option value="late" ${val==='late'?'selected':''}>Late</option>
+            <option value="excused" ${val==='excused'?'selected':''}>Excused</option>
+        </select>
+    `;
+}
+
+function updateAttStatus(id, status) {
+    if (!attendanceMap[id]) attendanceMap[id] = {};
+    attendanceMap[id].status = status;
+}
+
+function updateAttNote(id, note) {
+    if (!attendanceMap[id]) attendanceMap[id] = {};
+    attendanceMap[id].note = note;
 }
 
 function markAll(status) {
-    Object.keys(attendanceData).forEach(id => {
-        attendanceData[id] = status;
-        const card = document.getElementById('attCard'+id);
-        if (card) {
-            card.querySelectorAll('.att-btn').forEach(b => b.classList.remove('sel'));
-            card.querySelector(`.att-btn.${status}`)?.classList.add('sel');
-        }
+    studentList.forEach(s => {
+        if (!attendanceMap[s.id]) attendanceMap[s.id] = {};
+        attendanceMap[s.id].status = status;
+        const sel = document.getElementById(`status_${s.id}`);
+        if(sel) { sel.value = status; sel.className = `form-control ${status}`; }
     });
-    updateSummary();
 }
 
-function updateSummary() {
-    const vals = Object.values(attendanceData);
-    document.getElementById('presentCount').textContent = vals.filter(v=>v==='present').length;
-    document.getElementById('absentCount').textContent  = vals.filter(v=>v==='absent').length;
-    document.getElementById('lateCount').textContent    = vals.filter(v=>v==='late').length;
-    document.getElementById('totalCount').textContent   = vals.length;
+async function loadMarkList() {
+    const classId = document.getElementById('markClass').value;
+    const date = document.getElementById('markDate').value;
+    const tbody = document.getElementById('markTableBody');
+    const bar = document.getElementById('markActionBar');
+    
+    if (!classId) {
+        tbody.innerHTML = '<tr><td colspan="4"><div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">Select a class to load students.</div></div></td></tr>';
+        bar.style.display = 'none';
+        return;
+    }
+
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;">Loading...</td></tr>';
+    
+    try {
+        const res = await apiGet(`/api/attendance/index.php?class_id=${classId}&date=${date}`);
+        studentList = res.students || [];
+        attendanceMap = {};
+        
+        studentList.forEach(s => {
+            attendanceMap[s.id] = {
+                status: s.attendance_status === 'not_marked' ? 'present' : s.attendance_status,
+                note: ''
+            };
+        });
+
+        if (studentList.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4"><div class="empty-state"><div class="empty-state-text">No active students in this class.</div></div></td></tr>';
+            bar.style.display = 'none';
+            return;
+        }
+
+        bar.style.display = 'flex';
+        tbody.innerHTML = studentList.map(s => `
+            <tr>
+                <td>
+                    <div style="display:flex;align-items:center;gap:10px">
+                        <div class="student-chip">${escHtml((s.name||'U').charAt(0).toUpperCase())}</div>
+                        <div>
+                            <div style="font-weight:600">${escHtml(s.name)}</div>
+                        </div>
+                    </div>
+                </td>
+                <td><span style="color:var(--ink-4);font-size:13px">${escHtml(s.admission_no || s.roll_number || '-')}</span></td>
+                <td>${renderStatusSelect(s.id)}</td>
+                <td><input type="text" class="form-control" placeholder="Optional remark" onchange="updateAttNote(${s.id}, this.value)"></td>
+            </tr>
+        `).join('');
+
+        // Apply colors to selects
+        studentList.forEach(s => {
+            const sel = document.getElementById(`status_${s.id}`);
+            sel.addEventListener('change', function() { this.className = `form-control ${this.value}`; });
+            sel.className = `form-control ${sel.value}`;
+        });
+        
+    } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="4" style="color:red;padding:20px;">Error loading students</td></tr>`;
+    }
 }
 
-async function saveAttendance() {
-    const classId = document.getElementById('classSelect').value;
-    const date    = document.getElementById('dateSelect').value;
-    const records = Object.entries(attendanceData).map(([id, status]) => ({ student_id: +id, status }));
-    const res = await apiPost('/api/attendance/index.php', { date, class_id: +classId, records });
-    if (res.success) showToast(`Attendance saved for ${res.saved} students!`);
-    else showToast(res.error || 'Failed to save', 'danger');
+async function submitAttendance() {
+    const classId = document.getElementById('markClass').value;
+    const date = document.getElementById('markDate').value;
+    if (!classId) return showToast('Select a class first', 'danger');
+
+    const records = Object.keys(attendanceMap).map(id => ({
+        student_id: id,
+        status: attendanceMap[id].status,
+        note: attendanceMap[id].note
+    }));
+
+    if (records.length === 0) return showToast('No data to save', 'warning');
+
+    const res = await apiPost('/api/attendance/index.php', {
+        class_id: classId,
+        date: date,
+        records: records,
+        send_sms: true
+    });
+
+    if (res.success) {
+        showToast(`Attendance saved for ${res.saved} students`);
+    } else {
+        showToast(res.error || 'Failed to save attendance', 'danger');
+    }
 }
+
+async function loadViewList() {
+    if (!isManager) return;
+    const classId = document.getElementById('viewClass').value;
+    const date = document.getElementById('viewDate').value;
+    const tbody = document.getElementById('viewTableBody');
+    
+    if (!classId) {
+        tbody.innerHTML = '<tr><td colspan="4"><div class="empty-state"><div class="empty-state-text">Select a class to view records.</div></div></td></tr>';
+        return;
+    }
+
+    try {
+        const res = await apiGet(`/api/attendance/index.php?class_id=${classId}&date=${date}`);
+        const records = res.records || [];
+        
+        if (records.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4"><div class="empty-state"><div class="empty-state-text">No attendance submitted for this date.</div></div></td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = records.map(r => `
+            <tr>
+                <td><strong>${escHtml(r.name)}</strong></td>
+                <td>${escHtml(r.admission_no || '-')}</td>
+                <td><span class="badge ${r.attendance_status}">${escHtml(r.attendance_status)}</span></td>
+                <td>${escHtml(r.note || '-')}</td>
+            </tr>
+        `).join('');
+    } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="4" style="color:red;padding:20px;">Error loading records</td></tr>';
+    }
+}
+
+function exportCSV() {
+    const date = document.getElementById('viewDate').value;
+    const rows = [...document.querySelectorAll('#viewTable tbody tr')].map(tr =>
+        [...tr.querySelectorAll('td')].map(td => td.textContent).join(',')
+    );
+    if(rows.length === 0 || rows[0].includes("No attendance submitted")) return showToast('No data to export', 'warning');
+    const csv = ['Student,Admission No,Status,Note', ...rows].join('\n');
+    const blob = new Blob([csv], {type:'text/csv'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `Attendance_${date}.csv`;
+    a.click();
+}
+
+async function loadDefaulters() {
+    if (!isManager) return;
+    const classId = document.getElementById('defaulterClass').value;
+    const tbody = document.getElementById('defaultersTableBody');
+    
+    if (!classId) {
+        tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state"><div class="empty-state-text">Select a class to generate report.</div></div></td></tr>';
+        return;
+    }
+
+    try {
+        const res = await apiGet(`/api/attendance/index.php?defaulters=1&class_id=${classId}&threshold=75`);
+        const list = res.defaulters || [];
+        
+        if (list.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state"><div class="empty-state-text">No defaulters found for this class! 🎉</div></div></td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = list.map(s => `
+            <tr>
+                <td><strong>${escHtml(s.name)}</strong></td>
+                <td>${escHtml(s.admission_no || '-')}</td>
+                <td>${escHtml(s.parent_phone || '-')}</td>
+                <td>${s.present_days} / ${s.total_days}</td>
+                <td><span class="badge badge-danger">${s.percentage}%</span></td>
+            </tr>
+        `).join('');
+    } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="5" style="color:red;padding:20px;">Error loading report</td></tr>';
+    }
+}
+
+async function loadMyAttendance() {
+    if (isManager) return;
+    try {
+        // Find which student_id is tied to this user. We call a known student API endpoint or check stats.
+        // Actually api/attendance/index.php?student_id=0 falls back internally? No, need to pass student_id.
+        // If parent holds multiple, this gets tricky, but we try with URL param or let API handle it.
+        // For simplicity, we just fetch stats & history using the API's implicit current student checking!
+        const resStats = await apiGet('/api/attendance/index.php?student_id=0&stats=1'); // Backend enforces constraints
+        
+        if (resStats.error) {
+            document.getElementById('myTableBody').innerHTML = `<tr><td colspan="4" style="color:red;">${escHtml(resStats.error)}</td></tr>`;
+            return;
+        }
+        
+        const stats = resStats.stats || {};
+        document.getElementById('myPercent').textContent = `${stats.percentage || 0}%`;
+        document.getElementById('myTotal').textContent = stats.total_days || 0;
+        document.getElementById('myPresentAbsent').textContent = `${stats.present_days || 0} / ${stats.absent_days || 0}`;
+
+        const resHist = await apiGet('/api/attendance/index.php?student_id=0');
+        const history = resHist.history || [];
+        
+        const tbody = document.getElementById('myTableBody');
+        if (history.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4"><div class="empty-state"><div class="empty-state-text">No attendance records found.</div></div></td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = history.map(h => `
+            <tr>
+                <td>${new Date(h.date).toLocaleDateString()}</td>
+                <td>${escHtml(h.class_name || '-')}</td>
+                <td><span class="badge ${h.status}">${escHtml(h.status)}</span></td>
+                <td>${escHtml(h.remarks || h.note || '-')}</td>
+            </tr>
+        `).join('');
+
+    } catch (e) {
+        console.error(e);
+        document.getElementById('myTableBody').innerHTML = '<tr><td colspan="4" style="color:red;">Error fetching attendance.</td></tr>';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    if (isManager) {
+        loadMarkList();
+    } else {
+        loadMyAttendance();
+    }
+});
 </script>
 </body>
 </html>

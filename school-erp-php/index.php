@@ -10,14 +10,12 @@ if (is_logged_in()) {
 
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email = trim($_POST['email'] ?? '');
+    $email    = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
 
-    // Rate limiting
     RateLimiter::check(RATE_LIMIT_AUTH_REQUESTS, RATE_LIMIT_AUTH_WINDOW);
 
     if ($email && $password) {
-        // Check if account is locked
         if (is_account_locked($email)) {
             $error = 'Account temporarily locked. Please try again later.';
         } else {
@@ -28,7 +26,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 header('Location: ' . BASE_URL . '/dashboard.php');
                 exit;
             } else {
-                // Record failed login attempt
                 record_failed_login($email);
                 $error = 'Invalid email or password. Please try again.';
             }
@@ -40,223 +37,133 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 ?>
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="School ERP System - Manage your school efficiently">
-    <title>Login — School ERP</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
-        rel="stylesheet">
-    <link rel="stylesheet" href="/assets/css/style.css">
+    <meta name="description" content="School ERP — Manage your school with elegance">
+    <title>Sign In — School ERP</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
+            font-family: 'Inter', sans-serif;
+            display: flex; align-items: center; justify-content: center;
+            min-height: 100vh; background: #ffffff;
+            -webkit-font-smoothing: antialiased;
         }
-
-        .login-page {
-            display: flex;
-            width: 100%;
-            min-height: 100vh;
+        .login-wrap {
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            width: 100%; min-height: 100vh;
+            padding: 48px 24px;
         }
-
-        .login-left {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 48px;
-            background: radial-gradient(ellipse at top left, rgba(37, 99, 235, 0.06) 0%, transparent 60%),
-                radial-gradient(ellipse at bottom right, rgba(37, 99, 235, 0.04) 0%, transparent 60%);
+        .login-brand {
+            display: flex; align-items: center; gap: 10px;
+            margin-bottom: 52px;
         }
-
-        .login-card {
-            width: 100%;
-            max-width: 420px;
+        .login-brand-logo {
+            width: 34px; height: 34px; background: #0a0a0a;
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
         }
-
-        .login-logo {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 40px;
+        .login-brand-logo svg { width: 16px; height: 16px; fill: #fff; }
+        .login-brand-name {
+            font-family: 'Outfit', sans-serif;
+            font-size: 16px; font-weight: 600; color: #0a0a0a;
         }
-
-        .login-logo-icon {
-            width: 52px;
-            height: 52px;
-            border-radius: 14px;
-            background: linear-gradient(135deg, var(--accent), var(--accent-dark));
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 28px;
-            box-shadow: 0 4px 20px var(--accent-glow);
-        }
-
-        .login-logo-name {
-            font-size: 22px;
-            font-weight: 800;
-        }
-
-        .login-logo-sub {
-            font-size: 12px;
-            color: var(--text-muted);
-        }
-
+        .login-card { width: 100%; max-width: 380px; }
         .login-title {
-            font-size: 26px;
-            font-weight: 700;
-            margin-bottom: 6px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 30px; font-weight: 600; letter-spacing: -.5px;
+            color: #0a0a0a; margin-bottom: 6px;
         }
-
-        .login-subtitle {
-            color: var(--text-muted);
-            font-size: 14px;
-            margin-bottom: 32px;
+        .login-sub {
+            font-size: 14px; color: #777;
+            margin-bottom: 36px; line-height: 1.6;
         }
-
+        .login-label {
+            display: flex; justify-content: space-between; align-items: center;
+            font-size: 12px; font-weight: 500; color: #555;
+            margin-bottom: 7px;
+        }
+        .login-label a { font-size: 12px; color: #999; text-decoration: none; }
+        .login-label a:hover { color: #0a0a0a; }
+        .login-input {
+            width: 100%; background: #f5f5f5; border: 1px solid transparent;
+            border-radius: 8px; padding: 12px 15px;
+            font-size: 14px; font-family: 'Inter', sans-serif;
+            color: #0a0a0a; outline: none;
+            transition: all .18s ease; margin-bottom: 16px; display: block;
+        }
+        .login-input:focus {
+            background: #fff; border-color: #ddd;
+            box-shadow: 0 2px 12px rgba(0,0,0,.05);
+        }
+        .login-input::placeholder { color: #bbb; }
         .login-btn {
-            width: 100%;
-            padding: 12px;
-            font-size: 15px;
-            font-weight: 600;
-            background: linear-gradient(135deg, var(--accent), var(--accent-dark));
-            color: white;
-            border: none;
-            border-radius: var(--radius-sm);
-            cursor: pointer;
-            transition: var(--transition);
-            box-shadow: 0 4px 15px var(--accent-glow);
+            width: 100%; padding: 13px;
+            background: #0a0a0a; color: #fff;
+            border: none; border-radius: 8px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 15px; font-weight: 500;
+            cursor: pointer; transition: all .18s ease;
+            margin-top: 4px; letter-spacing: -.1px;
         }
-
         .login-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 25px var(--accent-glow);
+            background: #2d2d2d;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 20px rgba(0,0,0,.12);
         }
-
-        .login-right {
-            width: 480px;
-            background: var(--bg-secondary);
-            border-left: 1px solid var(--border);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 48px;
-            gap: 28px;
+        .login-footer {
+            text-align: center; margin-top: 40px;
+            font-size: 12px; color: #bbb;
         }
-
-        .feature-item {
-            display: flex;
-            gap: 16px;
-            align-items: flex-start;
-        }
-
-        .feature-icon {
-            width: 44px;
-            height: 44px;
-            border-radius: 10px;
-            flex-shrink: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-        }
-
-        .feature-title {
-            font-weight: 600;
-            font-size: 14px;
-        }
-
-        .feature-desc {
-            color: var(--text-muted);
-            font-size: 12px;
-            margin-top: 2px;
-            line-height: 1.5;
-        }
-
-        .demo-creds {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 16px;
-            width: 100%;
-            font-size: 12px;
-        }
-
-        .demo-creds-title {
-            font-weight: 600;
-            margin-bottom: 8px;
-            color: var(--text-secondary);
-        }
-
-        .demo-cred {
-            display: flex;
-            justify-content: space-between;
-            padding: 4px 0;
-            color: var(--text-muted);
-        }
-
-        .demo-cred span:first-child {
-            color: var(--text-primary);
-        }
-
-        @media(max-width:768px) {
-            .login-right {
-                display: none;
-            }
-
-            .login-left {
-                padding: 24px;
-            }
+        .login-error {
+            background: #fff0f0; color: #dc2626;
+            border-radius: 7px; padding: 11px 14px;
+            font-size: 13px; margin-bottom: 20px; line-height: 1.5;
         }
     </style>
 </head>
-
 <body>
-    <div class="login-page">
-        <div class="login-left">
-            <div class="login-card">
-                <div class="login-logo">
-                    <div class="login-logo-icon">🎓</div>
-                    <div>
-                        <div class="login-logo-name">School ERP</div>
-                        <div class="login-logo-sub">Management System v2.0</div>
-                    </div>
-                </div>
+    <div class="login-wrap">
 
-                <h1 class="login-title">Welcome back</h1>
-                <p class="login-subtitle">Sign in to your account to continue</p>
-
-                <?php if ($error): ?>
-                    <div class="alert alert-danger">⚠️ <?= htmlspecialchars($error) ?></div>
-                <?php endif; ?>
-
-                <form method="POST" action="index.php">
-                    <div class="form-group">
-                        <label class="form-label">Email Address</label>
-                        <input type="email" name="email" class="form-control" placeholder="your@email.com"
-                            value="<?= htmlspecialchars($_POST['email'] ?? '') ?>" required autofocus>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" style="display:flex;justify-content:space-between">
-                            <span>Password</span>
-                            <a href="forgot-password.php" style="font-weight:400;font-size:11px">Forgot password?</a>
-                        </label>
-                        <input type="password" name="password" class="form-control" placeholder="••••••••" required>
-                    </div>
-                    <button type="submit" class="login-btn">Sign In →</button>
-                </form>
+        <!-- Brand mark -->
+        <div class="login-brand">
+            <div class="login-brand-logo">
+                <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
             </div>
+            <div class="login-brand-name">School ERP</div>
         </div>
 
+        <!-- Card -->
+        <div class="login-card">
+            <h1 class="login-title">Sign in</h1>
+            <p class="login-sub">Enter your credentials to access the dashboard.</p>
 
+            <?php if ($error): ?>
+            <div class="login-error"><?= htmlspecialchars($error) ?></div>
+            <?php endif; ?>
+
+            <form method="POST" action="">
+                <label class="login-label">Email address</label>
+                <input type="email" name="email" class="login-input"
+                    placeholder="admin@school.com"
+                    value="<?= htmlspecialchars($_POST['email'] ?? '') ?>"
+                    required autofocus>
+
+                <label class="login-label">
+                    <span>Password</span>
+                    <a href="forgot-password.php">Forgot?</a>
+                </label>
+                <input type="password" name="password" class="login-input"
+                    placeholder="••••••••" required>
+
+                <button type="submit" class="login-btn">Continue &rarr;</button>
+            </form>
+        </div>
+
+        <div class="login-footer">School ERP &copy; <?= date('Y') ?> &middot; v3.0</div>
     </div>
 </body>
-
 </html>

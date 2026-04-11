@@ -12,6 +12,7 @@ class Validator {
      * Validate required fields
      */
     public static function required($data, $fields) {
+        self::reset();
         foreach ($fields as $field) {
             if (!isset($data[$field]) || trim($data[$field]) === '') {
                 self::$errors[$field] = ucfirst(str_replace('_', ' ', $field)) . ' is required';

@@ -8,8 +8,8 @@ $pageTitle  = 'Notices & Announcements';
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Notices — School ERP</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/assets/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css">
     <style>
         .notice-card { background:var(--bg-secondary); border:1px solid var(--border); border-radius:var(--radius); padding:20px; margin-bottom:16px; position:relative; overflow:hidden; }
         .notice-card::before { content:''; position:absolute; top:0;left:0;bottom:0;width:4px;background:var(--accent); }
@@ -55,7 +55,7 @@ $pageTitle  = 'Notices & Announcements';
     </div>
 </div>
 
-<script src="/assets/js/main.js"></script>
+<script src="<?= BASE_URL ?>/assets/js/main.js"></script>
 <script>
 const userRole = '<?= get_authenticated_user()['role'] ?>';
 const isAdmin = ['superadmin','admin'].includes(userRole);

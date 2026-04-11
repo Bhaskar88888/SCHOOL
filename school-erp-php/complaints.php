@@ -10,8 +10,8 @@ require_once __DIR__ . '/includes/data.php';
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Complaints — School ERP</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/assets/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css">
 </head>
 <body>
 <div class="app-layout">
@@ -20,13 +20,21 @@ require_once __DIR__ . '/includes/data.php';
         <?php include __DIR__ . '/includes/header.php'; ?>
         
         <div class="page-toolbar">
-            <div class="toolbar-left">
+            <div class="toolbar-left" style="display:flex;gap:10px;">
                 <select class="form-control" id="statusFilter" onchange="loadComplaints()" style="width:160px">
-                    <option value="">All Complaints</option>
+                    <option value="">All Status</option>
                     <option value="pending">Pending</option>
                     <option value="in_progress">In Progress</option>
                     <option value="resolved">Resolved</option>
                     <option value="rejected">Rejected</option>
+                </select>
+                <select class="form-control" id="categoryFilter" onchange="loadComplaints()" style="width:160px">
+                    <option value="">All Categories</option>
+                    <option value="General">General</option>
+                    <option value="Academics">Academics</option>
+                    <option value="Facilities">Facilities</option>
+                    <option value="Staff">Staff</option>
+                    <option value="Other">Other</option>
                 </select>
             </div>
             <div class="toolbar-right">
@@ -96,13 +104,14 @@ require_once __DIR__ . '/includes/data.php';
     </div>
 </div>
 
-<script src="/assets/js/main.js"></script>
+<script src="<?= BASE_URL ?>/assets/js/main.js"></script>
 <script>
 let compList = [];
 
 async function loadComplaints() {
     const s = document.getElementById('statusFilter').value;
-    compList = await apiGet(`/api/complaints/index.php?status=${s}`);
+    const c = document.getElementById('categoryFilter').value;
+    compList = await apiGet(`/api/complaints/index.php?status=${encodeURIComponent(s)}&category=${encodeURIComponent(c)}`);
     
     document.getElementById('dataTable').innerHTML = compList.map(c => `
         <tr>

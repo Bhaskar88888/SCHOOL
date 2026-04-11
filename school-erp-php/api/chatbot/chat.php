@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 $data = get_post_json();
-$message = trim($data['message'] ?? '');
+$message = htmlspecialchars(trim($data['message'] ?? ''), ENT_QUOTES, 'UTF-8');
 $language = $data['language'] ?? 'en';
 $startTime = microtime(true);
 

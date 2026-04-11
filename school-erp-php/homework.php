@@ -10,8 +10,8 @@ require_once __DIR__ . '/includes/data.php';
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Homework — School ERP</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/assets/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css">
     <style>
         .hw-card { background:var(--bg-secondary); border:1px solid var(--border); border-radius:var(--radius); padding:20px; margin-bottom:16px; }
         .hw-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; }
@@ -66,7 +66,7 @@ require_once __DIR__ . '/includes/data.php';
     </div>
 </div>
 
-<script src="/assets/js/main.js"></script>
+<script src="<?= BASE_URL ?>/assets/js/main.js"></script>
 <script>
 const userRole = '<?= get_authenticated_user()['role'] ?>';
 const isTeacherOrAdmin = ['superadmin','admin','teacher'].includes(userRole);

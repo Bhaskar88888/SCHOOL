@@ -98,6 +98,7 @@ function time_ago($datetime) {
 /**
  * Send SMS (Twilio integration placeholder)
  */
+if (!function_exists('send_sms')) {
 function send_sms($to, $message) {
     if (!defined('SMS_ENABLED') || !SMS_ENABLED) {
         return false;
@@ -111,6 +112,7 @@ function send_sms($to, $message) {
     // For now, just log the SMS
     error_log("SMS would be sent to $to: $message");
     return true;
+}
 }
 
 /**

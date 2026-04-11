@@ -8,8 +8,8 @@ $pageTitle = 'Notifications';
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Notifications — School ERP</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/assets/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css">
     <style>
         .notif-card { background:var(--bg-secondary); border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:12px; display:flex; gap:16px; align-items:flex-start; transition: all 0.2s; }
         .notif-card.unread { border-left: 4px solid var(--accent); background: rgba(79,142,247,0.05); }
@@ -32,7 +32,7 @@ $pageTitle = 'Notifications';
     </div>
 </div>
 
-<script src="/assets/js/main.js"></script>
+<script src="<?= BASE_URL ?>/assets/js/main.js"></script>
 <script>
 async function loadNotifications() {
     const data = await apiGet('/api/notifications/list.php');

@@ -9,8 +9,8 @@ $classes   = db_fetchAll("SELECT id, name FROM classes ORDER BY name");
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fee Management — School ERP</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/assets/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css">
 </head>
 <body>
 <div class="app-layout">
@@ -52,7 +52,7 @@ $classes   = db_fetchAll("SELECT id, name FROM classes ORDER BY name");
             <div id="tableLoading" style="text-align:center;padding:40px"><div class="spinner"></div></div>
             <div class="table-wrap" id="tableWrap" style="display:none">
                 <table>
-                    <thead><tr><th>Student</th><th>Fee Type</th><th>Total</th><th>Paid</th><th>Balance</th><th>Date</th><th>Receipt</th><th>Status</th></tr></thead>
+                    <thead><tr><th>Student</th><th>Fee Type</th><th>Total</th><th>Paid</th><th>Balance</th><th>Date</th><th>Receipt</th><th>Status</th><th>Actions</th></tr></thead>
                     <tbody id="feeBody"></tbody>
                 </table>
             </div>
@@ -77,9 +77,10 @@ $classes   = db_fetchAll("SELECT id, name FROM classes ORDER BY name");
                     </select>
                 </div>
             </div>
-            <div class="form-row">
+            <div class="form-row-3">
                 <div class="form-group"><label class="form-label">Total Amount *</label><input type="number" class="form-control" name="total_amount" step="0.01" required></div>
                 <div class="form-group"><label class="form-label">Amount Paid *</label><input type="number" class="form-control" name="amount_paid" step="0.01" required></div>
+                <div class="form-group"><label class="form-label">Discount</label><input type="number" class="form-control" name="discount" value="0" step="0.01"></div>
             </div>
             <div class="form-row">
                 <div class="form-group">
@@ -104,8 +105,10 @@ $classes   = db_fetchAll("SELECT id, name FROM classes ORDER BY name");
     <div class="chatbot-footer"><input type="text" id="chatInput" placeholder="Ask about fee status..."/><button class="chatbot-send" onclick="sendChatMessage()">➤</button></div>
 </div>
 
-<script src="/assets/js/main.js"></script>
+<script src="<?= BASE_URL ?>/assets/js/main.js"></script>
 <script>
+let editingFeeId = null;
+
 async function loadFees() {
     const search = document.getElementById('searchInput').value;
     const status = document.getElementById('statusFilter').value;
@@ -124,6 +127,12 @@ async function loadFees() {
             <td>${f.paid_date ? new Date(f.paid_date).toLocaleDateString('en-IN') : '-'}</td>
             <td><span style="font-size:11px;font-family:monospace">${escHtml(f.receipt_no||'-')}</span></td>
             <td><span class="badge ${f.balance_status==='paid'?'badge-success':'badge-warning'}">${f.balance_status}</span></td>
+            <td>
+                <div style="display:flex;gap:6px">
+                    <button class="btn btn-secondary btn-sm" onclick='editFee(${f.id}, ${JSON.stringify(f).replace(/'/g, "&apos;")})'>✏️</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteFee(${f.id})">🗑️</button>
+                </div>
+            </td>
         </tr>
     `).join('') || '<tr><td colspan="8"><div class="empty-state"><div class="empty-state-icon">💰</div><div class="empty-state-text">No fee records</div></div></td></tr>';
 
@@ -153,11 +162,48 @@ async function submitFee(e) {
     const form = document.getElementById('addForm');
     const data = Object.fromEntries(new FormData(form));
     if (data.month_year) { const [y,m] = data.month_year.split('-'); data.year = +y; data.month = new Date(y,m-1).toLocaleString('en-US',{month:'long'}); }
-    const res = await apiPost('/api/fee/index.php', data);
+    
+    let res;
+    if (editingFeeId) {
+        data.id = editingFeeId;
+        res = await fetch('/api/fee/index.php', {
+            method:'PUT', 
+            headers:{'Content-Type':'application/json'}, 
+            body:JSON.stringify(data)
+        }).then(r=>r.json());
+        editingFeeId = null;
+    } else {
+        res = await apiPost('/api/fee/index.php', data);
+    }
+    
     if (res.success) {
-        showToast(`Payment recorded! Receipt: ${res.receipt_no}`);
-        closeModal('addModal'); form.reset(); loadFees(); loadStats();
+        showToast(res.receipt_no ? `Payment recorded! Receipt: ${res.receipt_no}` : 'Fee updated successfully!');
+        closeModal('addModal'); form.reset(); 
+        document.querySelector('#addModal .modal-title').textContent = '💰 Collect Fee';
+        loadFees(); loadStats();
     } else showToast(res.error || 'Failed', 'danger');
+}
+
+function editFee(id, data) {
+    editingFeeId = id;
+    const form = document.getElementById('addForm');
+    form.reset();
+    form.student_id.value = data.student_id;
+    form.fee_type.value = data.fee_type;
+    form.total_amount.value = data.total_amount;
+    form.amount_paid.value = data.amount_paid;
+    if (form.discount) form.discount.value = 0;
+    form.payment_method.value = data.payment_method;
+    form.remarks.value = data.remarks || '';
+    document.querySelector('#addModal .modal-title').textContent = '✏️ Edit Fee Record';
+    openModal('addModal');
+}
+
+async function deleteFee(id) {
+    if(!confirm('Are you sure you want to delete this fee record?')) return;
+    const res = await fetch(`/api/fee/index.php?id=${id}`, {method:'DELETE'}).then(r=>r.json());
+    if (res.success) { showToast('Fee deleted'); loadFees(); loadStats(); }
+    else showToast(res.error || 'Failed', 'danger');
 }
 
 loadFees(); loadStudents(); loadStats();
