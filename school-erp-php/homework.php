@@ -4,6 +4,15 @@ require_auth();
 $pageTitle  = 'Homework & Assignments';
 $needsClasses = true;
 require_once __DIR__ . '/includes/data.php';
+
+$authUser = get_authenticated_user();
+$studentClassId = '';
+if ($authUser['role'] === 'student') {
+    $stu = db_fetch("SELECT class_id FROM students WHERE user_id = ?", [$authUser['id']]);
+    if ($stu) {
+        $studentClassId = $stu['class_id'];
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -27,15 +36,24 @@ require_once __DIR__ . '/includes/data.php';
         <?php include __DIR__ . '/includes/header.php'; ?>
         
         <div class="page-toolbar">
+            <?php if($authUser['role'] !== 'student'): ?>
             <div class="toolbar-left">
                 <select class="form-control" id="classFilter" onchange="loadHW()" style="width:200px">
                     <option value="">All Classes</option>
                     <?php foreach($classes as $c): ?><option value="<?= $c['id'] ?>"><?= htmlspecialchars($c['name']) ?></option><?php endforeach; ?>
                 </select>
             </div>
+            <?php else: ?>
+            <div class="toolbar-left" style="font-weight:600;font-size:18px;">
+                📚 My Homework
+                <input type="hidden" id="classFilter" value="<?= htmlspecialchars($studentClassId) ?>">
+            </div>
+            <?php endif; ?>
+            <?php if($authUser['role'] !== 'student' && $authUser['role'] !== 'parent'): ?>
             <div class="toolbar-right">
                 <button class="btn btn-primary" onclick="openModal('addModal')">+ Assign Homework</button>
             </div>
+            <?php endif; ?>
         </div>
 
         <div id="hwContainer"></div>

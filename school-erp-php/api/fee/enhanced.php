@@ -11,6 +11,11 @@ require_once __DIR__ . '/../../includes/sms_service.php';
 require_auth();
 $method = $_SERVER['REQUEST_METHOD'];
 
+if ($method !== 'GET' && $method !== 'HEAD') {
+    require_once __DIR__ . '/../../includes/csrf.php';
+    CSRFProtection::verifyToken();
+}
+
 // ============================================
 // FEE STRUCTURES
 // ============================================

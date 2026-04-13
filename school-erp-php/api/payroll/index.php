@@ -4,6 +4,11 @@ require_once __DIR__ . '/../../includes/auth.php';
 require_auth();
 header('Content-Type: application/json');
 
+if ($_SERVER['REQUEST_METHOD'] !== 'GET' && $_SERVER['REQUEST_METHOD'] !== 'HEAD') {
+    require_once __DIR__ . '/../../includes/csrf.php';
+    CSRFProtection::verifyToken();
+}
+
 function payroll_month_number($value)
 {
     if ($value === null || $value === '') {
@@ -37,18 +42,18 @@ function payroll_month_number($value)
 function payroll_month_label($monthNumber)
 {
     static $months = [
-        1 => 'January',
-        2 => 'February',
-        3 => 'March',
-        4 => 'April',
-        5 => 'May',
-        6 => 'June',
-        7 => 'July',
-        8 => 'August',
-        9 => 'September',
-        10 => 'October',
-        11 => 'November',
-        12 => 'December',
+    1 => 'January',
+    2 => 'February',
+    3 => 'March',
+    4 => 'April',
+    5 => 'May',
+    6 => 'June',
+    7 => 'July',
+    8 => 'August',
+    9 => 'September',
+    10 => 'October',
+    11 => 'November',
+    12 => 'December',
     ];
 
     return $months[(int) $monthNumber] ?? 'Unknown';
@@ -215,11 +220,11 @@ if ($method === 'POST') {
             $basicSalary = payroll_decimal(($structure['basic_salary'] ?? 0) * $factor);
             $allowances = payroll_decimal(
                 (($structure['hra'] ?? 0) + ($structure['da'] ?? 0) + ($structure['conveyance'] ?? 0) +
-                 ($structure['medical_allowance'] ?? 0) + ($structure['special_allowance'] ?? 0)) * $factor
+                    ($structure['medical_allowance'] ?? 0) + ($structure['special_allowance'] ?? 0)) * $factor
             );
             $deductions = payroll_decimal(
                 (($structure['pf_deduction'] ?? 0) + ($structure['esi_deduction'] ?? 0) +
-                 ($structure['tax_deduction'] ?? 0) + ($structure['other_deductions'] ?? 0)) * $factor
+                    ($structure['tax_deduction'] ?? 0) + ($structure['other_deductions'] ?? 0)) * $factor
             );
 
             payroll_upsert([

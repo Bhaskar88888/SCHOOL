@@ -1,101 +1,226 @@
 <?php
 /**
- * Enhanced Chatbot with 50+ Intents & Multi-Language Support
- * School ERP PHP v3.0 - Matches Node.js chatbot capabilities
- * 
- * FIXED:
- * - All preg_match patterns now use /u modifier for UTF-8 support
- * - Uses mb_strtolower() for UTF-8 safe lowercase conversion
- * - Role-based data filtering to prevent information leakage
- * - Single knowledge base load (removed duplicate)
- * - API key loaded from config instead of getenv()
- * - Role-based permissions for chatbot access
- * - Optimized knowledge base search with keyword indexing
+ * Chatbot Chat API — v5.0
+ * School ERP PHP — Full Node.js Parity (NO Gemini / NO AI API)
+ *
+ * FEATURES:
+ *  - 51+ intents in correct priority order
+ *  - Shortcut commands: /help /start /clear /lang /admit /fee etc.
+ *  - Spell correction (24 typos) via chatbot_engine.php
+ *  - Synonym expansion (16 groups, EN+HI+AS transliterations)
+ *  - Multi-intent "Did You Mean?" detection
+ *  - Follow-up context memory (session-based, 6 rules)
+ *  - Proactive alerts: attendance <75%, overdue books
+ *  - Role-based welcome messages (12 roles × 3 languages)
+ *  - Role-based fallback suggestions
+ *  - English KB: 50 entries | Hindi KB: 43 entries | Assamese KB: 43 entries
+ *  - UTF-8 safe via /u regex modifier + mb_strtolower()
+ *  - Conversation logging to chatbot_logs table
  */
 require_once __DIR__ . '/../../includes/db.php';
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/helpers.php';
+require_once __DIR__ . '/../../includes/chatbot_engine.php';
 
-// FIX #3: Role-based access control for chatbot
 require_auth();
-$userId = get_current_user_id();
-$role = get_current_role() ?? 'guest';
+header('Content-Type: application/json');
 
-// Check if user has permission to use chatbot
-$allowedRoles = ['superadmin', 'admin', 'teacher', 'student', 'parent', 'accounts', 'hr', 'canteen', 'conductor', 'driver', 'librarian', 'guest'];
+$userId = get_current_user_id();
+$role   = get_current_role() ?? 'guest';
+
+// Role-based access
+$allowedRoles = ['superadmin','admin','teacher','student','parent','accounts','hr','canteen','conductor','driver','librarian','guest'];
 if (!in_array($role, $allowedRoles)) {
-    header('Content-Type: application/json');
     http_response_code(403);
     echo json_encode(['error' => 'You do not have permission to use the chatbot.']);
     exit;
 }
 
-header('Content-Type: application/json');
-
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     json_response(['error' => 'Method not allowed'], 405);
 }
 
-$data = get_post_json();
-$message = htmlspecialchars(trim($data['message'] ?? ''), ENT_QUOTES, 'UTF-8');
-$language = $data['language'] ?? 'en';
-$startTime = microtime(true);
+$data        = get_post_json();
+$message     = htmlspecialchars(trim($data['message'] ?? ''), ENT_QUOTES, 'UTF-8');
+$language    = in_array($data['language'] ?? 'en', ['en','hi','as']) ? ($data['language'] ?? 'en') : 'en';
+$personality = in_array($data['personality'] ?? 'friendly', ['friendly','formal','funny']) ? ($data['personality'] ?? 'friendly') : 'friendly';
+$startTime   = microtime(true);
 
 if (!$message) {
     json_response(['reply' => 'Please type a message.', 'language' => $language]);
 }
 
-// FIX #3: Use mb_strtolower for UTF-8 safety
-$msg = mb_strtolower($message, 'UTF-8');
-$reply = '';
+// ─── SPELL CORRECTION + SYNONYM EXPANSION (from chatbot_engine.php) ──────────
+$msg    = mb_strtolower($message, 'UTF-8');
+$msg    = chatbot_correct_spelling($msg);
+$msg    = chatbot_expand_synonyms($msg);
+$reply  = '';
 $intent = 'unknown';
+$ctx    = chatbot_get_context((string)$userId);
 
-// FIX #4: Load knowledge base only once (removed duplicate require_once)
-$knowledgeBase = require __DIR__ . '/../../includes/chatbot_knowledge_en.php';
+// ─── LOAD KNOWLEDGE BASES ─────────────────────────────────────────────────
+$knowledgeBaseEn = require __DIR__ . '/../../includes/chatbot_knowledge_en.php';
+$knowledgeBaseHi = require __DIR__ . '/../../includes/chatbot_knowledge_hi.php';
+$knowledgeBaseAs = require __DIR__ . '/../../includes/chatbot_knowledge_as.php';
 
-// Cache knowledge base keywords for faster search
-static $kbKeywords = null;
-if ($kbKeywords === null) {
-    $kbKeywords = [];
-    foreach ($knowledgeBase as $entry) {
-        foreach ($entry['tags'] as $tag) {
-            $kbKeywords[$tag] = true;
-        }
-    }
-}
-
-// Helper function for safe database queries in chatbot
-function chatbot_query($callback)
+// ─── HELPER: DB SAFE QUERY ────────────────────────────────────────────────
+function chatbot_query(callable $callback)
 {
-    try {
-        return $callback();
-    } catch (Exception $e) {
-        error_log("Chatbot DB Error: " . $e->getMessage());
-        return null;
-    }
+    try { return $callback(); }
+    catch (Exception $e) { error_log('Chatbot DB Error: ' . $e->getMessage()); return null; }
 }
 
-// ============================================
-// INTENT DETECTION (50+ intents)
-// All regex patterns now use /u modifier for UTF-8 support (FIX #1)
-// ============================================
+// ─── HELPER: EXTENDED KB SEARCH (matches findHindiExtendedResponse / findAssameseExtendedResponse) ──
+function searchExtendedKB(array $kb, string $msg): ?array
+{
+    $queryTokens = array_filter(preg_split('/\s+/u', $msg), fn($t) => mb_strlen($t, 'UTF-8') > 1);
+    $bestScore   = 0;
+    $bestMatch   = null;
+
+    foreach ($kb as $entry) {
+        $score             = 0;
+        $normalizedTitle   = mb_strtolower($entry['title'],   'UTF-8');
+        $normalizedContent = mb_strtolower($entry['content'], 'UTF-8');
+        $normalizedTags    = array_map(fn($t) => mb_strtolower($t, 'UTF-8'), $entry['tags']);
+        $haystack          = $normalizedTitle . ' ' . $normalizedContent . ' ' . implode(' ', $normalizedTags);
+
+        foreach ($normalizedTags as $tag) {
+            if (!$tag) continue;
+            if (mb_strpos($msg, $tag, 0, 'UTF-8') !== false || mb_strpos($haystack, $msg, 0, 'UTF-8') !== false) {
+                $score += 5;
+            } else {
+                $tagTokens = array_filter(preg_split('/\s+/u', $tag), fn($t) => mb_strlen($t, 'UTF-8') > 1);
+                if (count($tagTokens) > 0 && count(array_filter($tagTokens, fn($t) => mb_strpos($msg, $t, 0, 'UTF-8') !== false)) === count($tagTokens)) {
+                    $score += 3;
+                }
+            }
+        }
+
+        foreach ($queryTokens as $token) {
+            if (mb_strpos($haystack, $token, 0, 'UTF-8') !== false) $score += 1;
+        }
+
+        if (mb_strpos($normalizedTitle, $msg, 0, 'UTF-8') !== false) $score += 3;
+        if (mb_strpos($normalizedContent, $msg, 0, 'UTF-8') !== false) $score += 2;
+
+        if ($score > $bestScore) { $bestScore = $score; $bestMatch = $entry; }
+    }
+
+    return ($bestMatch && $bestScore >= 2) ? $bestMatch : null;
+}
+
+// ─── HELPER: CONTEXT SUGGESTIONS (matches getSuggestions()) ───────────────
+function getSuggestionsForIntent(string $intent, string $role): array
+{
+    $map = [
+        'studentAdmission' => ['What documents are needed?', 'Can I edit after submission?'],
+        'admission'        => ['What documents are needed?', 'How long does it take?'],
+        'attendance_today' => ['How do I view reports?', 'Show absent students'],
+        'fee_pending'      => ['How do I download a receipt?', 'Can I apply a discount?'],
+        'fee_collection'   => ['Show fee defaulters', 'How do I print receipt?'],
+        'exams'            => ['How do I enter marks?', 'How do I generate report cards?'],
+        'library'          => ['How do I issue a book?', 'How do I check overdue books?'],
+        'transport'        => ['How do I assign students?', 'How do I view routes?'],
+        'hostel'           => ['What are the room types?', 'How to allocate a room?'],
+        'payroll'          => ['How do I generate payslip?', 'What are deductions?'],
+        'leave'            => ['How many leaves remaining?', 'How do I apply for leave?'],
+        'homework'         => ['How to submit homework?', 'Check pending homework'],
+        'notices'          => ['Show latest notices', 'Who can post notices?'],
+    ];
+    return $map[$intent] ?? ['How to admit a student?', 'Mark attendance', 'Collect fees'];
+}
+
+// ─── HELPER: PERSONALITY GREETING ────────────────────────────────────────
+function getPersonalityGreeting(string $personality, string $language): string
+{
+    $greetings = [
+        'friendly' => ['en' => 'Hello! 👋 How can I help you today?', 'hi' => 'नमस्ते! 👋 मैं आपकी कैसे मदद कर सकता हूँ?', 'as' => 'নমস্কাৰ! 👋 মই আপোনাক কেনেকৈ সহায় কৰিব পাৰোঁ?'],
+        'formal'   => ['en' => 'Good day. How may I assist you with the School ERP system?', 'hi' => 'नमस्कार। मैं ERP प्रणाली के बारे में कैसे सहायता कर सकता हूँ?', 'as' => 'শুভদিন। মই ERP প্ৰণালীৰ বিষয়ে কেনেকৈ সহায় কৰিব পাৰোঁ?'],
+        'funny'    => ['en' => '🤖 School bot online! What chaos can I help you sort out today?', 'hi' => '🤖 स्कूल बॉट तैयार है! बताइए क्या गड़बड़ है?', 'as' => '🤖 স্কুল বট সক্ৰিয়! কি সমস্যা আছে আজি?'],
+    ];
+    return $greetings[$personality][$language] ?? $greetings['friendly']['en'];
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SHORTCUT COMMAND HANDLER (matches chatbotEngine.js handleShortcut())
+// ═══════════════════════════════════════════════════════════════════════════
+if ($message[0] === '/') {
+    $cmd = mb_strtolower(trim($message), 'UTF-8');
+
+    if ($cmd === '/help') {
+        $intent = 'help_shortcut';
+        $help = [
+            'en' => "🤖 **Chatbot Commands**\n\n**Shortcuts:**\n• /help — Show this help\n• /start — Restart with greeting\n• /clear — Clear chat history\n• /lang — Switch language (EN→HI→AS)\n\n**Topic Shortcuts:**\n• /admit — Admission help\n• /attendance — Attendance module\n• /fee — Fee collection\n• /exam — Exam scheduling\n• /library — Library module\n• /hostel — Hostel module\n• /transport — Transport module\n\n**Or just ask naturally!** Try:\n• \"How do I admit a student?\"\n• \"Show pending fees\"\n• \"Today's attendance\"",
+            'hi' => "🤖 **चैटबॉट कमांड**\n\n**शॉर्टकट:**\n• /help — यह सहायता\n• /start — अभिवादन के साथ पुनरारंभ\n• /clear — इतिहास साफ\n• /lang — भाषा बदलें\n\n**विषय शॉर्टकट:**\n• /admit — प्रवेश सहायता\n• /attendance — उपस्थिति\n• /fee — फीस\n• /exam — परीक्षा\n• /library — पुस्तकालय\n• /hostel — छात्रावास\n• /transport — परिवहन",
+            'as' => "🤖 **চৈটবট কমান্ড**\n\n**শ্বৰ্টকাট:**\n• /help — এই সহায়\n• /start — অভিনন্দনেৰে পুনৰ আৰম্ভ\n• /clear — ইতিহাস মচক\n• /lang — ভাষা সলনি কৰক",
+        ];
+        $reply = $help[$language] ?? $help['en'];
+    } elseif ($cmd === '/start') {
+        $intent = 'greeting';
+        $reply  = getPersonalityGreeting($personality, $language);
+    } elseif ($cmd === '/clear') {
+        $intent = 'clear';
+        $clearMsg = ['en' => '🗑️ Conversation cleared. How can I help you?', 'hi' => '🗑️ वार्तालाप साफ़। मैं कैसे मदद करूं?', 'as' => '🗑️ কথোপকথন মচা হ\'ল। কেনেকৈ সহায় কৰিব পাৰোঁ?'];
+        $reply  = $clearMsg[$language] ?? $clearMsg['en'];
+    } elseif ($cmd === '/lang') {
+        $cycle  = ['en' => 'hi', 'hi' => 'as', 'as' => 'en'];
+        $next   = $cycle[$language] ?? 'en';
+        $labels = ['en' => 'English', 'hi' => 'Hindi', 'as' => 'Assamese'];
+        $intent = 'lang_switch';
+        $reply  = "🌐 Language switched to **{$labels[$next]}**. Send your next message in that language.";
+        json_response([
+            'reply'       => $reply,
+            'intent'      => $intent,
+            'language'    => $next,        // signal to JS to update its language state
+            'newLanguage' => $next,
+            'suggestions' => ['Hello', 'Help', 'Show dashboard'],
+            'responseTime'=> round((microtime(true) - $startTime) * 1000, 2),
+            'timestamp'   => date('Y-m-d H:i:s'),
+        ]);
+        exit;
+    } else {
+        // Map /topic shortcuts to corresponding messages to reprocess
+        $shortcutMap = [
+            '/admit'      => 'admission',
+            '/attendance' => 'attendance',
+            '/fee'        => 'fees',
+            '/exam'       => 'exam',
+            '/library'    => 'library',
+            '/hostel'     => 'hostel',
+            '/transport'  => 'transport',
+        ];
+        if (isset($shortcutMap[$cmd])) {
+            // Override message and fall through to intent detection
+            $msg  = $shortcutMap[$cmd];
+            // Continue to normal intent matching below
+            goto intent_detection;
+        }
+        $intent = 'unknown_shortcut';
+        $reply  = "❓ Unknown command. Type **/help** for available commands.";
+    }
+
+    // If shortcut produced a reply, jump to response output
+    if ($reply) goto send_response;
+}
+
+intent_detection:
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INTENT DETECTION — 51+ INTENTS (fixed priority order)
+// All regex use /u modifier for UTF-8 safety; mb_strtolower for case-fold
+// ═══════════════════════════════════════════════════════════════════════════
 
 // 1. GREETING
 if (preg_match('/\b(hi|hello|hey|good morning|good evening|howdy|namaste|नमस्ते|হ্যালো)\b/u', $msg)) {
     $intent = 'greeting';
-    $replies = [
-        'en' => "Hello! 👋 How can I help you today?",
-        'hi' => "नमस्ते! 👋 मैं आपकी कैसे मदद कर सकता हूँ?",
-        'as' => "নমস্কাৰ! 👋 মই আপোনাক কেনেকৈ সহায় কৰিব পাৰোঁ?",
-    ];
-    $reply = $replies[$language] ?? $replies['en'];
+    $reply  = getPersonalityGreeting($personality, $language);
 }
 
 // 2. HELP
 elseif (preg_match('/\b(help|what can you do|commands|options|capabilities)\b/u', $msg)) {
     $intent = 'help';
     $replies = [
-        'en' => "🤖 **I can help with:**\n• Student info & count\n• Fee status & collection\n• Today's attendance\n• Staff information\n• Library status\n• Exams & results\n• Complaints summary\n• Hostel & Transport\n• Leave applications\n• Payroll info\n• Canteen menu\n• Homework & notices\n• School policies\n\nJust ask naturally! 😊",
+        'en' => "🤖 **I can help with:**\n• Student info & count\n• Fee status & collection\n• Today's attendance\n• Staff information\n• Library status\n• Exams & results\n• Complaints summary\n• Hostel & Transport\n• Leave applications\n• Payroll info\n• Canteen menu\n• Homework & notices\n• School policies\n\nType **/help** for shortcuts! 😊",
         'hi' => "🤖 **मैं इनमें मदद कर सकता हूँ:**\n• छात्र जानकारी\n• फीस स्थिति\n• उपस्थिति\n• स्टाफ जानकारी\n• लाइब्रेरी\n• परीक्षा\n• शिकायतें\n• हॉस्टल और ट्रांसपोर्ट\n• छुट्टी\n• पेरोल\n• कैंटीन\n• होमवर्क और नोटिस\n• स्कूल नीतियां",
         'as' => "🤖 **মই সহায় কৰিব পাৰোঁ:**\n• ছাত্ৰৰ তথ্য\n• মাছুল অৱস্থা\n• উপস্থিতি\n• কৰ্মচাৰী তথ্য\n• লাইব্ৰেৰী\n• পৰীক্ষা\n• অভিযোগ\n• হোষ্টেল আৰু পৰিবহণ\n• ছুটি\n• পেৰ'ল\n• কেন্টিন\n• গৃহকাৰ্য আৰু নোটিছ\n• বিদ্যালয় নীতি",
     ];
@@ -104,11 +229,11 @@ elseif (preg_match('/\b(help|what can you do|commands|options|capabilities)\b/u'
 
 // 3. DASHBOARD
 elseif (preg_match('/\b(dashboard|overview|summary|stats)\b/u', $msg)) {
-    $intent = 'dashboard';
+    $intent   = 'dashboard';
     $students = db_count("SELECT COUNT(*) FROM students WHERE is_active = 1");
-    $staff = db_count("SELECT COUNT(*) FROM users WHERE is_active = 1 AND role != 'student'");
-    $classes = db_count("SELECT COUNT(*) FROM classes");
-    $replies = [
+    $staff    = db_count("SELECT COUNT(*) FROM users WHERE is_active = 1 AND role != 'student'");
+    $classes  = db_count("SELECT COUNT(*) FROM classes");
+    $replies  = [
         'en' => "📊 **Dashboard Summary**\n• Students: {$students}\n• Staff: {$staff}\n• Classes: {$classes}\n\nVisit the Dashboard page for detailed charts and trends.",
         'hi' => "📊 **डैशबोर्ड सारांश**\n• छात्र: {$students}\n• स्टाफ: {$staff}\n• कक्षाएँ: {$classes}",
         'as' => "📊 **ডেশ্বব'ৰ্ড সাৰাংশ**\n• ছাত্ৰ: {$students}\n• কৰ্মচাৰী: {$staff}\n• শ্ৰেণী: {$classes}",
@@ -116,19 +241,22 @@ elseif (preg_match('/\b(dashboard|overview|summary|stats)\b/u', $msg)) {
     $reply = $replies[$language] ?? $replies['en'];
 }
 
-// 4-5. STUDENT COUNT/LOOKUP
+// 4. STUDENT COUNT
 elseif (preg_match('/\b(how many|total|count)\s*(students?|pupils)\b/u', $msg)) {
     $intent = 'student_count';
-    $count = db_count("SELECT COUNT(*) FROM students WHERE is_active = 1");
+    $count  = db_count("SELECT COUNT(*) FROM students WHERE is_active = 1");
     $replies = [
         'en' => "📊 There are currently **{$count}** active students enrolled in the school.",
         'hi' => "📊 वर्तमान में स्कूल में **{$count}** सक्रिय छात्र नामांकित हैं।",
         'as' => "📊 বৰ্তমান বিদ্যালয়ত **{$count}** জন সক্ৰিয় ছাত্ৰ নামভুক্ত কৰিছে।",
     ];
     $reply = $replies[$language] ?? $replies['en'];
-} elseif (preg_match('/\b(student.*named?|find student|search student|who is|tell me about)\b/u', $msg, $matches)) {
-    $intent = 'student_lookup';
-    $name = preg_replace('/.*(?:named?|student|who is|tell me about)\s+/iu', '', $message);
+}
+
+// 5. STUDENT LOOKUP
+elseif (preg_match('/\b(student.*named?|find student|search student|who is|tell me about)\b/u', $msg)) {
+    $intent  = 'student_lookup';
+    $name    = preg_replace('/.*(?:named?|student|who is|tell me about)\s+/iu', '', $message);
     $student = db_fetch("SELECT s.*, c.name as class_name FROM students s LEFT JOIN classes c ON s.class_id = c.id WHERE s.name LIKE ? AND s.is_active = 1 LIMIT 1", ["%$name%"]);
     if ($student) {
         $replies = [
@@ -136,49 +264,48 @@ elseif (preg_match('/\b(how many|total|count)\s*(students?|pupils)\b/u', $msg)) 
             'hi' => "👨‍🎓 **{$student['name']}**\n• कक्षा: {$student['class_name']}\n• प्रवेश क्रमांक: {$student['admission_no']}\n• अभिभावक: {$student['parent_name']}\n• फ़ोन: {$student['phone']}",
             'as' => "👨‍🎓 **{$student['name']}**\n• শ্ৰেণী: {$student['class_name']}\n• প্ৰৱেশ নং: {$student['admission_no']}\n• সংৰক্ষক: {$student['parent_name']}\n• ফোন: {$student['phone']}",
         ];
-        $reply = $replies[$language] ?? $replies['en'];
     } else {
         $replies = [
             'en' => "❌ I couldn't find a student named '$name'. Please check the spelling.",
             'hi' => "❌ मुझे '$name' नाम का छात्र नहीं मिला। कृपया वर्तनी जांचें।",
             'as' => "❌ মই '$name' নামৰ ছাত্ৰ বিচাৰি নাপালোঁ। অনুগ্ৰহ কৰি বানান পৰীক্ষা কৰক।",
         ];
-        $reply = $replies[$language] ?? $replies['en'];
     }
+    $reply = $replies[$language] ?? $replies['en'];
 }
 
+// 6. WALLET BALANCE
+elseif (preg_match('/\b(wallet|balance|recharge)\b/u', $msg)) {
+    $intent  = 'wallet';
+    $replies = [
+        'en' => "💳 **Wallet Info**\n• Recharge at canteen counter in multiples of ₹100\n• Min: ₹100, Max: ₹2000\n• Lost card replacement: ₹50\n\nVisit Canteen module for your balance.",
+        'hi' => "💳 **वॉलेट जानकारी**\n• ₹100 के गुणकों में रिचार्ज करें\n• न्यूनतम: ₹100, अधिकतम: ₹2000",
+        'as' => "💳 **ৱালেট তথ্য**\n• ₹100 গুণকত ৰিচাৰ্জ কৰক\n• ন্যূনতম: ₹100, সৰ্বাধিক: ₹2000",
+    ];
+    $reply = $replies[$language] ?? $replies['en'];
+}
 
-
-// 7. FEE STATUS (Role-based filtering - FIX #2)
+// 7. FEE PENDING (role-based)
 elseif (preg_match('/\b(fee.*pending|pending.*fee|due|unpaid|defaulter)\b/u', $msg)) {
     $intent = 'fee_pending';
-
-    // FIX #2: Role-based data access
-    if (in_array($role, ['student', 'parent'])) {
-        // Students/parents only see their own fee status
+    if (in_array($role, ['student','parent'])) {
         if ($role === 'student') {
-            $student = db_fetch("SELECT id FROM students WHERE user_id = ?", [$userId]);
+            $student   = db_fetch("SELECT id FROM students WHERE user_id = ?", [$userId]);
             $studentId = $student['id'] ?? null;
         } else {
-            $students = db_fetchAll("SELECT id FROM students WHERE parent_user_id = ?", [$userId]);
+            $students  = db_fetchAll("SELECT id FROM students WHERE parent_user_id = ?", [$userId]);
             $studentId = $students ? array_column($students, 'id') : null;
         }
-
         if ($studentId) {
             $placeholder = is_array($studentId) ? implode(',', array_fill(0, count($studentId), '?')) : '?';
-            $params = is_array($studentId) ? $studentId : [$studentId];
-            $count = db_count("SELECT COUNT(*) FROM fees WHERE balance_amount > 0 AND student_id IN ($placeholder)", $params);
+            $params      = is_array($studentId) ? $studentId : [$studentId];
+            $count  = db_count("SELECT COUNT(*) FROM fees WHERE balance_amount > 0 AND student_id IN ($placeholder)", $params);
             $amount = db_fetch("SELECT COALESCE(SUM(balance_amount),0) as total FROM fees WHERE balance_amount > 0 AND student_id IN ($placeholder)", $params)['total'];
-        } else {
-            $count = 0;
-            $amount = 0;
-        }
+        } else { $count = 0; $amount = 0; }
     } else {
-        // Admin/staff can see all fees
-        $count = db_count("SELECT COUNT(*) FROM fees WHERE balance_amount > 0");
+        $count  = db_count("SELECT COUNT(*) FROM fees WHERE balance_amount > 0");
         $amount = db_fetch("SELECT COALESCE(SUM(balance_amount),0) as total FROM fees WHERE balance_amount > 0")['total'];
     }
-
     $replies = [
         'en' => "💰 **Pending Fees**\n• {$count} students have pending dues\n• Total pending: ₹" . number_format($amount) . "\n\nVisit the Fee module for details.",
         'hi' => "💰 **बकाया फीस**\n• {$count} छात्रों के बकाया हैं\n• कुल बकाया: ₹" . number_format($amount),
@@ -190,8 +317,8 @@ elseif (preg_match('/\b(fee.*pending|pending.*fee|due|unpaid|defaulter)\b/u', $m
 // 8. FEE COLLECTION
 elseif (preg_match('/\b(fee.*collect|collection.*fee|fee.*today|fee.*month)\b/u', $msg)) {
     $intent = 'fee_collection';
-    $today = db_fetch("SELECT COALESCE(SUM(amount_paid),0) as total FROM fees WHERE DATE(paid_date) = CURDATE()")['total'];
-    $month = db_fetch("SELECT COALESCE(SUM(amount_paid),0) as total FROM fees WHERE MONTH(paid_date)=MONTH(NOW()) AND YEAR(paid_date)=YEAR(NOW())")['total'];
+    $today  = db_fetch("SELECT COALESCE(SUM(amount_paid),0) as total FROM fees WHERE DATE(paid_date) = CURDATE()")['total'];
+    $month  = db_fetch("SELECT COALESCE(SUM(amount_paid),0) as total FROM fees WHERE MONTH(paid_date)=MONTH(NOW()) AND YEAR(paid_date)=YEAR(NOW())")['total'];
     $replies = [
         'en' => "💰 **Fee Collection**\n• Collected Today: ₹" . number_format($today) . "\n• Collected This Month: ₹" . number_format($month),
         'hi' => "💰 **फीस संग्रह**\n• आज संग्रहित: ₹" . number_format($today) . "\n• इस माह संग्रहित: ₹" . number_format($month),
@@ -202,9 +329,9 @@ elseif (preg_match('/\b(fee.*collect|collection.*fee|fee.*today|fee.*month)\b/u'
 
 // 9. ATTENDANCE TODAY
 elseif (preg_match('/\b(attendance|present|absent)\s*today\b/u', $msg)) {
-    $intent = 'attendance_today';
+    $intent  = 'attendance_today';
     $present = db_count("SELECT COUNT(*) FROM attendance WHERE date = CURDATE() AND status = 'present'");
-    $absent = db_count("SELECT COUNT(*) FROM attendance WHERE date = CURDATE() AND status = 'absent'");
+    $absent  = db_count("SELECT COUNT(*) FROM attendance WHERE date = CURDATE() AND status = 'absent'");
     $replies = [
         'en' => "✅ **Today's Attendance**\n• Present: {$present}\n• Absent: {$absent}\n\nFor detailed attendance, go to the Attendance module.",
         'hi' => "✅ **आज की उपस्थिति**\n• उपस्थित: {$present}\n• अनुपस्थित: {$absent}",
@@ -215,10 +342,10 @@ elseif (preg_match('/\b(attendance|present|absent)\s*today\b/u', $msg)) {
 
 // 10. STAFF COUNT
 elseif (preg_match('/\b(how many|total|count)\s*(staff|teachers?|employees?)\b/u', $msg)) {
-    $intent = 'staff_count';
+    $intent   = 'staff_count';
     $teachers = db_count("SELECT COUNT(*) FROM users WHERE role = 'teacher' AND is_active = 1");
-    $total = db_count("SELECT COUNT(*) FROM users WHERE is_active = 1 AND role != 'student'");
-    $replies = [
+    $total    = db_count("SELECT COUNT(*) FROM users WHERE is_active = 1 AND role != 'student'");
+    $replies  = [
         'en' => "👔 **Staff Summary**\n• Teachers: {$teachers}\n• Total Staff: {$total}",
         'hi' => "👔 **स्टाफ सारांश**\n• शिक्षक: {$teachers}\n• कुल स्टाफ: {$total}",
         'as' => "👔 **কৰ্মচাৰী সাৰাংশ**\n• শিক্ষক: {$teachers}\n• মুঠ কৰ্মচাৰী: {$total}",
@@ -228,37 +355,31 @@ elseif (preg_match('/\b(how many|total|count)\s*(staff|teachers?|employees?)\b/u
 
 // 11. LIBRARY STATUS
 elseif (preg_match('/\b(library|books?|borrow|return|overdue)\b/u', $msg)) {
-    $intent = 'library';
-    $total = db_count("SELECT COUNT(*) FROM library_books");
-    $issued = db_count("SELECT COUNT(*) FROM library_issues WHERE is_returned = 0");
+    $intent  = 'library';
+    $total   = db_count("SELECT COUNT(*) FROM library_books");
+    $issued  = db_count("SELECT COUNT(*) FROM library_issues WHERE is_returned = 0");
     $overdue = db_count("SELECT COUNT(*) FROM library_issues WHERE is_returned = 0 AND due_date < CURDATE()");
     $replies = [
-        'en' => "📚 **Library Status**\n• Total Books: {$total}\n• Currently Issued: {$issued}\n• Overdue: {$overdue}\n\nFine: ₹5/day for overdue books.",
-        'hi' => "📚 **लाइब्रेरी स्थिति**\n• कुल किताबें: {$total}\n• जारी: {$issued}\n• ओवरड्यू: {$overdue}\n\nजुर्माना: ₹5/दिन",
-        'as' => "📚 **লাইব্ৰেৰী অৱস্থা**\n• মুঠ কিতাপ: {$total}\n• ইস্যু হোৱা: {$issued}\n• অতিথি: {$overdue}\n\nজৰিমনা: ₹5/দিন",
+        'en' => "📚 **Library Status**\n• Total Books: {$total}\n• Currently Issued: {$issued}\n• Overdue: {$overdue}\n\nFine: ₹2/day for overdue books.",
+        'hi' => "📚 **लाइब्रेरी स्थिति**\n• कुल किताबें: {$total}\n• जारी: {$issued}\n• ओवरड्यू: {$overdue}\n\nजुर्माना: ₹2/दिन",
+        'as' => "📚 **লাইব্ৰেৰী অৱস্থা**\n• মুঠ কিতাপ: {$total}\n• ইস্যু হোৱা: {$issued}\n• অৱকাশ: {$overdue}\n\nজৰিমনা: ₹2/দিন",
     ];
     $reply = $replies[$language] ?? $replies['en'];
 }
 
-// 12. COMPLAINTS (FIX #2: Role-based filtering)
+// 12. COMPLAINTS (role-based)
 elseif (preg_match('/\b(complaint|grievance)\b/u', $msg)) {
     $intent = 'complaints';
-
-    // FIX #2: Only show complaints relevant to the user's role
-    if (in_array($role, ['student', 'parent'])) {
-        // Students/parents see only their own complaints
-        $pending = db_count("SELECT COUNT(*) FROM complaints WHERE (user_id = ? OR student_id IN (SELECT id FROM students WHERE user_id = ? OR parent_user_id = ?)) AND status = 'pending'", [$userId, $userId, $userId]);
-        $resolved = db_count("SELECT COUNT(*) FROM complaints WHERE (user_id = ? OR student_id IN (SELECT id FROM students WHERE user_id = ? OR parent_user_id = ?)) AND status = 'resolved'", [$userId, $userId, $userId]);
+    if (in_array($role, ['student','parent'])) {
+        $pending  = db_count("SELECT COUNT(*) FROM complaints WHERE (user_id = ? OR student_id IN (SELECT id FROM students WHERE user_id = ? OR parent_user_id = ?)) AND status = 'pending'", [$userId,$userId,$userId]);
+        $resolved = db_count("SELECT COUNT(*) FROM complaints WHERE (user_id = ? OR student_id IN (SELECT id FROM students WHERE user_id = ? OR parent_user_id = ?)) AND status = 'resolved'", [$userId,$userId,$userId]);
     } elseif ($role === 'teacher') {
-        // Teachers see complaints assigned to them
-        $pending = db_count("SELECT COUNT(*) FROM complaints WHERE assigned_to = ? AND status = 'pending'", [$userId]);
+        $pending  = db_count("SELECT COUNT(*) FROM complaints WHERE assigned_to = ? AND status = 'pending'", [$userId]);
         $resolved = db_count("SELECT COUNT(*) FROM complaints WHERE assigned_to = ? AND status = 'resolved'", [$userId]);
     } else {
-        // Admin/HR see all complaints
-        $pending = db_count("SELECT COUNT(*) FROM complaints WHERE status = 'pending'");
+        $pending  = db_count("SELECT COUNT(*) FROM complaints WHERE status = 'pending'");
         $resolved = db_count("SELECT COUNT(*) FROM complaints WHERE status = 'resolved'");
     }
-
     $replies = [
         'en' => "📣 **Complaints Summary**\n• Pending: {$pending}\n• Resolved: {$resolved}\n\nVisit the Complaints module to take action.",
         'hi' => "📣 **शिकायत सारांश**\n• लंबित: {$pending}\n• हल: {$resolved}",
@@ -269,14 +390,16 @@ elseif (preg_match('/\b(complaint|grievance)\b/u', $msg)) {
 
 // 13. CLASSES
 elseif (preg_match('/\b(class|section|grade)\b/u', $msg)) {
-    $intent = 'classes';
+    $intent  = 'classes';
     $classes = db_fetchAll("SELECT c.name, COUNT(s.id) as student_count FROM classes c LEFT JOIN students s ON s.class_id = c.id AND s.is_active = 1 GROUP BY c.id, c.name ORDER BY c.name LIMIT 10");
     if ($classes) {
-        $list = array_map(fn($c) => "• {$c['name']}: {$c['student_count']} students", $classes);
+        $list    = array_map(fn($c) => "• {$c['name']}: {$c['student_count']} students", $classes);
+        $listHi  = array_map(fn($c) => "• {$c['name']}: {$c['student_count']} छात्र", $classes);
+        $listAs  = array_map(fn($c) => "• {$c['name']}: {$c['student_count']} ছাত্ৰ", $classes);
         $replies = [
             'en' => "🏫 **Classes & Strength**\n" . implode("\n", $list),
-            'hi' => "🏫 **कक्षाएँ और क्षमता**\n" . implode("\n", array_map(fn($c) => "• {$c['name']}: {$c['student_count']} छात्र", $classes)),
-            'as' => "🏫 **শ্ৰেণী আৰু শক্তি**\n" . implode("\n", array_map(fn($c) => "• {$c['name']}: {$c['student_count']} ছাত্ৰ", $classes)),
+            'hi' => "🏫 **कक्षाएँ और क्षमता**\n" . implode("\n", $listHi),
+            'as' => "🏫 **শ্ৰেণী আৰু শক্তি**\n" . implode("\n", $listAs),
         ];
         $reply = $replies[$language] ?? $replies['en'];
     }
@@ -284,10 +407,10 @@ elseif (preg_match('/\b(class|section|grade)\b/u', $msg)) {
 
 // 14. HOSTEL
 elseif (preg_match('/\b(hostel|room|accommodation)\b/u', $msg)) {
-    $intent = 'hostel';
-    $total = db_count("SELECT COUNT(*) FROM hostel_rooms");
-    $occupied = db_count("SELECT COUNT(*) FROM hostel_allocations WHERE status = 'ACTIVE'");
-    $replies = [
+    $intent   = 'hostel';
+    $total    = db_count("SELECT COUNT(*) FROM hostel_rooms WHERE is_active=1");
+    $occupied = db_count("SELECT COUNT(*) FROM hostel_allocations WHERE is_active=1");
+    $replies  = [
         'en' => "🏠 **Hostel Status**\n• Total Rooms: {$total}\n• Occupied Beds: {$occupied}",
         'hi' => "🏠 **हॉस्टल स्थिति**\n• कुल कमरे: {$total}\n• भरे बेड: {$occupied}",
         'as' => "🏠 **হোষ্টেল অৱস্থা**\n• মুঠ কোঠা: {$total}\n• ভৰ্তি বিছনা: {$occupied}",
@@ -297,9 +420,9 @@ elseif (preg_match('/\b(hostel|room|accommodation)\b/u', $msg)) {
 
 // 15. TRANSPORT
 elseif (preg_match('/\b(transport|bus|route|vehicle)\b/u', $msg)) {
-    $intent = 'transport';
-    $buses = db_count("SELECT COUNT(*) FROM transport_vehicles WHERE is_active = 1");
-    $routes = db_count("SELECT COUNT(*) FROM bus_routes");
+    $intent  = 'transport';
+    $buses   = db_count("SELECT COUNT(*) FROM transport_vehicles WHERE is_active = 1");
+    $routes  = db_count("SELECT COUNT(*) FROM bus_routes");
     $replies = [
         'en' => "🚌 **Transport Summary**\n• Total Buses: {$buses}\n• Active Routes: {$routes}\n\nVisit Transport module for route details.",
         'hi' => "🚌 **ट्रांसपोर्ट सारांश**\n• कुल बसें: {$buses}\n• सक्रिय रूट: {$routes}",
@@ -310,10 +433,10 @@ elseif (preg_match('/\b(transport|bus|route|vehicle)\b/u', $msg)) {
 
 // 16. EXAMS
 elseif (preg_match('/\b(exam|result|marks|test)\b/u', $msg)) {
-    $intent = 'exams';
+    $intent   = 'exams';
     $upcoming = db_count("SELECT COUNT(*) FROM exams WHERE exam_date >= CURDATE()");
-    $past = db_count("SELECT COUNT(*) FROM exams WHERE exam_date < CURDATE()");
-    $replies = [
+    $past     = db_count("SELECT COUNT(*) FROM exams WHERE exam_date < CURDATE()");
+    $replies  = [
         'en' => "📝 **Exams Summary**\n• Upcoming: {$upcoming}\n• Completed: {$past}\n\nVisit Exams module for full details.",
         'hi' => "📝 **परीक्षा सारांश**\n• आगामी: {$upcoming}\n• पूर्ण: {$past}",
         'as' => "📝 **পৰীক্ষা সাৰাংশ**\n• আগত: {$upcoming}\n• সম্পন্ন: {$past}",
@@ -321,27 +444,19 @@ elseif (preg_match('/\b(exam|result|marks|test)\b/u', $msg)) {
     $reply = $replies[$language] ?? $replies['en'];
 }
 
-// 17. LEAVE APPLICATIONS (FIX #2: Role-based filtering)
+// 17. LEAVE (role-based)
 elseif (preg_match('/\b(leave|absent request|leave application)\b/u', $msg)) {
     $intent = 'leave';
-
-    // FIX #2: Show only user's own leave balance
-    if (in_array($role, ['student', 'parent'])) {
-        $pending = 0;
+    if (in_array($role, ['student','parent'])) {
         $replies = [
             'en' => "📅 **Leave Applications**\n• Leave requests are for staff only.\n\nStudents should contact the school office for absence notifications.",
             'hi' => "📅 **छुट्टी आवेदन**\n• छुट्टी अनुरोध केवल कर्मचारियों के लिए हैं।",
             'as' => "📅 **ছুটিৰ আবেদন**\n• ছুটিৰ অনুৰোধ কেৱল কৰ্মচাৰীসকলৰ বাবে।",
         ];
     } else {
-        // Staff can see their own pending leaves
-        $pending = db_count("SELECT COUNT(*) FROM leave_applications WHERE applicant_id = ? AND status = 'pending'", [$userId]);
-
-        if (in_array($role, ['admin', 'superadmin', 'hr'])) {
-            // HR/Admin see all pending leaves
-            $pending = db_count("SELECT COUNT(*) FROM leave_applications WHERE status = 'pending'");
-        }
-
+        $pending = in_array($role, ['admin','superadmin','hr'])
+            ? db_count("SELECT COUNT(*) FROM leave_applications WHERE status = 'pending'")
+            : db_count("SELECT COUNT(*) FROM leave_applications WHERE applicant_id = ? AND status = 'pending'", [$userId]);
         $replies = [
             'en' => "📅 **Leave Applications**\n• Pending Approvals: {$pending}\n\nVisit the Leave module to approve or reject.",
             'hi' => "📅 **छुट्टी आवेदन**\n• लंबित अनुमोदन: {$pending}",
@@ -353,10 +468,10 @@ elseif (preg_match('/\b(leave|absent request|leave application)\b/u', $msg)) {
 
 // 18. HOMEWORK
 elseif (preg_match('/\b(homework|assignment)\b/u', $msg)) {
-    $intent = 'homework';
+    $intent  = 'homework';
     $pending = db_count("SELECT COUNT(*) FROM homework WHERE due_date >= CURDATE()");
     $replies = [
-        'en' => "📚 **Homework Status**\n• Active Assignments: {$pending}\n\nHomework must be submitted by due date. Late submissions may receive reduced marks.",
+        'en' => "📚 **Homework Status**\n• Active Assignments: {$pending}\n\nSubmit by due date. Late submissions may receive reduced marks.",
         'hi' => "📚 **होमवर्क स्थिति**\n• सक्रिय असाइनमेंट: {$pending}",
         'as' => "📚 **গৃহকাৰ্য অৱস্থা**\n• সক্ৰিয় এসাইনমেণ্ট: {$pending}",
     ];
@@ -365,44 +480,41 @@ elseif (preg_match('/\b(homework|assignment)\b/u', $msg)) {
 
 // 19. NOTICES
 elseif (preg_match('/\b(notice|announcement|circular)\b/u', $msg)) {
-    $intent = 'notices';
-    $recent = db_fetchAll("SELECT title, priority, created_at FROM notices WHERE is_active = 1 ORDER BY created_at DESC LIMIT 5");
+    $intent  = 'notices';
+    $recent  = db_fetchAll("SELECT title, priority, created_at FROM notices WHERE is_active = 1 ORDER BY created_at DESC LIMIT 5");
     if ($recent) {
-        $list = array_map(fn($n) => "• {$n['title']} ({$n['priority']})", $recent);
+        $list    = array_map(fn($n) => "• {$n['title']} ({$n['priority']})", $recent);
         $replies = [
             'en' => "📢 **Recent Notices**\n" . implode("\n", $list) . "\n\nVisit Notices module for full details.",
             'hi' => "📢 **हाल के नोटिस**\n" . implode("\n", $list),
             'as' => "📢 **শেহতীয়া নোটিছ**\n" . implode("\n", $list),
         ];
-        $reply = $replies[$language] ?? $replies['en'];
     } else {
         $replies = [
             'en' => "📢 No active notices at the moment.",
             'hi' => "📢 वर्तमान में कोई सक्रिय नोटिस नहीं है।",
             'as' => "📢 বৰ্তমান কোনো সক্ৰিয় নোটিছ নাই।",
         ];
-        $reply = $replies[$language] ?? $replies['en'];
     }
+    $reply = $replies[$language] ?? $replies['en'];
 }
 
-// 20. PAYROLL (FIX #2: Role-based filtering)
+// 20. PAYROLL (role-based)
 elseif (preg_match('/\b(payroll|salary|wages)\b/u', $msg)) {
     $intent = 'payroll';
-
-    // FIX #2: Only staff can see payroll info
-    if (in_array($role, ['student', 'parent'])) {
+    if (in_array($role, ['student','parent'])) {
         $replies = [
             'en' => "💼 **Payroll Information**\n• Payroll details are only available for staff members.\n\nPlease contact the accounts office for fee-related queries.",
             'hi' => "💼 **पेरोल जानकारी**\n• पेरोल विवरण केवल कर्मचारियों के लिए उपलब्ध हैं।",
-            'as' => "💼 **পেৰ\'ল তথ্য**\n• পেৰ\'ল বিৱৰণ কেৱল কৰ্মচাৰীসকলৰ বাবে উপলব্ধ।",
+            'as' => "💼 **পেৰ'ল তথ্য**\n• পেৰ'ল বিৱৰণ কেৱল কৰ্মচাৰীসকলৰ বাবে উপলব্ধ।",
         ];
     } else {
-        $total = db_fetch("SELECT COALESCE(SUM(net_pay),0) as total FROM payroll WHERE month = MONTH(CURDATE()) AND year = YEAR(CURDATE())")['total'];
-        $count = db_count("SELECT COUNT(*) FROM payroll WHERE month = MONTH(CURDATE()) AND year = YEAR(CURDATE())");
+        $total   = db_fetch("SELECT COALESCE(SUM(net_pay),0) as total FROM payroll WHERE month = MONTH(CURDATE()) AND year = YEAR(CURDATE())")['total'];
+        $count   = db_count("SELECT COUNT(*) FROM payroll WHERE month = MONTH(CURDATE()) AND year = YEAR(CURDATE())");
         $replies = [
             'en' => "💼 **Payroll Summary**\n• Processed This Month: {$count}\n• Total Amount: ₹" . number_format($total),
             'hi' => "💼 **पेरोल सारांश**\n• इस माह प्रक्रिया: {$count}\n• कुल राशि: ₹" . number_format($total),
-            'as' => "💼 **পেৰ\'ল সাৰাংশ**\n• এই মাহত প্ৰক্ৰিয়া: {$count}\n• মুঠ পৰিমাণ: ₹" . number_format($total),
+            'as' => "💼 **পেৰ'ল সাৰাংশ**\n• এই মাহত প্ৰক্ৰিয়া: {$count}\n• মুঠ পৰিমাণ: ₹" . number_format($total),
         ];
     }
     $reply = $replies[$language] ?? $replies['en'];
@@ -410,8 +522,8 @@ elseif (preg_match('/\b(payroll|salary|wages)\b/u', $msg)) {
 
 // 21. CANTEEN
 elseif (preg_match('/\b(canteen|menu|food|snack)\b/u', $msg)) {
-    $intent = 'canteen';
-    $items = db_count("SELECT COUNT(*) FROM canteen_items WHERE is_available = 1");
+    $intent  = 'canteen';
+    $items   = db_count("SELECT COUNT(*) FROM canteen_items WHERE is_available = 1");
     $replies = [
         'en' => "🍔 **Canteen Status**\n• Available Items: {$items}\n\nVisit the Canteen module for menu and pricing. Payment via cash or RFID wallet.",
         'hi' => "🍔 **कैंटीन स्थिति**\n• उपलब्ध आइटम: {$items}",
@@ -420,49 +532,9 @@ elseif (preg_match('/\b(canteen|menu|food|snack)\b/u', $msg)) {
     $reply = $replies[$language] ?? $replies['en'];
 }
 
-// 22-35. KNOWLEDGE BASE SEARCH (OPTIMIZED - FIX #6)
-elseif (strlen($msg) > 10) {
-    // OPTIMIZED: Use pre-cached keywords instead of full loop
-    $matchedEntries = [];
-    foreach ($knowledgeBase as $entry) {
-        $score = 0;
-        foreach ($entry['tags'] as $tag) {
-            if (mb_strpos($msg, mb_strtolower($tag, 'UTF-8')) !== false) {
-                $score += 2;
-            }
-        }
-        if (mb_strpos(mb_strtolower($entry['title'], 'UTF-8'), $msg) !== false)
-            $score += 5;
-        if (mb_strpos(mb_strtolower($entry['content'], 'UTF-8'), $msg) !== false)
-            $score += 1;
-
-        if ($score >= 2) {
-            $matchedEntries[] = ['entry' => $entry, 'score' => $score];
-        }
-    }
-
-    if (!empty($matchedEntries)) {
-        usort($matchedEntries, fn($a, $b) => $b['score'] - $a['score']);
-        $bestMatch = $matchedEntries[0]['entry'];
-        $intent = 'knowledge_base';
-        $reply = "📖 **{$bestMatch['title']}**\n\n{$bestMatch['content']}";
-    }
-}
-
-// 36. WALLET BALANCE
-elseif (preg_match('/\b(wallet|balance|recharge)\b/u', $msg)) {
-    $intent = 'wallet';
-    $replies = [
-        'en' => "💳 **Wallet Info**\n• Recharge at canteen counter in multiples of ₹100\n• Min: ₹100, Max: ₹2000\n• Lost card replacement: ₹50\n\nVisit Canteen module for your balance.",
-        'hi' => "💳 **वॉलेट जानकारी**\n• ₹100 के गुणकों में रिचार्ज करें\n• न्यूनतम: ₹100, अधिकतम: ₹2000",
-        'as' => "💳 **ৱালেট তথ্য**\n• ₹100 গুণকত ৰিচাৰ্জ কৰক\n• ন্যূনতম: ₹100, সৰ্বাধিক: ₹2000",
-    ];
-    $reply = $replies[$language] ?? $replies['en'];
-}
-
-// 37. SCHOOL HOURS
-elseif (preg_match('/\b(school hours?|timings?|time|open|close)\b/u', $msg)) {
-    $intent = 'school_hours';
+// 22. SCHOOL HOURS
+elseif (preg_match('/\b(school hours?|timings?|what time|open|close)\b/u', $msg)) {
+    $intent  = 'school_hours';
     $replies = [
         'en' => "🕐 **School Hours**\n• Monday-Friday: 8:00 AM - 3:00 PM\n• Saturday: 8:00 AM - 12:00 PM\n• Assembly: 7:50 AM\n• Lunch: 12:00-12:30 PM",
         'hi' => "🕐 **स्कूल समय**\n• सोमवार-शुक्रवार: 8:00 AM - 3:00 PM\n• शनिवार: 8:00 AM - 12:00 PM",
@@ -471,9 +543,9 @@ elseif (preg_match('/\b(school hours?|timings?|time|open|close)\b/u', $msg)) {
     $reply = $replies[$language] ?? $replies['en'];
 }
 
-// 38. HOLIDAYS
+// 23. HOLIDAYS
 elseif (preg_match('/\b(holiday|vacation|break|closed)\b/u', $msg)) {
-    $intent = 'holidays';
+    $intent  = 'holidays';
     $replies = [
         'en' => "🏖️ **School Holidays**\n• Summer: May-June\n• Diwali: October\n• Winter: December-January\n\nFull calendar published at start of academic year.",
         'hi' => "🏖️ **स्कूल छुट्टियां**\n• गर्मी: मई-जून\n• दिवाली: अक्टूबर\n• सर्दी: दिसंबर-जनवरी",
@@ -482,9 +554,9 @@ elseif (preg_match('/\b(holiday|vacation|break|closed)\b/u', $msg)) {
     $reply = $replies[$language] ?? $replies['en'];
 }
 
-// 39. UNIFORM
+// 24. UNIFORM
 elseif (preg_match('/\b(uniform|dress code|dresscode)\b/u', $msg)) {
-    $intent = 'uniform';
+    $intent  = 'uniform';
     $replies = [
         'en' => "👔 **Uniform Policy**\n• Summer: Light blue shirt/salwar, dark blue pants/skirt\n• Winter: Grey sweater with regular uniform\n• Sports uniform on PT days\n• Black shoes mandatory\n• Name badge must be worn",
         'hi' => "👔 **वर्दी नीति**\n• गर्मी: हल्का नीला शर्ट/सलवार, गहरा नीला पैंट/स्कर्ट\n• सर्दी: ग्रे स्वेटर",
@@ -493,9 +565,9 @@ elseif (preg_match('/\b(uniform|dress code|dresscode)\b/u', $msg)) {
     $reply = $replies[$language] ?? $replies['en'];
 }
 
-// 40. ADMISSION
+// 25. ADMISSION
 elseif (preg_match('/\b(admission|admit|enroll|new student)\b/u', $msg)) {
-    $intent = 'admission';
+    $intent  = 'admission';
     $replies = [
         'en' => "📝 **Admission Process**\n1. Fill online admission form\n2. Submit documents (Birth cert, Aadhaar, photos)\n3. Take entrance exam\n4. Interview (if selected)\n5. Admission confirmation\n\nEntrance exam: English, Maths, GK",
         'hi' => "📝 **प्रवेश प्रक्रिया**\n1. ऑनलाइन फॉर्म भरें\n2. दस्तावेज़ जमा करें\n3. प्रवेश परीक्षा दें\n4. साक्षात्कार\n5. प्रवेश पुष्टि",
@@ -504,20 +576,20 @@ elseif (preg_match('/\b(admission|admit|enroll|new student)\b/u', $msg)) {
     $reply = $replies[$language] ?? $replies['en'];
 }
 
-// 41. TRANSFER CERTIFICATE
+// 26. TRANSFER CERTIFICATE
 elseif (preg_match('/\b(transfer certificate|tc|withdraw|leave school)\b/u', $msg)) {
-    $intent = 'tc';
+    $intent  = 'tc';
     $replies = [
         'en' => "📄 **Transfer Certificate Process**\n• Requirements: No pending dues, library books returned\n• Processing time: 7-15 working days\n• TC fee: ₹500\n• Apply through school office\n• TC available as PDF download",
         'hi' => "📄 **स्थानांतरण प्रमाणपत्र प्रक्रिया**\n• कोई बकाया नहीं, किताबें वापस\n• प्रक्रिया समय: 7-15 कार्य दिवस\n• शुल्क: ₹500",
-        'as' => "📄 **স্থানান্তৰ প্ৰমাণপত্ৰ প্ৰক্ৰিয়া**\n• কোনো বকেয়া নাই, কিতাপ ঘূৰাই দিয়ক\n• প্ৰক্ৰিয়া সময়: 7-15 কৰ্ম দিৱস\n• মাছুল: ₹500",
+        'as' => "📄 **স্থানান্তৰ প্ৰমাণপত্ৰ প্ৰক্ৰিয়া**\n• কোনো বকেয়া নাই, কিতাপ ঘূৰাই দিয়ক\n• প্ৰক্ৰিয়া সময়: 7-15 কৰ্ম দিৱস",
     ];
     $reply = $replies[$language] ?? $replies['en'];
 }
 
-// 42. GRADING SYSTEM
-elseif (preg_match('/\b(grading|grade|marks|percentage|pass|fail)\b/u', $msg)) {
-    $intent = 'grading';
+// 27. GRADING
+elseif (preg_match('/\b(grading|grade|percentage|pass|fail)\b/u', $msg)) {
+    $intent  = 'grading';
     $replies = [
         'en' => "📊 **Grading System**\n• A+ (90-100%), A (80-89%), B+ (70-79%)\n• B (60-69%), C (50-59%), D (40-49%)\n• E (33-39%), F (Below 33%)\n• Minimum passing: 33%\n• Report cards available as PDF",
         'hi' => "📊 **ग्रेडिंग प्रणाली**\n• A+ (90-100%), A (80-89%), B+ (70-79%)\n• न्यूनतम पास: 33%",
@@ -526,171 +598,219 @@ elseif (preg_match('/\b(grading|grade|marks|percentage|pass|fail)\b/u', $msg)) {
     $reply = $replies[$language] ?? $replies['en'];
 }
 
-// 43. ANTI-BULLYING
+// 28. ANTI-BULLYING
 elseif (preg_match('/\b(bully|bullying|harass)\b/u', $msg)) {
-    $intent = 'anti_bullying';
+    $intent  = 'anti_bullying';
     $replies = [
         'en' => "⚠️ **Anti-Bullying Policy**\nZero tolerance for bullying. Any form (physical, verbal, cyber) results in strict disciplinary action. Report to any teacher immediately. All complaints investigated within 48 hours. Anonymous reporting available.",
-        'hi' => "⚠️ **एंटी-बुलिंग नीति**\nबुलिंग के लिए शून्य सहिष्णुता। किसी भी रूप में कड़ी अनुशासनात्मक कार्रवाई होगी। किसी भी शिक्षक को तुरंत रिपोर्ट करें।",
-        'as' => "⚠️ **এন্টি-বুলিং নীতি**\nবুলিংৰ বাবে শূন্য সহনশীলতা। যিকোনো ৰূপত কঠোৰ শাস্তিমূলক ব্যৱস্থা গ্ৰহণ কৰা হব। যিকোনো শিক্ষকক লগে লগে ৰিপ'ৰ্ট কৰক।",
+        'hi' => "⚠️ **एंटी-बुलिंग नीति**\nबुलिंग के लिए शून्य सहिष्णुता। किसी भी रूप में कड़ी अनुशासनात्मक कार्रवाई होगी।",
+        'as' => "⚠️ **এন্টি-বুলিং নীতি**\nবুলিংৰ বাবে শূন্য সহনশীলতা। যিকোনো ৰূপত কঠোৰ শাস্তিমূলক ব্যৱস্থা।",
     ];
     $reply = $replies[$language] ?? $replies['en'];
 }
 
-// 44. MOBILE POLICY
+// 29. MOBILE POLICY
 elseif (preg_match('/\b(mobile|phone|cell)\b/u', $msg)) {
-    $intent = 'mobile_policy';
+    $intent  = 'mobile_policy';
     $replies = [
         'en' => "📱 **Mobile Phone Policy**\nMobile phones NOT allowed during class hours. Must be switched off and stored in bags. Emergency calls through school office. Confiscated phones returned to parents only. Smartwatches prohibited during exams.",
-        'hi' => "📱 **मोबाइल फोन नीति**\nकक्षा के दौरान मोबाइल फोन की अनुमति नहीं। बंद करके बैग में रखें। आपातकालीन कॉल स्कूल कार्यालय के माध्यम से।",
-        'as' => "📱 **মোবাইল ফোন নীতি**\nশ্ৰেণীৰ সময়ত মোবাইল ফোনৰ অনুমতি নাই। বন্ধ কৰি বেগত ৰাখক। জৰুৰীকালীন কল বিদ্যালয় কাৰ্যালয়ৰ জৰিয়তে।",
+        'hi' => "📱 **मोबाइल फोन नीति**\nकक्षा के दौरान मोबाइल फोन की अनुमति नहीं। बंद करके बैग में रखें।",
+        'as' => "📱 **মোবাইল ফোন নীতি**\nশ্ৰেণীৰ সময়ত মোবাইল ফোনৰ অনুমতি নাই।",
     ];
     $reply = $replies[$language] ?? $replies['en'];
 }
 
-// 45. EMERGENCY
+// 30. EMERGENCY
 elseif (preg_match('/\b(emergency|urgent|accident|hospital)\b/u', $msg)) {
-    $intent = 'emergency';
+    $intent  = 'emergency';
     $replies = [
         'en' => "🚨 **Emergency Contacts**\n• Principal: School Office\n• Medical Room: Extension 101\n• Transport: Extension 102\n\nIn medical emergency, student taken to nearest hospital. Parents informed immediately.",
-        'hi' => "🚨 **आपातकालीन संपर्क**\n• प्रधानाचार्य: स्कूल कार्यालय\n• चिकित्सा कक्ष: एक्सटेंशन 101\n• परिवहन: एक्सटेंशन 102",
-        'as' => "🚨 **জৰুৰীকালীন যোগাযোগ**\n• অধ্যক্ষ: বিদ্যালয় কাৰ্যালয়\n• চিকিৎসা কোঠা: এক্সটেনশ্যন 101\n• পৰিবহণ: এক্সটেনশ্যন 102",
+        'hi' => "🚨 **आपातकालीन संपर्क**\n• प्रधानाचार्य: स्कूल कार्यालय\n• चिकित्सा कक्ष: एक्सटेंशन 101",
+        'as' => "🚨 **জৰুৰীকালীন যোগাযোগ**\n• অধ্যক্ষ: বিদ্যালয় কাৰ্যালয়\n• চিকিৎসা কোঠা: এক্সটেনশ্যন 101",
     ];
     $reply = $replies[$language] ?? $replies['en'];
 }
 
-// 46. PARENT-TEACHER MEETING
+// 31. PTM
 elseif (preg_match('/\b(ptm|parent.?teacher|meeting)\b/u', $msg)) {
-    $intent = 'ptm';
+    $intent  = 'ptm';
     $replies = [
         'en' => "👨‍👩‍👧 **Parent-Teacher Meeting**\nPTM held once per quarter (every 3 months). Individual meetings can be requested through school office. PTM schedule announced via Notice Board. Please prepare questions in advance.",
-        'hi' => "👨‍👩‍👧 **अभिभावक-शिक्षक बैठक**\nPTM प्रति तिमाही (हर 3 महीने) आयोजित। व्यक्तिगत बैठक स्कूल कार्यालय के माध्यम से अनुरोध की जा सकती है।",
-        'as' => "👨‍👩‍👧 **অভিভাৱক-শিক্ষক সভা**\nPTM প্ৰতি তিনিমহীয়া (প্ৰতি 3 মাহত) অনুষ্ঠিত। ব্যক্তিগত সভা বিদ্যালয় কাৰ্যালয়ৰ জৰিয়তে অনুৰোধ কৰিব পাৰি।",
+        'hi' => "👨‍👩‍👧 **अभिभावक-शिक्षक बैठक**\nPTM प्रति तिमाही आयोजित। व्यक्तिगत बैठक स्कूल कार्यालय से अनुरोध करें।",
+        'as' => "👨‍👩‍👧 **অভিভাৱক-শিক্ষক সভা**\nPTM প্ৰতি তিনিমহীয়া অনুষ্ঠিত।",
     ];
     $reply = $replies[$language] ?? $replies['en'];
 }
 
-// 47. SCHOLARSHIP
+// 32. SCHOLARSHIP
 elseif (preg_match('/\b(scholarship|concession|discount|financial aid)\b/u', $msg)) {
-    $intent = 'scholarship';
+    $intent  = 'scholarship';
     $replies = [
         'en' => "🎓 **Scholarships & Concessions**\n• Merit: 90%+ in previous exams\n• EWS: Income certificate required\n• Sibling: 10% (2nd child), 15% (3rd)\n\nApply to Accounts office with documents.",
-        'hi' => "🎓 **छात्रवृत्ति और रियायतें**\n• मेरिट: पिछली परीक्षाओं में 90%+\n• आर्थिक: आय प्रमाणपत्र आवश्यक\n• भाई-बहन: 10% (दूसरा), 15% (तीसरा)",
-        'as' => "🎓 **বৃত্তি আৰু ৰেহাই**\n• মেৰিট: পূৰ্বৱৰ্তী পৰীক্ষাত 90%+\n• আৰ্থিক: আয় প্ৰমাণপত্ৰ প্ৰয়োজন\n• ভাই-ভনী: 10% (দ্বিতীয়), 15% (তৃতীয়)",
+        'hi' => "🎓 **छात्रवृत्ति और रियायतें**\n• मेरिट: 90%+\n• आर्थिक: आय प्रमाणपत्र\n• भाई-बहन: 10% (दूसरा)",
+        'as' => "🎓 **বৃত্তি আৰু ৰেহাই**\n• মেৰিট: 90%+\n• আৰ্থিক: আয় প্ৰমাণপত্ৰ",
     ];
     $reply = $replies[$language] ?? $replies['en'];
 }
 
-// 48. LATE COMING
+// 33. LATE COMING
 elseif (preg_match('/\b(late|tardy|delay)\b/u', $msg)) {
-    $intent = 'late_coming';
+    $intent  = 'late_coming';
     $replies = [
         'en' => "⏰ **Late Coming Policy**\nStudents arriving after 8:15 AM are marked late. Three lates = one absence. Repeated late coming results in parent notification and possible detention. Late slip required from office.",
-        'hi' => "⏰ **देर से आने की नीति**\n8:15 AM के बाद आने वाले छात्र देर से चिह्नित। तीन देर = एक अनुपस्थिति। बार-बार देर से आने पर अभिभावक सूचना।",
-        'as' => "⏰ **পলমকৈ অহা নীতি**\n8:15 AM ৰ পিছত অহা ছাত্ৰ পলম বুলি চিহ্নিত। তিনি পলম = এটা অনুপস্থিতি। বাৰে বাৰে পলমকৈ অহাত অভিভাৱক জাননী।",
+        'hi' => "⏰ **देर से आने की नीति**\n8:15 AM के बाद आने वाले देर से चिह्नित। तीन देर = एक अनुपस्थिति।",
+        'as' => "⏰ **পলমকৈ অহা নীতি**\n8:15 AM ৰ পিছত অহা ছাত্ৰ পলম চিহ্নিত। তিনি পলম = এটা অনুপস্থিতি।",
     ];
     $reply = $replies[$language] ?? $replies['en'];
 }
 
-// 49. RE-EVALUATION
+// 34. RE-EVALUATION
 elseif (preg_match('/\b(re.?evaluat|recheck|review.*marks)\b/u', $msg)) {
-    $intent = 'reevaluation';
+    $intent  = 'reevaluation';
     $replies = [
         'en' => "📝 **Re-evaluation Process**\n• Request within 3 days of result\n• Fee: ₹100 per subject\n• Conducted by different teacher\n• If marks increase by 10%+, fee refunded\n• Results are final",
-        'hi' => "📝 **पुनर्मूल्यांकन प्रक्रिया**\n• परिणाम के 3 दिनों के भीतर अनुरोध\n• शुल्क: ₹100 प्रति विषय\n• अलग शिक्षक द्वारा मूल्यांकन",
-        'as' => "📝 **পুনৰ্মূল্যায়ন প্ৰক্ৰিয়া**\n• ফলাফলৰ 3 দিনৰ ভিতৰত অনুৰোধ\n• মাছুল: ₹100 প্ৰতি বিষয়\n• বেলেগ শিক্ষকৰ দ্বাৰা মূল্যায়ন",
+        'hi' => "📝 **पुनर्मूल्यांकन प्रक्रिया**\n• परिणाम के 3 दिनों के भीतर अनुरोध\n• शुल्क: ₹100 प्रति विषय",
+        'as' => "📝 **পুনৰ্মূল্যায়ন প্ৰক্ৰিয়া**\n• ফলাফলৰ 3 দিনৰ ভিতৰত অনুৰোধ\n• মাছুল: ₹100 প্ৰতি বিষয়",
     ];
     $reply = $replies[$language] ?? $replies['en'];
 }
 
-// 50. ATTENDANCE PERCENTAGE
+// 35. ATTENDANCE PERCENTAGE
 elseif (preg_match('/\b(attendance.*percentage|percentage.*attendance|eligibility)\b/u', $msg)) {
-    $intent = 'attendance_percentage';
+    $intent  = 'attendance_percentage';
     $replies = [
-        'en' => "📊 **Attendance Percentage**\nFormula: (Present Days / Total Working Days) × 100\nMinimum 75% required for exam eligibility.\nBelow 75%: Medical certificate required.\nCheck your percentage in Attendance module.",
-        'hi' => "📊 **उपस्थिति प्रतिशत**\nसूत्र: (उपस्थित दिन / कुल कार्य दिवस) × 100\nपरीक्षा पात्रता के लिए न्यूनतम 75% आवश्यक।",
-        'as' => "📊 **উপস্থিতি শতকৰা**\nসূত্ৰ: (উপস্থিত দিন / মুঠ কৰ্ম দিন) × 100\nপৰীক্ষাৰ যোগ্যতাৰ বাবে ন্যূনতম 75% প্ৰয়োজন।",
+        'en' => "📊 **Attendance Percentage**\nFormula: (Present Days / Total Working Days) × 100\nMinimum 75% required for exam eligibility.\nBelow 75%: Medical certificate required.",
+        'hi' => "📊 **उपस्थिति प्रतिशत**\nसूत्र: (उपस्थित दिन / कुल कार्य दिवस) × 100\nन्यूनतम 75% आवश्यक।",
+        'as' => "📊 **উপস্থিতি শতকৰা**\nসূত্ৰ: (উপস্থিত দিন / মুঠ কৰ্ম দিন) × 100\nন্যূনতম 75% প্ৰয়োজন।",
     ];
     $reply = $replies[$language] ?? $replies['en'];
 }
 
-// 51. FINE CALCULATION
+// 36. FINE CALCULATION
 elseif (preg_match('/\b(fine|penalty|late fee)\b/u', $msg)) {
-    $intent = 'fine_calculation';
+    $intent  = 'fine_calculation';
     $replies = [
-        'en' => "💰 **Fine Calculation**\n• Library: ₹5/day for overdue books\n• Late Fee: ₹50/month past due date\n• Max library fine = book price\n• Fines must be paid before new borrowing\n• Late fee charged monthly until paid",
-        'hi' => "💰 **जुर्माना गणना**\n• लाइब्रेरी: ₹5/दिन ओवरड्यू किताबों के लिए\n• देर से फीस: ₹50/माह नियत तिथि के बाद",
-        'as' => "💰 **জৰিমনা গণনা**\n• লাইব্ৰেৰী: ₹5/দিন অতিথি কিতাপৰ বাবে\n• পলম মাছুল: ₹50/মাহ নিৰ্ধাৰিত তাৰিখৰ পিছত",
+        'en' => "💰 **Fine Calculation**\n• Library: ₹2/day for overdue books\n• Late Fee: ₹50/month past due date\n• Max library fine = book price\n• Fines must be paid before new borrowing",
+        'hi' => "💰 **जुर्माना गणना**\n• लाइब्रेरी: ₹2/दिन\n• देर से फीस: ₹50/माह",
+        'as' => "💰 **জৰিমনা গণনা**\n• লাইব্ৰেৰী: ₹2/দিন\n• পলম মাছুল: ₹50/মাহ",
     ];
     $reply = $replies[$language] ?? $replies['en'];
 }
 
-// FALLBACK - Try Gemini API
-if (!$reply) {
-    // IMPROVEMENT: Use config file for API key instead of getenv()
-    $configFile = __DIR__ . '/../../config/env.php';
-    $geminiKey = '';
-    if (file_exists($configFile)) {
-        require_once $configFile;
-        $geminiKey = defined('GEMINI_API_KEY') ? GEMINI_API_KEY : '';
-    }
-
-    if ($geminiKey) {
-        $context = "You are an AI assistant for School ERP. Answer in {$language}. Question: " . $message;
-        $postData = json_encode([
-            'contents' => [['parts' => [['text' => $context]]]]
-        ]);
-        $ch = curl_init("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={$geminiKey}");
-        curl_setopt_array($ch, [
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => $postData,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
-            CURLOPT_TIMEOUT => 10,
-        ]);
-        $res = curl_exec($ch);
-        curl_close($ch);
-        $result = json_decode($res, true);
-        $geminiReply = $result['candidates'][0]['content']['parts'][0]['text'] ?? '';
-        if ($geminiReply) {
-            $reply = $geminiReply;
-            $intent = 'gemini_fallback';
+// ─── 37. ENGLISH KNOWLEDGE BASE SEARCH ───────────────────────────────────
+if (!$reply && mb_strlen($msg, 'UTF-8') > 4) {
+    $matchedEntries = [];
+    foreach ($knowledgeBaseEn as $entry) {
+        $score = 0;
+        foreach ($entry['tags'] as $tag) {
+            if (mb_strpos($msg, mb_strtolower($tag, 'UTF-8'), 0, 'UTF-8') !== false) $score += 2;
         }
+        if (mb_strpos(mb_strtolower($entry['title'], 'UTF-8'), $msg, 0, 'UTF-8') !== false) $score += 5;
+        if (mb_strpos(mb_strtolower($entry['content'], 'UTF-8'), $msg, 0, 'UTF-8') !== false) $score += 1;
+        if ($score >= 2) $matchedEntries[] = ['entry' => $entry, 'score' => $score];
     }
-
-    if (!$reply) {
-        $replies = [
-            'en' => "I'm not sure about that. Try asking about:\n• Student count\n• Fee status\n• Today's attendance\n• Library books\n• Upcoming exams\n• School policies\n• Homework guidelines",
-            'hi' => "मुझे इस बारे में निश्चित नहीं है। इनके बारे में पूछें:\n• छात्र संख्या\n• फीस स्थिति\n• आज की उपस्थिति\n• लाइब्रेरी किताबें\n• आगामी परीक्षा\n• स्कूल नीतियां",
-            'as' => "মই এই বিষয়ে নিশ্চিত নহয়। ইয়াৰ বিষয়ে সোধক:\n• ছাত্ৰ সংখ্যা\n• মাছুল অৱস্থা\n• আজিৰ উপস্থিতি\n• লাইব্ৰেৰী কিতাপ\n• আগত পৰীক্ষা\n• বিদ্যালয় নীতি",
-        ];
-        $reply = $replies[$language] ?? $replies['en'];
-        $intent = 'unknown';
+    if (!empty($matchedEntries)) {
+        usort($matchedEntries, fn($a, $b) => $b['score'] - $a['score']);
+        $best   = $matchedEntries[0]['entry'];
+        $intent = 'knowledge_base';
+        $reply  = "📖 **{$best['title']}**\n\n{$best['content']}";
     }
 }
 
-// Calculate response time
+// ─── 38. HINDI EXTENDED KB (matches findHindiExtendedResponse) ───────────
+if (!$reply && $language === 'hi') {
+    $hiMatch = searchExtendedKB($knowledgeBaseHi, $msg);
+    if ($hiMatch) {
+        $intent = 'hindi_extended';
+        $reply  = "📖 **{$hiMatch['title']}**\n\n{$hiMatch['content']}";
+    }
+}
+
+// ─── 39. ASSAMESE EXTENDED KB (matches findAssameseExtendedResponse) ──────
+if (!$reply && $language === 'as') {
+    $asMatch = searchExtendedKB($knowledgeBaseAs, $msg);
+    if ($asMatch) {
+        $intent = 'assamese_extended';
+        $reply  = "📖 **{$asMatch['title']}**\n\n{$asMatch['content']}";
+    }
+}
+
+// ─── 40. MULTI-INTENT "DID YOU MEAN?" (from nlpEngine.js detectMultipleIntents) ─
+if (!$reply) {
+    $multiIntents = chatbot_detect_multiple_intents($msg);
+    if ($multiIntents && count($multiIntents) >= 2) {
+        $intentLabels = [
+            'attendance' => _cbl($language, ['en'=>'Attendance','hi'=>'उपस्थिति','as'=>'উপস্থিতি']),
+            'fee'        => _cbl($language, ['en'=>'Fees','hi'=>'फीस','as'=>'মাচুল']),
+            'exam'       => _cbl($language, ['en'=>'Exams','hi'=>'परीक्षा','as'=>'পৰীক্ষা']),
+            'homework'   => _cbl($language, ['en'=>'Homework','hi'=>'होमवर्क','as'=>'গৃহকাৰ্য']),
+            'notice'     => _cbl($language, ['en'=>'Notices','hi'=>'नोटिस','as'=>'নোটিছ']),
+            'library'    => _cbl($language, ['en'=>'Library','hi'=>'पुस्तकालय','as'=>'লাইব্ৰেৰী']),
+            'transport'  => _cbl($language, ['en'=>'Transport','hi'=>'ट्रांसपोर्ट','as'=>'পৰিবহণ']),
+        ];
+        $labels = array_map(fn($i) => '• ' . ($intentLabels[$i] ?? $i), $multiIntents);
+        $list   = implode("\n", $labels);
+        $reply  = _cbl($language, [
+            'en' => "I noticed you asked about multiple topics:\n{$list}\n\nWhich one would you like me to answer first?",
+            'hi' => "आपने कई विषयों के बारे में पूछा:\n{$list}\n\nआप पहले किसके बारे में जानना चाहते हैं?",
+            'as' => "আপুনি কেইটামান বিষয়ে সোধিছে:\n{$list}\n\nআপুনি প্ৰথমে কোনটোৰ বিষয়ে জানিব বিচাৰে?",
+        ]);
+        $intent = 'multi_intent';
+    }
+}
+
+// ─── 41. FOLLOW-UP CONTEXT (from nlpEngine.js handleFollowUp) ────────────────
+if (!$reply && $intent === 'unknown') {
+    $followUpReply = chatbot_handle_followup($ctx, $message, $language);
+    if ($followUpReply) {
+        $reply  = $followUpReply;
+        $intent = 'followup_context';
+    }
+}
+
+// ─── 42. FINAL FALLBACK (role-based, from chatbot_engine.php) ────────────────
+if (!$reply) {
+    $intent   = 'unknown';
+    $fallback = chatbot_localized_fallback($language, $role);
+    $reply    = $fallback['message'];
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+send_response:
+// ═══════════════════════════════════════════════════════════════════════════
+
 $responseTime = round((microtime(true) - $startTime) * 1000, 2);
 
-// Log conversation (with error handling)
+// ─── UPDATE CONTEXT (from chatbot_engine.php) ──────────────────────────────
+chatbot_update_context((string)$userId, $intent, $message);
+chatbot_add_assistant_message((string)$userId, $reply);
+
+// ─── ROLE-BASED SUGGESTIONS (if unknown) ──────────────────────────────────
+if ($intent === 'unknown' || $intent === 'multi_intent') {
+    $suggestions = chatbot_get_role_suggestions($role, $language);
+} else {
+    $suggestions = getSuggestionsForIntent($intent, $role);
+}
+
+// Log conversation
 try {
     if (db_table_exists('chatbot_logs')) {
         $sessionId = session_id() ?: bin2hex(random_bytes(16));
         db_query(
-            "INSERT INTO chatbot_logs (user_id, user_role, message, language, intent, response, response_time, session_id) 
+            "INSERT INTO chatbot_logs (user_id, user_role, message, language, intent, response, response_time, session_id)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             [$userId, $role, $message, $language, $intent, $reply, $responseTime, $sessionId]
         );
     }
 } catch (Exception $e) {
-    // Log silently fails - don't break the chatbot
     error_log("Chatbot logging failed: " . $e->getMessage());
 }
 
 json_response([
-    'reply' => $reply,
-    'intent' => $intent,
-    'language' => $language,
+    'reply'        => $reply,
+    'intent'       => $intent,
+    'language'     => $language,
+    'suggestions'  => $suggestions,
     'responseTime' => $responseTime,
-    'timestamp' => date('Y-m-d H:i:s'),
+    'timestamp'    => date('Y-m-d H:i:s'),
 ]);

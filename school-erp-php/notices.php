@@ -46,6 +46,14 @@ $pageTitle  = 'Notices & Announcements';
                     <option value="all">Everyone</option><option value="teachers">Teachers Only</option><option value="students">Students Only</option>
                 </select>
             </div>
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">Priority</label>
+                    <select class="form-control" name="priority">
+                        <option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option>
+                    </select>
+                </div>
+                <div class="form-group"><label class="form-label">Expiry Date (Optional)</label><input type="date" class="form-control" name="expiry_date" min="<?= date('Y-m-d') ?>"></div>
+            </div>
             <div class="form-group"><label class="form-label">Content / Message *</label><textarea class="form-control" name="content" rows="6" required></textarea></div>
             <div style="display:flex;justify-content:flex-end;gap:10px">
                 <button type="button" class="btn btn-secondary" onclick="closeModal('addModal')">Cancel</button>
@@ -66,7 +74,10 @@ async function loadNotices() {
         <div class="notice-card">
             <div class="notice-header">
                 <div>
-                    <div class="notice-title">${escHtml(n.title)}</div>
+                    <div class="notice-title" style="display:flex;align-items:center;gap:8px;">
+                        ${escHtml(n.title)}
+                        ${n.priority === 'urgent' ? '<span class="badge badge-danger">Urgent</span>' : (n.priority === 'high' ? '<span class="badge badge-warning">High Priority</span>' : '')}
+                    </div>
                     <div class="notice-meta"><span>📅 ${new Date(n.created_at).toLocaleDateString()}</span><span>🗣️ Posted by: ${escHtml(n.created_by_name||'Admin')}</span><span>👥 Target: ${escHtml(n.target_roles)}</span></div>
                 </div>
                 ${isAdmin ? `<button class="btn btn-danger btn-sm" onclick="delNotice(${n.id})">🗑️</button>` : ''}

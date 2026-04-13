@@ -1,0 +1,71 @@
+# School ERP PHP v3.0 - XAMPP LOCALHOST .htaccess
+# =================================================
+# USE THIS FILE on XAMPP (rename to .htaccess).
+# Replace the production .htaccess before deployment.
+# =================================================
+
+# Disable directory listing
+Options -Indexes
+
+# Enable rewrite engine
+RewriteEngine On
+
+# IMPORTANT: Must match the XAMPP subfolder name
+# If your folder is C:\xampp\htdocs\school-erp-php → keep this
+# If you renamed the folder, update the path below
+RewriteBase /school-erp-php/
+
+# ============================================
+# PROTECT SENSITIVE FILES
+# ============================================
+
+# Block access to config, includes, tmp directories
+RewriteRule ^(config|includes|tmp|tests)/ - [F,L]
+
+# Block access to .env files
+<FilesMatch "^\.env">
+    Require all denied
+</FilesMatch>
+
+# Block access to .git
+RewriteRule ^\.git/ - [F,L]
+
+# Block access to SQL files
+<FilesMatch "\.sql$">
+    Require all denied
+</FilesMatch>
+
+# Block access to backup and temp files
+<FilesMatch "\.(bak|backup|old|tmp)$">
+    Require all denied
+</FilesMatch>
+
+# Block PHP in uploads
+RewriteRule ^uploads/.*\.php$ - [F,L]
+
+# ============================================
+# SKIP SECURITY HEADERS ON LOCALHOST
+# (Apache on XAMPP may not have mod_headers enabled by default)
+# ============================================
+# Uncomment below if mod_headers is enabled in xampp/apache/conf/httpd.conf
+# Header always set X-Frame-Options "SAMEORIGIN"
+# Header always set X-Content-Type-Options "nosniff"
+
+# ============================================
+# COMPRESSION (optional on localhost)
+# ============================================
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/json
+</IfModule>
+
+# ============================================
+# DEFAULT INDEX
+# ============================================
+DirectoryIndex index.php index.html
+
+# ============================================
+# ERROR HANDLING
+# ============================================
+# Disabled on localhost for easier debugging
+# ErrorDocument 404 /school-erp-php/404.php
+# ErrorDocument 500 /school-erp-php/500.php

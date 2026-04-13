@@ -320,4 +320,294 @@ return [
         'module' => 'general',
         'audience' => ['student', 'parent']
     ],
+
+    // ── PORTED FROM Node.js curatedKnowledgeBase.json ──────────────
+
+    // SCHOLARSHIP
+    [
+        'title' => 'Scholarship Information',
+        'content' => 'Scholarships are available for meritorious and economically disadvantaged students. Applications are accepted in June-July. Criteria: Academic performance (80%+ marks), family income below ₹2 lakh/year. Scholarship covers 50-100% of tuition fees. Apply at the school office with income certificate and mark sheets.',
+        'tags' => ['scholarship', 'eligibility', 'apply', 'financial aid', 'fee waiver', 'concession'],
+        'module' => 'fee',
+        'audience' => ['student', 'parent']
+    ],
+
+    // PTM
+    [
+        'title' => 'Parent-Teacher Meeting Schedule',
+        'content' => 'Parent-teacher meetings (PTM) are held on the 2nd Saturday of every month from 2 PM to 5 PM. Each parent gets 15 minutes. Book your slot via the Parent Portal or call the school office. Walk-ins are accommodated if slots are available. Virtual meetings available for outstation parents.',
+        'tags' => ['PTM', 'meeting', 'booking', 'parent', 'teacher', 'schedule'],
+        'module' => 'general',
+        'audience' => ['parent', 'teacher']
+    ],
+
+    // LAB SAFETY
+    [
+        'title' => 'Lab Safety Rules',
+        'content' => 'Students must wear lab coats in science and computer labs. No food or drinks allowed. Follow teacher instructions strictly. Report any equipment malfunction immediately. Unauthorized experiments are prohibited. First aid kit is available in every lab. Emergency exit routes are posted on walls.',
+        'tags' => ['lab', 'safety', 'equipment', 'incident', 'rule', 'science', 'computer'],
+        'module' => 'general',
+        'audience' => ['student', 'teacher']
+    ],
+
+    // ID CARD
+    [
+        'title' => 'ID Card Replacement Process',
+        'content' => 'Lost or damaged ID cards can be replaced at the school office. Fee: ₹50. Processing time: 3 working days. Bring a passport-size photo and a written application signed by parent/guardian. Temporary ID is issued immediately for current day use.',
+        'tags' => ['ID card', 'replacement', 'fee', 'timeline', 'document', 'lost'],
+        'module' => 'general',
+        'audience' => ['student', 'parent']
+    ],
+
+    // FIRST AID
+    [
+        'title' => 'First Aid and Medical Emergency',
+        'content' => 'The school has a first aid room staffed during school hours. In case of medical emergency, parents are contacted immediately. Nearest hospital is within 2 km. Ambulance is called if required. All emergency contacts are stored in the student profile. Medical insurance provided for accidents on campus.',
+        'tags' => ['first aid', 'emergency', 'medical', 'contact', 'ambulance', 'hospital', 'insurance'],
+        'module' => 'general',
+        'audience' => ['all']
+    ],
+
+    // SCHOOL CALENDAR
+    [
+        'title' => 'School Calendar and Holidays 2025-26',
+        'content' => 'School operates Monday-Saturday (8 AM - 3 PM). Sundays are weekly holidays. Major holidays: Republic Day (Jan 26), Independence Day (Aug 15), Gandhi Jayanti (Oct 2), Bihu (April 14-15), Durga Puja (Oct 20-24), Diwali (Nov 1), Christmas (Dec 25). Summer break: April 15 - May 31. Winter break: Dec 25 - Jan 5.',
+        'tags' => ['calendar', 'holiday', 'exam', 'academic', 'schedule', 'break', 'vacation', 'Bihu', 'Diwali'],
+        'module' => 'general',
+        'audience' => ['all']
+    ],
+
+    // GPA
+    [
+        'title' => 'GPA Calculation Method',
+        'content' => 'GPA is calculated on a 10-point scale. A+ = 10, A = 9, B+ = 8, B = 7, C = 6, D = 5, F = 0. Formula: Sum of (Grade Point × Credit Hours) / Total Credit Hours. Minimum passing grade: D (5 points). GPA below 4.0 requires academic counseling. Top 10% students receive merit certificates.',
+        'tags' => ['GPA', 'grade', 'formula', 'calculation', 'weightage', 'marks', 'percentage'],
+        'module' => 'exams',
+        'audience' => ['student', 'parent', 'teacher']
+    ],
+
+    // RE-EXAM
+    [
+        'title' => 'Re-exam and Supplementary Exam Rules',
+        'content' => 'Students who fail in 1-2 subjects are eligible for supplementary exams. Application fee: ₹500 per subject. Exams are held within 30 days of result declaration. Maximum 2 attempts allowed. Passing marks remain the same as regular exams (33%). Re-exam marks are capped at passing grade (D).',
+        'tags' => ['reexam', 'supplementary', 'eligibility', 'fee', 'attempt', 'fail', 'improvement'],
+        'module' => 'exams',
+        'audience' => ['student', 'parent']
+    ],
+
+    // FEE REFUND
+    [
+        'title' => 'Fee Refund Policy',
+        'content' => 'Fee refunds are processed only within 30 days of withdrawal. Admission fee, development fee, and annual charges are non-refundable. Refund amount is credited to the parent bank account within 15 working days of application. Withdrawal application must be submitted in writing to the principal.',
+        'tags' => ['refund', 'timeline', 'partial', 'full', 'policy', 'withdrawal', 'fee'],
+        'module' => 'fee',
+        'audience' => ['parent']
+    ],
+
+    // ONLINE PAYMENT
+    [
+        'title' => 'Online Payment Gateway',
+        'content' => 'Online payments are accepted via UPI, Net Banking, Credit/Debit Card, and Wallet. Payment gateway uses 256-bit encryption for security. Receipt is generated automatically and sent via email. For failed transactions, amount is refunded within 5-7 business days. Payment support: accounts@school.edu',
+        'tags' => ['payment', 'gateway', 'UPI', 'card', 'online', 'receipt', 'refund', 'net banking'],
+        'module' => 'fee',
+        'audience' => ['parent']
+    ],
+
+    // CANTEEN DIETARY
+    [
+        'title' => 'Canteen Dietary Options and Allergy Information',
+        'content' => 'The canteen provides both vegetarian and non-vegetarian options. Allergy information is displayed for each item. Students with food allergies should inform the canteen staff and carry an allergy card from their doctor. Special diet meals can be requested 24 hours in advance. Jain and vegan options available daily.',
+        'tags' => ['food', 'veg', 'non-veg', 'allergy', 'diet', 'jain', 'vegan', 'menu', 'canteen'],
+        'module' => 'canteen',
+        'audience' => ['student', 'parent']
+    ],
+
+    // VISITOR POLICY
+    [
+        'title' => 'School Visitor Policy',
+        'content' => 'Visitors are allowed between 10 AM and 4 PM on working days. All visitors must sign in at the security gate and wear a visitor badge. Parents can meet teachers during designated hours (2-4 PM). No visitors during exam hours without prior permission. ID proof required for entry.',
+        'tags' => ['visitor', 'hours', 'sign-in', 'guest', 'policy', 'parent', 'meeting'],
+        'module' => 'general',
+        'audience' => ['all']
+    ],
+
+    // LOST & FOUND
+    [
+        'title' => 'Lost and Found Process',
+        'content' => 'Lost items should be reported to the school office. Found items are stored there for 30 days. Valuable items (phones, wallets, jewelry) are secured in the office safe. Unclaimed items are donated to charity after 30 days. Check the Lost & Found board outside the office daily.',
+        'tags' => ['lost', 'found', 'report', 'claim', 'item', 'belongings'],
+        'module' => 'general',
+        'audience' => ['all']
+    ],
+
+    // E-BOOKS
+    [
+        'title' => 'E-Books and Digital Library Resources',
+        'content' => 'Students get free access to digital library with 10,000+ e-books. Access via school portal with student credentials. Downloads limited to 5 books at a time. Reading period: 14 days. E-books can be read on any device via browser. Audiobooks available for visually impaired students.',
+        'tags' => ['ebook', 'digital', 'library', 'download', 'online', 'audiobook', 'e-library'],
+        'module' => 'library',
+        'audience' => ['student', 'teacher']
+    ],
+
+    // EXTRACURRICULAR
+    [
+        'title' => 'Extracurricular Activities and Sports',
+        'content' => 'School offers: Cricket, Football, Basketball, Badminton, Athletics, Swimming, Music, Dance, Art, Drama, Debate, Robotics Club. Trials held in June for sports teams. Music/dance auditions in July. Students can join maximum 2 activities. Practice: 3:30-5:00 PM on weekdays. Competitions on weekends.',
+        'tags' => ['sports', 'extracurricular', 'activities', 'competition', 'club', 'music', 'art', 'dance'],
+        'module' => 'general',
+        'audience' => ['student', 'parent']
+    ],
+
+    // BUS ROUTE TIMING
+    [
+        'title' => 'Bus Route and Timing Information',
+        'content' => 'School operates 15 bus routes covering all major areas. Bus timings: Pickup 7:00-7:45 AM, Drop 3:15-4:00 PM. GPS tracking available on parent app. Bus conductor contacts parents if student absent. Route changes requested 15 days in advance. Fee: ₹1,500-3,000/month based on distance.',
+        'tags' => ['bus', 'route', 'timing', 'transport', 'GPS', 'tracking', 'pickup', 'drop'],
+        'module' => 'transport',
+        'audience' => ['parent', 'student', 'conductor']
+    ],
+
+    // HOSTEL RULES
+    [
+        'title' => 'Hostel Rules and Curfew Timings',
+        'content' => 'Hostel is open 24/7 for residential students. Curfew: 8 PM (Juniors), 9 PM (Seniors). Weekend outings require parent permission. Mess timings: Breakfast 7-8 AM, Lunch 12:30-1:30 PM, Dinner 7-8 PM. Study hours: 7-9 PM daily (mandatory). Laundry service twice weekly. Visitor hours: 10 AM-5 PM (parents only).',
+        'tags' => ['hostel', 'curfew', 'mess', 'study', 'visitor', 'residential', 'boarding', 'laundry'],
+        'module' => 'hostel',
+        'audience' => ['student', 'parent']
+    ],
+
+    // MEDICAL LEAVE
+    [
+        'title' => 'Medical Leave and Certificate Requirements',
+        'content' => 'Medical leave requires a doctor\'s certificate for absences exceeding 3 days. Certificate must mention diagnosis and rest period. Submit to class teacher on return. For hospitalization, inform school within 24 hours. School doctor can issue certificates for school clinic visits. Fake certificates result in disciplinary action.',
+        'tags' => ['medical', 'leave', 'certificate', 'doctor', 'sick', 'absence', 'hospitalization'],
+        'module' => 'attendance',
+        'audience' => ['student', 'parent']
+    ],
+
+    // LIBRARY RENEWAL
+    [
+        'title' => 'Library Book Renewal Process',
+        'content' => 'Books can be renewed once for 7 additional days if no other student has reserved them. Renew via library portal or visit library desk. Cannot renew if overdue fines exist. Maximum 2 renewals per book per semester. Reserved books must be returned on due date. Fine: ₹2/day after due date.',
+        'tags' => ['library', 'renewal', 'book', 'extension', 'fine', 'reserve', 'due date'],
+        'module' => 'library',
+        'audience' => ['student']
+    ],
+
+    // ATTENDANCE REQUIREMENTS
+    [
+        'title' => 'Attendance Minimum Requirements',
+        'content' => 'Minimum 75% attendance required for promotion to next class. Students below 75% must appear before academic committee. Medical cases exempted with valid certificates. 100% attendance receives special recognition. Below 60% attendance may result in detention. Parents notified at 70% and 65% thresholds.',
+        'tags' => ['attendance', 'minimum', '75%', 'requirement', 'promotion', 'detention', 'threshold'],
+        'module' => 'attendance',
+        'audience' => ['student', 'parent']
+    ],
+
+    // EXAM HALL RULES
+    [
+        'title' => 'Exam Hall Rules and Regulations',
+        'content' => 'Students must report 30 minutes before exam start. ID card mandatory. No electronic devices (phones, calculators, smartwatches) unless explicitly allowed. Only black/blue pens allowed. Rough work on supplementary sheets only. Malpractice results in cancellation and parental summons. Medical emergency during exam: invigilator arranges makeup exam.',
+        'tags' => ['exam', 'rules', 'hall', 'malpractice', 'ID card', 'devices', 'invigilator'],
+        'module' => 'exams',
+        'audience' => ['student']
+    ],
+
+    // PARENT PORTAL
+    [
+        'title' => 'Parent Portal Access and Features',
+        'content' => 'Parent portal provides: Attendance tracking, Fee payment, Exam results, Homework viewing, Teacher messaging, Bus GPS tracking, Notice board. Login credentials provided at admission. Password reset via email. Mobile app available for Android/iOS. Support: parentportal@school.edu or call ext. 101.',
+        'tags' => ['parent', 'portal', 'app', 'login', 'access', 'tracking', 'features', 'android', 'iOS'],
+        'module' => 'general',
+        'audience' => ['parent']
+    ],
+
+    // COUNSELING
+    [
+        'title' => 'Student Counseling Services',
+        'content' => 'Free counseling services available. School counselor available Monday-Friday (9 AM - 4 PM). Book appointments via counselor\'s office or portal. Sessions are confidential (except safety concerns). Services: Academic stress, Career guidance, Personal issues, Peer relationships, Exam anxiety. Parent counseling available monthly.',
+        'tags' => ['counseling', 'counselor', 'mental health', 'stress', 'career', 'guidance', 'support'],
+        'module' => 'general',
+        'audience' => ['student', 'parent']
+    ],
+
+    // FEE INSTALLMENTS
+    [
+        'title' => 'Fee Payment Installment Options',
+        'content' => 'Fees can be paid in installments: Annual (1 payment, 5% discount), Half-yearly (2 payments), Quarterly (4 payments), Monthly (12 payments, 2% surcharge). First installment due at admission. Late payment fine: ₹100/day after 15-day grace period. Fee concession available for EWS category (income < ₹1.5L).',
+        'tags' => ['fee', 'installment', 'payment', 'discount', 'late', 'fine', 'concession', 'monthly'],
+        'module' => 'fee',
+        'audience' => ['parent']
+    ],
+
+    // SAFETY & SECURITY
+    [
+        'title' => 'School Safety and Security Measures',
+        'content' => '24/7 CCTV surveillance on campus. Security guards at all gates. ID card mandatory for entry. Visitor management system with ID verification. Emergency evacuation drills quarterly. Fire extinguishers on every floor. First aid trained staff on each floor. Emergency contact: Security office ext. 999.',
+        'tags' => ['safety', 'security', 'CCTV', 'guard', 'emergency', 'evacuation', 'fire'],
+        'module' => 'general',
+        'audience' => ['all']
+    ],
+
+    // SCHOOL EVENTS
+    [
+        'title' => 'School Event and Function Calendar',
+        'content' => 'Annual events: Sports Day (January), Cultural Festival (November), Science Exhibition (September), Annual Day (February), Inter-school competitions (quarterly). Parent attendance required for Annual Day and Sports Day. Student participation mandatory for at least 1 event per year. Volunteer opportunities for parents.',
+        'tags' => ['event', 'function', 'annual day', 'sports day', 'cultural', 'exhibition', 'competition'],
+        'module' => 'general',
+        'audience' => ['all']
+    ],
+
+    // DISCIPLINE
+    [
+        'title' => 'Student Discipline Code of Conduct',
+        'content' => 'Expected behavior: Respect for all staff and students, Punctuality, Uniform compliance, No ragging or bullying, Academic honesty, Campus cleanliness. Violations: 1st offense - Warning, 2nd offense - Parent summons, 3rd offense - Suspension, Severe cases - Expulsion. Positive behavior rewarded with certificates.',
+        'tags' => ['discipline', 'conduct', 'behavior', 'rule', 'offense', 'suspension', 'expulsion', 'ragging'],
+        'module' => 'general',
+        'audience' => ['student', 'parent']
+    ],
+
+    // RAINY DAY
+    [
+        'title' => 'Rainy Day and Weather Contingency',
+        'content' => 'During heavy rain: Outdoor activities cancelled, Indoor recess in classrooms, Extra buses arranged for waterlogged areas, School announces closure via SMS/app if severe. Flood emergency protocol: Students kept safely until parents arrive. No student released without parent authorization.',
+        'tags' => ['rain', 'weather', 'flood', 'emergency', 'closure', 'bus', 'safety'],
+        'module' => 'general',
+        'audience' => ['all']
+    ],
+
+    // ACADEMIC YEAR
+    [
+        'title' => 'Academic Year Structure and Terms',
+        'content' => 'Academic year: April to March. 4 terms: Term 1 (Apr-Jun), Term 2 (Jul-Sep), Term 3 (Oct-Dec), Term 4 (Jan-Mar). Unit tests at end of each term. Final exams in March. Report cards issued after each term. Parent meetings after Term 2 and Term 4 results. Summer projects assigned in Term 1.',
+        'tags' => ['academic year', 'term', 'calendar', 'exam', 'report card', 'structure'],
+        'module' => 'general',
+        'audience' => ['all']
+    ],
+
+    // CAREER GUIDANCE
+    [
+        'title' => 'Career Guidance and College Preparation',
+        'content' => 'Career counseling starts from Class 9. Services: Aptitude tests (Class 9, 11), College application guidance (Class 12), Scholarship search assistance, Entrance exam preparation tips, Career fairs (annual), Alumni mentoring program. College visits organized for Classes 11-12. Stream selection guidance after Class 10 results.',
+        'tags' => ['career', 'college', 'guidance', 'counseling', 'aptitude', 'entrance', 'stream'],
+        'module' => 'general',
+        'audience' => ['student', 'parent']
+    ],
+
+    // SCHOOL APP
+    [
+        'title' => 'School App and Digital Tools Guide',
+        'content' => 'School app available for Android/iOS. Features: Attendance alerts, Fee payment, Homework viewing, Exam timetable, Bus GPS tracking, Digital ID card, Notice board, Teacher messaging, Leave application, Canteen pre-order. Download from Play Store/App Store. Login: Same as portal credentials. Support: IT helpdesk ext. 200.',
+        'tags' => ['app', 'mobile', 'digital', 'tool', 'android', 'iOS', 'download', 'features'],
+        'module' => 'general',
+        'audience' => ['all']
+    ],
+
+    // STUDENT HEALTH
+    [
+        'title' => 'Student Health and Wellness Programs',
+        'content' => 'Annual health checkup (September): Vision, hearing, dental, general fitness. Vaccination drives coordinated with local hospital. Mental health awareness workshops (quarterly). Yoga and meditation sessions (weekly). Health education in PE classes. Nutrition awareness through canteen labeling. BMI tracking (confidential).',
+        'tags' => ['health', 'wellness', 'checkup', 'vaccination', 'mental health', 'yoga', 'nutrition'],
+        'module' => 'general',
+        'audience' => ['student', 'parent']
+    ],
 ];

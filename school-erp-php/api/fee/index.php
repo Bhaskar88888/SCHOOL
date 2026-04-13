@@ -3,7 +3,13 @@ require_once __DIR__ . '/../../includes/auth.php';
 require_auth();
 header('Content-Type: application/json');
 
+if ($_SERVER['REQUEST_METHOD'] !== 'GET' && $_SERVER['REQUEST_METHOD'] !== 'HEAD') {
+    require_once __DIR__ . '/../../includes/csrf.php';
+    CSRFProtection::verifyToken();
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    require_role(['superadmin', 'admin', 'accounts', 'accountant']);
     $page = max(1, (int) ($_GET['page'] ?? 1));
     $limit = 20;
     $offset = ($page - 1) * $limit;
@@ -67,6 +73,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             get_current_user_id()
         ]
     );
+
+    require_once __DIR__ . '/../../includes/notify.php';
+    notify_parent_of_student((int)$data['student_id'], 'fee_new', 'New Fee Receipt', "A payment of $amountPaid was received for " . sanitize($data['fee_type'] ?? 'Tuition Fee') . ". Receipt No: $receiptNo", get_current_user_id(), 'fees', $id, '/fee.php');
+
     json_response(['success' => true, 'id' => $id, 'receipt_no' => $receiptNo]);
 }
 

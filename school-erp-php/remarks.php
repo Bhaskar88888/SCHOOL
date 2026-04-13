@@ -20,14 +20,24 @@ require_once __DIR__ . '/includes/data.php';
         <?php include __DIR__ . '/includes/header.php'; ?>
         
         <div class="page-toolbar">
-            <div style="font-size:18px;font-weight:700">💬 Teacher's Remarks</div>
+            <div class="toolbar-left" style="display:flex;gap:15px;align-items:center;">
+                <div style="font-size:18px;font-weight:700">💬 Teacher's Remarks</div>
+                <select class="form-control" id="typeFilter" onchange="loadRemarks()" style="width:150px">
+                    <option value="">All Types</option>
+                    <option value="positive">Positive</option>
+                    <option value="negative">Negative</option>
+                    <option value="general">General</option>
+                </select>
+            </div>
+            <?php if(in_array(get_authenticated_user()['role'], ['superadmin','admin','teacher'])): ?>
             <button class="btn btn-primary" onclick="openModal('addModal')">+ Add Remark</button>
+            <?php endif; ?>
         </div>
 
         <div class="card">
             <div class="table-wrap">
                 <table>
-                    <thead><tr><th>Student</th><th>Teacher</th><th>Remark</th><th>Type</th><th>Date</th></tr></thead>
+                    <thead><tr><th>Student</th><th>Teacher</th><th>Remark</th><th>Type</th><th>Date</th><th>Action</th></tr></thead>
                     <tbody id="dataTable"></tbody>
                 </table>
             </div>
@@ -59,8 +69,14 @@ require_once __DIR__ . '/includes/data.php';
 
 <script src="<?= BASE_URL ?>/assets/js/main.js"></script>
 <script>
+const userRole = '<?= get_authenticated_user()['role'] ?>';
+const isAdmin = ['superadmin','admin'].includes(userRole);
+
 async function loadRemarks() {
-    const data = await apiGet('/api/remarks/index.php');
+    const type = document.getElementById('typeFilter').value;
+    const url = type ? `/api/remarks/index.php?type=${encodeURIComponent(type)}` : '/api/remarks/index.php';
+    const data = await apiGet(url);
+    
     document.getElementById('dataTable').innerHTML = data.map(r => `
         <tr>
             <td><strong>${escHtml(r.student_name)}</strong></td>
@@ -68,8 +84,15 @@ async function loadRemarks() {
             <td>${escHtml(r.remark)}</td>
             <td><span class="badge ${r.type==='positive'?'badge-success':(r.type==='negative'?'badge-danger':'badge-info')}">${r.type}</span></td>
             <td><div style="font-size:11px;color:var(--text-muted)">${new Date(r.created_at).toLocaleDateString()}</div></td>
+            <td>${isAdmin ? `<button class="btn btn-danger btn-sm" onclick="delRemark(${r.id})">🗑️</button>` : ''}</td>
         </tr>
-    `).join('') || '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted)">No remarks found</td></tr>';
+    `).join('') || '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-muted)">No remarks found</td></tr>';
+}
+
+async function delRemark(id) {
+    if(!confirm('Delete remark?')) return;
+    await fetch(`/api/remarks/index.php?id=${id}`, {method:'DELETE'});
+    showToast('Deleted'); loadRemarks();
 }
 
 async function submitForm(e) {

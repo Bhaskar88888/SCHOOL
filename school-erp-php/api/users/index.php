@@ -11,6 +11,11 @@ require_once __DIR__ . '/../../includes/validator.php';
 require_auth();
 require_role(['admin', 'superadmin', 'hr']);
 
+if ($_SERVER['REQUEST_METHOD'] !== 'GET' && $_SERVER['REQUEST_METHOD'] !== 'HEAD') {
+    require_once __DIR__ . '/../../includes/csrf.php';
+    CSRFProtection::verifyToken();
+}
+
 $requestData = get_post_json();
 $method = $_SERVER['REQUEST_METHOD'];
 if ($method === 'POST' && strtoupper($requestData['_method'] ?? '') === 'DELETE') {

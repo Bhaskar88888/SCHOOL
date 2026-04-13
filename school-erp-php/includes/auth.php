@@ -7,8 +7,12 @@ require_once __DIR__ . '/audit_logger.php';
 
 // Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {
+    // SESSION_COOKIE_SECURE: false on HTTP localhost, true on HTTPS production
+    $cookieSecure = defined('SESSION_COOKIE_SECURE')
+        ? filter_var(SESSION_COOKIE_SECURE, FILTER_VALIDATE_BOOLEAN)
+        : false;
     session_set_cookie_params([
-        'secure' => true,
+        'secure'   => $cookieSecure,
         'httponly' => true,
         'samesite' => 'Lax'
     ]);
@@ -123,21 +127,21 @@ function normalize_role_name($role)
 {
     $role = strtolower(trim((string) $role));
     $aliases = [
-        'accountant' => 'accounts',
-        'accounts' => 'accounts',
+        'accountant'  => 'accounts',
+        'accounts'    => 'accounts',
         'super admin' => 'superadmin',
         'super-admin' => 'superadmin',
-        'superadmin' => 'superadmin',
-        'admin' => 'superadmin',
-        'driver' => 'driver',
-        'conductor' => 'conductor',
-        'teacher' => 'teacher',
-        'student' => 'student',
-        'parent' => 'parent',
-        'staff' => 'staff',
-        'hr' => 'hr',
-        'canteen' => 'canteen',
-        'librarian' => 'librarian',
+        'superadmin'  => 'superadmin',
+        'admin'       => 'admin',
+        'driver'      => 'driver',
+        'conductor'   => 'conductor',
+        'teacher'     => 'teacher',
+        'student'     => 'student',
+        'parent'      => 'parent',
+        'staff'       => 'staff',
+        'hr'          => 'hr',
+        'canteen'     => 'canteen',
+        'librarian'   => 'librarian',
     ];
     return $aliases[$role] ?? $role;
 }
@@ -154,7 +158,8 @@ function storage_role_name($role)
 function role_matches($currentRole, $allowedRoles)
 {
     $currentRole = normalize_role_name($currentRole);
-    if ($currentRole === 'superadmin') {
+    // superadmin and admin both bypass all role restrictions
+    if ($currentRole === 'superadmin' || $currentRole === 'admin') {
         return true;
     }
     foreach ((array) $allowedRoles as $allowedRole) {

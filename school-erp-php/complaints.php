@@ -120,7 +120,7 @@ async function loadComplaints() {
             <td>${escHtml(c.submitted_by_name||'Unknown')}</td>
             <td><span class="badge ${c.priority==='urgent'?'badge-danger':c.priority==='high'?'badge-warning':'badge-info'}" style="text-transform:capitalize">${c.priority}</span></td>
             <td><span class="badge ${c.status==='resolved'?'badge-success':c.status==='rejected'?'badge-danger':'badge-warning'}" style="text-transform:capitalize">${c.status.replace('_',' ')}</span></td>
-            <td><button class="btn btn-secondary btn-sm" onclick="manage(${c.id}, '${c.status}', ${c.assigned_to||''})">Manage</button></td>
+            <td><button class="btn btn-secondary btn-sm" onclick="manage(${c.id}, '${c.status}', ${c.assigned_to || 'null'})">Manage</button></td>
         </tr>
     `).join('') || '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-muted)">No complaints found</td></tr>';
 }

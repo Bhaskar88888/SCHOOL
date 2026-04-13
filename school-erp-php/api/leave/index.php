@@ -4,6 +4,11 @@ require_once __DIR__ . '/../../includes/auth.php';
 require_auth();
 header('Content-Type: application/json');
 
+if ($_SERVER['REQUEST_METHOD'] !== 'GET' && $_SERVER['REQUEST_METHOD'] !== 'HEAD') {
+    require_once __DIR__ . '/../../includes/csrf.php';
+    CSRFProtection::verifyToken();
+}
+
 $method = $_SERVER['REQUEST_METHOD'];
 $currentRole = normalize_role_name(get_current_role());
 $currentUserId = get_current_user_id();
@@ -139,6 +144,13 @@ if ($method === 'PUT') {
                 db_query("UPDATE users SET $column = GREATEST(0, $column - ?) WHERE id=?", [$days, $leave['applicant_id']]);
             }
         }
+    }
+
+    // Disptach Notification to Applicant
+    require_once __DIR__ . '/../../includes/notify.php';
+    $leaveInfo = db_fetch("SELECT applicant_id FROM leave_applications WHERE id=?", [$id]);
+    if ($leaveInfo && $leaveInfo['applicant_id']) {
+        notify_user($leaveInfo['applicant_id'], 'leave_update', 'Leave Application ' . ucfirst($status), "Your leave request has been marked as $status.", get_current_user_id(), 'leave', $id, '/hr.php');
     }
 
     audit_log('UPDATE', 'leave', $id, null, ['status' => $status]);

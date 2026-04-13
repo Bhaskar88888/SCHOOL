@@ -2,6 +2,12 @@
 require_once __DIR__ . '/../../includes/auth.php';
 require_auth();
 header('Content-Type: application/json');
+
+if ($_SERVER['REQUEST_METHOD'] !== 'GET' && $_SERVER['REQUEST_METHOD'] !== 'HEAD') {
+    require_once __DIR__ . '/../../includes/csrf.php';
+    CSRFProtection::verifyToken();
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     // Single class
     if (isset($_GET['id'])) {

@@ -352,7 +352,7 @@ async function loadUsers(page = 1) {
     tbody.innerHTML = '<tr><td colspan="7" class="empty-row">Loading users...</td></tr>';
 
     try {
-        const response = await apiGet(`/api/users?${params.toString()}`);
+        const response = await apiGet(`/api/users/index.php?${params.toString()}`);
         if (response.error) {
             throw new Error(response.error);
         }
@@ -423,7 +423,7 @@ async function openUserModal(userId = null) {
     }
 
     try {
-        const response = await apiGet(`/api/users?id=${userId}`);
+        const response = await apiGet(`/api/users/index.php?id=${userId}`);
         if (response.error) {
             throw new Error(response.error);
         }
@@ -473,7 +473,7 @@ async function saveUser(event) {
     }
 
     try {
-        const response = await apiPost('/api/users', payload);
+        const response = await apiPost('/api/users/index.php', payload);
         if (response.error) {
             throw new Error(response.error);
         }
@@ -494,7 +494,7 @@ async function deleteUser(userId, userName) {
     }
 
     try {
-        const response = await apiPost('/api/users', { _method: 'DELETE', id: userId });
+        const response = await apiPost('/api/users/index.php', { _method: 'DELETE', id: userId });
         if (response.error) {
             throw new Error(response.error);
         }

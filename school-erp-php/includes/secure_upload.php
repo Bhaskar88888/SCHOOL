@@ -25,7 +25,11 @@ class SecureFileUpload {
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => ['docx'],
     ];
     
-    private static $maxSize = defined('UPLOAD_MAX_SIZE') ? UPLOAD_MAX_SIZE : 5242880; // 5MB
+    private static $maxSize = 5242880; // fallback 5MB; overridden by getMaxSize()
+
+    private static function getMaxSize() {
+        return defined('UPLOAD_MAX_SIZE') ? (int)UPLOAD_MAX_SIZE : self::$maxSize;
+    }
     
     private static $blockedExtensions = [
         'php', 'php3', 'php4', 'php5', 'php7', 'phtml', 'phar',
@@ -123,8 +127,8 @@ class SecureFileUpload {
         }
         
         // Check file size
-        if ($file['size'] > self::$maxSize) {
-            $maxMB = self::$maxSize / 1024 / 1024;
+        if ($file['size'] > self::getMaxSize()) {
+            $maxMB = self::getMaxSize() / 1024 / 1024;
             return "File size exceeds {$maxMB}MB limit";
         }
         

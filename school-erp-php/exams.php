@@ -188,8 +188,10 @@ async function submitExam(e) {
 
 async function deleteExam(id) {
     if (!confirm('Delete this exam?')) return;
-    await fetch(`/api/exams/index.php?id=${id}`, {method:'DELETE'});
-    showToast('Exam deleted'); loadExams();
+    const res = await apiDelete(`/api/exams/index.php?id=${id}`);
+    if (res.success) showToast('Exam deleted');
+    else showToast(res.error || 'Delete failed', 'danger');
+    loadExams();
 }
 
 loadExams();

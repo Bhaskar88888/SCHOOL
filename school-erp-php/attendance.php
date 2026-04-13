@@ -25,7 +25,7 @@ $classes = db_fetchAll("SELECT id, name, section FROM classes WHERE is_active = 
         .student-chip {
             display: inline-flex; align-items: center; justify-content: center;
             width: 32px; height: 32px; border-radius: 50%; font-weight: 600;
-            background: var(--ink-border); font-size: 13px;
+            background: var(--surface-2); color: var(--ink-2); font-size: 13px;
         }
     </style>
 </head>
@@ -36,6 +36,11 @@ $classes = db_fetchAll("SELECT id, name, section FROM classes WHERE is_active = 
         <?php include __DIR__ . '/includes/header.php'; ?>
 
         <?php if ($isManager): ?>
+        <div class="page-hero">
+            <h1 class="page-hero-title"><?= htmlspecialchars($pageTitle) ?></h1>
+            <div class="page-hero-sub">Track daily attendance, manage records, and monitor defaulters.</div>
+        </div>
+
         <div class="page-tabs">
             <button class="page-tab active" id="tab-mark" onclick="switchTab('mark')">Mark Attendance</button>
             <button class="page-tab" id="tab-view" onclick="switchTab('view')">View Records</button>
@@ -59,7 +64,7 @@ $classes = db_fetchAll("SELECT id, name, section FROM classes WHERE is_active = 
                 </div>
             </div>
             
-            <div id="markActionBar" style="display:none; padding:10px 20px; border-bottom:1px solid var(--ink-border); justify-content:space-between; align-items:center;">
+            <div id="markActionBar" style="display:none; padding:10px 20px; border-bottom:1px solid #ececec; justify-content:space-between; align-items:center;">
                 <div style="display:flex;gap:10px;">
                     <button class="btn btn-secondary btn-sm" onclick="markAll('present')">Mark All Present</button>
                     <button class="btn btn-secondary btn-sm" onclick="markAll('absent')">Mark All Absent</button>
@@ -154,11 +159,16 @@ $classes = db_fetchAll("SELECT id, name, section FROM classes WHERE is_active = 
 
         <?php else: ?>
         <!-- My Attendance View for Students and Parents -->
+        <div class="page-hero">
+            <h1 class="page-hero-title"><?= htmlspecialchars($pageTitle) ?></h1>
+            <div class="page-hero-sub">View your overall attendance stats and daily history.</div>
+        </div>
+
         <div id="panel-my" class="card">
             <div class="card-header">
                 <div>
                     <div class="card-title">My Attendance</div>
-                    <div class="card-sub">View overall attendance stats and daily history.</div>
+                    <div class="card-sub">Daily attendance records.</div>
                 </div>
             </div>
             

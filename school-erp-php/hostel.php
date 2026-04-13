@@ -160,7 +160,7 @@ async function loadRooms() {
             <td>Floor ${r.floor}</td>
             <td><span class="badge badge-info" style="text-transform:capitalize">${r.type}</span></td>
             <td><span class="badge ${parseInt(r.occupants)>=parseInt(r.capacity)?'badge-danger':'badge-success'}">${r.occupants} / ${r.capacity} Beds</span></td>
-            <td>₹${parseFloat(r.monthly_fee).toLocaleString('en-IN')} / mo</td>
+            <td>₹${parseFloat(r.monthly_fee || 0).toLocaleString('en-IN')} / mo</td>
         </tr>
     `}).join('') || '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-muted)">No rooms configured</td></tr>';
     

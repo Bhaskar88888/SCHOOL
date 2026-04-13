@@ -252,8 +252,10 @@ async function returnBook(id) {
 
 async function deleteBook(id) {
     if(!confirm('Remove this book?')) return;
-    await fetch(`/api/library/index.php?id=${id}`,{method:'DELETE'});
-    showToast('Book removed'); loadBooks();
+    const res = await apiDelete(`/api/library/index.php?id=${id}`);
+    if (res.success) showToast('Book removed');
+    else showToast(res.error || 'Delete failed', 'danger');
+    loadBooks();
 }
 
 loadBooks();

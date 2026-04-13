@@ -6,16 +6,28 @@ $pageTitle = 'Dashboard';
 // ── Quick stats ────────────────────────────────────────
 $totalStudents     = db_count("SELECT COUNT(*) FROM students WHERE is_active = 1");
 $totalStaff        = db_count("SELECT COUNT(*) FROM users WHERE role IN ('teacher','admin','accountant','accounts','librarian','hr','canteen','conductor','driver','staff') AND is_active = 1");
-$totalFeeThisMonth = db_count("SELECT COALESCE(SUM(amount_paid),0) FROM fees WHERE MONTH(paid_date)=MONTH(NOW()) AND YEAR(paid_date)=YEAR(NOW())");
-$pendingFee        = db_count("SELECT COALESCE(SUM(balance_amount),0) FROM fees WHERE balance_amount > 0");
+$totalFeeThisMonth = (float)(db_fetch("SELECT COALESCE(SUM(amount_paid),0) as total FROM fees WHERE MONTH(paid_date)=MONTH(NOW()) AND YEAR(paid_date)=YEAR(NOW())")['total'] ?? 0);
+$pendingFee        = (float)(db_fetch("SELECT COALESCE(SUM(balance_amount),0) as total FROM fees WHERE balance_amount > 0")['total'] ?? 0);
 $todayAttendance   = db_count("SELECT COUNT(*) FROM attendance WHERE date = CURDATE() AND status = 'present'");
 $pendingComplaints = db_count("SELECT COUNT(*) FROM complaints WHERE status = 'pending'");
 $totalBooks        = db_count("SELECT COUNT(*) FROM library_books");
 $activeNotices     = db_count("SELECT COUNT(*) FROM notices WHERE is_active = 1");
 
+require_once __DIR__ . '/includes/notify.php';
+$unreadNotifs = get_unread_notification_count(get_current_user_id());
+
 // ── Recent data ────────────────────────────────────────
 $recentStudents = db_fetchAll("SELECT s.*, c.name as class_name FROM students s LEFT JOIN classes c ON s.class_id = c.id ORDER BY s.created_at DESC LIMIT 6");
 $recentFees     = db_fetchAll("SELECT f.*, s.name as student_name FROM fees f LEFT JOIN students s ON f.student_id = s.id ORDER BY f.created_at DESC LIMIT 6");
+
+// ── Chart data ─────────────────────────────────────────
+$chartDates = [];
+$chartData = [];
+for($i = 6; $i >= 0; $i--) {
+    $d = date('Y-m-d', strtotime("-$i days"));
+    $chartDates[] = date('D', strtotime($d));
+    $chartData[] = db_count("SELECT COUNT(*) FROM attendance WHERE date = ? AND status = 'present'", [$d]);
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -80,6 +92,16 @@ $recentFees     = db_fetchAll("SELECT f.*, s.name as student_name FROM fees f LE
                 <div class="stat-label">Library Books</div>
             </div>
             <div class="stat-card">
+                <div class="stat-icon">🔔</div>
+                <div class="stat-value"><?= number_format($unreadNotifs) ?></div>
+                <div class="stat-label">Unread Alerts</div>
+                <?php if ($unreadNotifs > 0): ?>
+                <div class="stat-change up" style="color:var(--accent)">New updates!</div>
+                <?php endif; ?>
+            </div>
+            
+            <?php if (in_array(get_authenticated_user()['role'], ['superadmin','admin'])): ?>
+            <div class="stat-card">
                 <div class="stat-icon">📣</div>
                 <div class="stat-value"><?= number_format($pendingComplaints) ?></div>
                 <div class="stat-label">Pending Complaints</div>
@@ -87,11 +109,7 @@ $recentFees     = db_fetchAll("SELECT f.*, s.name as student_name FROM fees f LE
                 <div class="stat-change down">Requires attention</div>
                 <?php endif; ?>
             </div>
-            <div class="stat-card">
-                <div class="stat-icon">📌</div>
-                <div class="stat-value"><?= number_format($activeNotices) ?></div>
-                <div class="stat-label">Active Notices</div>
-            </div>
+            <?php endif; ?>
         </div>
 
         <!-- ── Quick actions ───────────────────────────── -->
@@ -120,6 +138,23 @@ $recentFees     = db_fetchAll("SELECT f.*, s.name as student_name FROM fees f LE
                     <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                     Export Data
                 </a>
+                <a href="<?= BASE_URL ?>/communication.php" class="btn btn-primary" style="background-color: var(--ink-3);">
+                    <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    Comms Hub
+                </a>
+            </div>
+        </div>
+
+        <!-- ── Attendance Chart ────────────────────────── -->
+        <div class="card" style="margin-bottom:20px">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">Attendance Overview</div>
+                    <div class="card-sub">Last 7 days presence</div>
+                </div>
+            </div>
+            <div style="padding:20px;height:250px;">
+                <canvas id="attendanceChart"></canvas>
             </div>
         </div>
 
@@ -241,5 +276,33 @@ $recentFees     = db_fetchAll("SELECT f.*, s.name as student_name FROM fees f LE
 </div>
 
 <script src="<?= BASE_URL ?>/assets/js/main.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const ctx = document.getElementById('attendanceChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: <?= json_encode($chartDates) ?>,
+            datasets: [{
+                label: 'Present Students',
+                data: <?= json_encode($chartData) ?>,
+                borderColor: '#607d8b',
+                backgroundColor: 'rgba(96, 125, 139, 0.1)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, grid: { borderDash: [2, 4] } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+</script>
 </body>
 </html>

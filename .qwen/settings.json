@@ -59,7 +59,8 @@
       "Bash(context.activeform *)",
       "Bash(context.formdata *)",
       "Bash(eof)",
-      "Bash(mkdir *)"
+      "Bash(mkdir *)",
+      "Bash(php *)"
     ]
   },
   "$version": 3

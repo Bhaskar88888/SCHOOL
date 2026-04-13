@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diagnostic — School ERP</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    font-family: 'Outfit', sans-serif;
+    background: #f4f4f5;
+    color: #111;
+    min-height: 100vh;
+    padding: 32px 16px 64px;
+}
+.container { max-width: 980px; margin: 0 auto; }
+.page-title {
+    font-size: 26px; font-weight: 700;
+    margin-bottom: 4px;
+}
+.page-sub {
+    font-size: 13px; color: #666;
+    margin-bottom: 28px;
+}
+.delete-warning {
+    background: #fff3cd; border: 1px solid #ffc107;
+    border-radius: 10px; padding: 14px 18px;
+    font-size: 13px; color: #856404;
+    margin-bottom: 24px;
+    display: flex; align-items: center; gap: 10px;
+}
+.status-banner {
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 24px;
+    display: flex; align-items: center; gap: 16px;
+}
+.status-banner.ok { background: #f0fdf4; border: 1px solid #bbf7d0; }
+.status-banner.fail { background: #fef2f2; border: 1px solid #fecaca; }
+.status-dot { width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+.status-dot.ok { background: #dcfce7; }
+.status-dot.fail { background: #fee2e2; }
+.status-text { font-size: 17px; font-weight: 600; }
+.status-text.ok { color: #16a34a; }
+.status-text.fail { color: #dc2626; }
+.status-sub { font-size: 13px; color: #666; margin-top: 3px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+@media (max-width: 680px) { .grid { grid-template-columns: 1fr; } }
+.card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    overflow: hidden;
+}
+.card-head {
+    padding: 14px 18px;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex; align-items: center; justify-content: space-between;
+}
+.card-title { font-size: 14px; font-weight: 600; color: #111; }
+.card-count { font-size: 12px; color: #888; }
+.card-body { padding: 0; }
+table { width: 100%; border-collapse: collapse; }
+th { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #999; padding: 8px 14px; text-align: left; border-bottom: 1px solid #f0f0f0; }
+td { padding: 9px 14px; font-size: 13px; border-bottom: 1px solid #f9f9f9; }
+tr:last-child td { border-bottom: none; }
+.badge { padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+.badge-ok { background: #dcfce7; color: #16a34a; }
+.badge-fail { background: #fee2e2; color: #dc2626; }
+.badge-info { background: #e0f2fe; color: #0369a1; }
+.badge-warn { background: #fff3cd; color: #856404; }
+.full-card { grid-column: 1 / -1; }
+.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #555; }
+.section-label { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #aaa; margin: 24px 0 8px; }
+.count-chip { font-size: 11px; background: #f0f0f0; color: #666; border-radius: 20px; padding: 2px 7px; }
+.count-chip.green { background: #dcfce7; color: #16a34a; }
+.count-chip.red { background: #fee2e2; color: #dc2626; }
+</style>
+</head>
+<body>
+<div class="container">
+
+    <div class="page-title">🔍 School ERP — Diagnostic Panel</div>
+    <div class="page-sub">Environment: <strong>local</strong> &nbsp;|&nbsp; Server: <strong>localhost</strong> &nbsp;|&nbsp; Time: <strong>12 Apr 2026 13:46:03</strong></div>
+
+    <div class="delete-warning">
+        ⚠️ <strong>IMPORTANT:</strong> Delete or password-protect this file before deploying to production! URL: <code>diagnostic.php?access=erp2025</code>
+    </div>
+
+    <!-- Overall Status Banner -->
+    <div class="status-banner fail">
+        <div class="status-dot fail">❌</div>
+        <div>
+            <div class="status-text fail">Issues Detected — See details below</div>
+            <div class="status-sub">
+                1 missing PHP extension(s)            </div>
+        </div>
+    </div>
+
+    <!-- Database + PHP -->
+    <div class="grid">
+
+        <!-- Database Status -->
+        <div class="card">
+            <div class="card-head">
+                <div class="card-title">Database Connection</div>
+                <span class="badge badge-ok">CONNECTED</span>
+            </div>
+            <div class="card-body">
+                <table>
+                    <tr><td>Host</td><td class="mono">localhost</td></tr>
+                    <tr><td>Database</td><td class="mono">school_erp</td></tr>
+                    <tr><td>User</td><td class="mono">root</td></tr>
+                    <tr><td>Charset</td><td class="mono">utf8mb4</td></tr>
+                    <tr>
+                        <td>Status</td>
+                        <td>
+                                                            <span class="badge badge-ok">OK</span>
+                                                    </td>
+                    </tr>
+                                        <tr><td>Total Tables</td><td class="mono">74 found</td></tr>
+                                    </table>
+            </div>
+        </div>
+
+        <!-- PHP Extensions -->
+        <div class="card">
+            <div class="card-head">
+                <div class="card-title">PHP Extensions</div>
+                <span class="count-chip red">8/9 loaded</span>
+            </div>
+            <div class="card-body">
+                <table>
+                                        <tr>
+                        <td>pdo</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                    </tr>
+                                        <tr>
+                        <td>pdo_mysql</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                    </tr>
+                                        <tr>
+                        <td>mbstring</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                    </tr>
+                                        <tr>
+                        <td>json</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                    </tr>
+                                        <tr>
+                        <td>session</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                    </tr>
+                                        <tr>
+                        <td>fileinfo</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                    </tr>
+                                        <tr>
+                        <td>openssl</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                    </tr>
+                                        <tr>
+                        <td>curl</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                    </tr>
+                                        <tr>
+                        <td>zip</td>
+                        <td><span class="badge badge-fail">MISSING</span></td>
+                    </tr>
+                                    </table>
+            </div>
+        </div>
+
+        <!-- PHP Settings -->
+        <div class="card">
+            <div class="card-head">
+                <div class="card-title">PHP Configuration</div>
+                <span class="badge badge-info">v8.2.12</span>
+            </div>
+            <div class="card-body">
+                <table>
+                                        <tr>
+                        <td>PHP Version</td>
+                        <td class="mono"><span class="badge badge-ok">8.2.12</span></td>
+                    </tr>
+                                        <tr>
+                        <td>display_errors</td>
+                        <td class="mono"><span class="badge badge-ok">1</span></td>
+                    </tr>
+                                        <tr>
+                        <td>memory_limit</td>
+                        <td class="mono"><span class="badge badge-ok">512M</span></td>
+                    </tr>
+                                        <tr>
+                        <td>upload_max_filesize</td>
+                        <td class="mono"><span class="badge badge-ok">40M</span></td>
+                    </tr>
+                                        <tr>
+                        <td>post_max_size</td>
+                        <td class="mono"><span class="badge badge-ok">40M</span></td>
+                    </tr>
+                                        <tr>
+                        <td>max_execution_time</td>
+                        <td class="mono"><span class="badge badge-ok">120</span></td>
+                    </tr>
+                                        <tr>
+                        <td>session.save_path</td>
+                        <td class="mono"><span class="badge badge-ok">C:\xampp\tmp</span></td>
+                    </tr>
+                                    </table>
+            </div>
+        </div>
+
+        <!-- Permissions -->
+        <div class="card">
+            <div class="card-head">
+                <div class="card-title">File Permissions</div>
+            </div>
+            <div class="card-body">
+                <table>
+                    <tr>
+                        <td>uploads/ directory</td>
+                        <td>
+                            <span class="badge badge-ok">WRITABLE</span>
+                                                    </td>
+                    </tr>
+                    <tr>
+                        <td>tmp/ directory</td>
+                        <td><span class="badge badge-ok">WRITABLE</span></td>
+                    </tr>
+                    <tr>
+                        <td>.env.php</td>
+                        <td><span class="badge badge-ok">EXISTS</span></td>
+                    </tr>
+                    <tr>
+                        <td>APP_ENV</td>
+                        <td><span class="badge badge-info">local</span></td>
+                    </tr>
+                    <tr>
+                        <td>APP_DEBUG</td>
+                        <td><span class="badge badge-warn">true</span></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Database Tables -->
+    <div class="section-label">Database Tables (40/40 exist)</div>
+    <div class="card full-card" style="margin-bottom:20px">
+        <div class="card-head">
+            <div class="card-title">All Required Tables</div>
+                            <span class="badge badge-ok">All Present</span>
+                    </div>
+        <div class="card-body">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Table Name</th>
+                        <th>Status</th>
+                        <th>Records</th>
+                    </tr>
+                </thead>
+                <tbody>
+                                        <tr>
+                        <td class="mono">users</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                        <td class="mono">2</td>
+                    </tr>
+                                        <tr>
+                        <td class="mono">classes</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                        <td class="mono">16</td>
+                    </tr>
+                                        <tr>
+                        <td class="mono">students</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                        <td class="mono">0</td>
+                    </tr>
+                                        <tr>
+                        <td class="mono">attendance</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                        <td class="mono">0</td>
+                    </tr>
+                                        <tr>
+                        <td class="mono">fees</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                        <td class="mono">0</td>
+                    </tr>
+                                        <tr>
+                        <td class="mono">fee_structures</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                        <td class="mono">0</td>
+                    </tr>
+                                        <tr>
+                        <td class="mono">exams</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                        <td class="mono">0</td>
+                    </tr>
+                                        <tr>
+                        <td class="mono">exam_results</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                        <td class="mono">0</td>
+                    </tr>
+                                        <tr>
+                        <td class="mono">library_books</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                        <td class="mono">0</td>
+                    </tr>
+                                        <tr>
+                        <td class="mono">library_issues</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                        <td class="mono">0</td>
+                    </tr>
+                                        <tr>
+                        <td class="mono">hostel_rooms</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                        <td class="mono">0</td>
+                    </tr>
+                                        <tr>
+                        <td class="mono">hostel_allocations</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                        <td class="mono">0</td>
+                    </tr>
+                                        <tr>
+                        <td class="mono">hostel_room_types</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                        <td class="mono">0</td>
+                    </tr>
+                                        <tr>
+                        <td class="mono">hostel_fee_structures</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                        <td class="mono">0</td>
+                    </tr>
+                                        <tr>
+                        <td class="mono">transport_vehicles</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                        <td class="mono">0</td>
+                    </tr>
+                                        <tr>
+                        <td class="mono">bus_routes</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                        <td class="mono">0</td>
+                    </tr>
+                                        <tr>
+                        <td class="mono">bus_stops</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                        <td class="mono">0</td>
+                    </tr>
+                                        <tr>
+                        <td class="mono">transport_attendance</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                        <td class="mono">0</td>
+                    </tr>
+                                        <tr>
+                        <td class="mono">notices</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                        <td class="mono">0</td>
+                    </tr>
+                                        <tr>
+                        <td class="mono">complaints</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                        <td class="mono">0</td>
+                    </tr>
+                                        <tr>
+                        <td class="mono">leave_applications</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                        <td class="mono">0</td>
+                    </tr>
+                                        <tr>
+                        <td class="mono">payroll</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                        <td class="mono">0</td>
+                    </tr>
+                                        <tr>
+                        <td class="mono">salary_structures</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                        <td class="mono">0</td>
+                    </tr>
+                                        <tr>
+                        <td class="mono">homework</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                        <td class="mono">0</td>
+                    </tr>
+                                        <tr>
+                        <td class="mono">remarks</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                        <td class="mono">0</td>
+                    </tr>
+                                        <tr>
+                        <td class="mono">routine</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                        <td class="mono">0</td>
+                    </tr>
+                                        <tr>
+                        <td class="mono">canteen_items</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                        <td class="mono">0</td>
+                    </tr>
+                                        <tr>
+                        <td class="mono">canteen_orders</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                        <td class="mono">0</td>
+                    </tr>
+                                        <tr>
+                        <td class="mono">canteen_sales</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                        <td class="mono">0</td>
+                    </tr>
+                                        <tr>
+                        <td class="mono">canteen_sale_items</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                        <td class="mono">0</td>
+                    </tr>
+                                        <tr>
+                        <td class="mono">notifications</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                        <td class="mono">0</td>
+                    </tr>
+                                        <tr>
+                        <td class="mono">notifications_enhanced</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                        <td class="mono">0</td>
+                    </tr>
+                                        <tr>
+                        <td class="mono">audit_logs</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                        <td class="mono">0</td>
+                    </tr>
+                                        <tr>
+                        <td class="mono">audit_logs_enhanced</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                        <td class="mono">5</td>
+                    </tr>
+                                        <tr>
+                        <td class="mono">chatbot_logs</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                        <td class="mono">0</td>
+                    </tr>
+                                        <tr>
+                        <td class="mono">counters</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                        <td class="mono">0</td>
+                    </tr>
+                                        <tr>
+                        <td class="mono">archived_students</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                        <td class="mono">0</td>
+                    </tr>
+                                        <tr>
+                        <td class="mono">archived_staff</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                        <td class="mono">0</td>
+                    </tr>
+                                        <tr>
+                        <td class="mono">class_subjects</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                        <td class="mono">0</td>
+                    </tr>
+                                        <tr>
+                        <td class="mono">staff_attendance_enhanced</td>
+                        <td><span class="badge badge-ok">OK</span></td>
+                        <td class="mono">0</td>
+                    </tr>
+                                    </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Module Files -->
+    <div class="section-label">Module Files (29/29 present)</div>
+    <div class="grid">
+        <div class="card">
+            <div class="card-head">
+                <div class="card-title">PHP Module Pages</div>
+                <span class="count-chip">29 modules</span>
+            </div>
+            <div class="card-body">
+                <table>
+                    <thead><tr><th>File</th><th>Description</th><th>Status</th></tr></thead>
+                    <tbody>
+                                                <tr>
+                            <td class="mono">index.php</td>
+                            <td style="color:#666;font-size:12px">Login page</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                                <tr>
+                            <td class="mono">dashboard.php</td>
+                            <td style="color:#666;font-size:12px">Dashboard</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                                <tr>
+                            <td class="mono">students.php</td>
+                            <td style="color:#666;font-size:12px">Students module</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                                <tr>
+                            <td class="mono">attendance.php</td>
+                            <td style="color:#666;font-size:12px">Attendance module</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                                <tr>
+                            <td class="mono">fee.php</td>
+                            <td style="color:#666;font-size:12px">Fee module</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                                <tr>
+                            <td class="mono">exams.php</td>
+                            <td style="color:#666;font-size:12px">Exams module</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                                <tr>
+                            <td class="mono">hr.php</td>
+                            <td style="color:#666;font-size:12px">HR module</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                                <tr>
+                            <td class="mono">payroll.php</td>
+                            <td style="color:#666;font-size:12px">Payroll module</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                                <tr>
+                            <td class="mono">library.php</td>
+                            <td style="color:#666;font-size:12px">Library module</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                                <tr>
+                            <td class="mono">hostel.php</td>
+                            <td style="color:#666;font-size:12px">Hostel module</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                                <tr>
+                            <td class="mono">transport.php</td>
+                            <td style="color:#666;font-size:12px">Transport module</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                                <tr>
+                            <td class="mono">canteen.php</td>
+                            <td style="color:#666;font-size:12px">Canteen module</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                                <tr>
+                            <td class="mono">homework.php</td>
+                            <td style="color:#666;font-size:12px">Homework module</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                                <tr>
+                            <td class="mono">notices.php</td>
+                            <td style="color:#666;font-size:12px">Notices module</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                                <tr>
+                            <td class="mono">routine.php</td>
+                            <td style="color:#666;font-size:12px">Routine/Timetable module</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                                <tr>
+                            <td class="mono">leave.php</td>
+                            <td style="color:#666;font-size:12px">Leave module</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                                <tr>
+                            <td class="mono">complaints.php</td>
+                            <td style="color:#666;font-size:12px">Complaints module</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                                <tr>
+                            <td class="mono">chatbot.php</td>
+                            <td style="color:#666;font-size:12px">AI Chatbot module</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                                <tr>
+                            <td class="mono">remarks.php</td>
+                            <td style="color:#666;font-size:12px">Remarks module</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                                <tr>
+                            <td class="mono">classes.php</td>
+                            <td style="color:#666;font-size:12px">Classes module</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                                <tr>
+                            <td class="mono">notifications.php</td>
+                            <td style="color:#666;font-size:12px">Notifications module</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                                <tr>
+                            <td class="mono">users.php</td>
+                            <td style="color:#666;font-size:12px">Users module</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                                <tr>
+                            <td class="mono">salary-setup.php</td>
+                            <td style="color:#666;font-size:12px">Salary Setup module</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                                <tr>
+                            <td class="mono">staff-attendance.php</td>
+                            <td style="color:#666;font-size:12px">Staff Attendance module</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                                <tr>
+                            <td class="mono">archive.php</td>
+                            <td style="color:#666;font-size:12px">Archive module</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                                <tr>
+                            <td class="mono">export.php</td>
+                            <td style="color:#666;font-size:12px">Export module</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                                <tr>
+                            <td class="mono">audit.php</td>
+                            <td style="color:#666;font-size:12px">Audit Log module</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                                <tr>
+                            <td class="mono">profile.php</td>
+                            <td style="color:#666;font-size:12px">Profile module</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                                <tr>
+                            <td class="mono">forgot_password.php</td>
+                            <td style="color:#666;font-size:12px">Forgot Password</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                            </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-head">
+                <div class="card-title">Includes & Assets</div>
+                <span class="count-chip">17 files</span>
+            </div>
+            <div class="card-body">
+                <table>
+                    <thead><tr><th>File</th><th>Status</th></tr></thead>
+                    <tbody>
+                                                <tr>
+                            <td class="mono">includes/auth.php</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                                <tr>
+                            <td class="mono">includes/db.php</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                                <tr>
+                            <td class="mono">includes/env_loader.php</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                                <tr>
+                            <td class="mono">includes/sidebar.php</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                                <tr>
+                            <td class="mono">includes/header.php</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                                <tr>
+                            <td class="mono">includes/helpers.php</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                                <tr>
+                            <td class="mono">includes/validator.php</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                                <tr>
+                            <td class="mono">includes/api_response.php</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                                <tr>
+                            <td class="mono">includes/rate_limiter.php</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                                <tr>
+                            <td class="mono">includes/audit_logger.php</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                                <tr>
+                            <td class="mono">includes/secure_upload.php</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                                <tr>
+                            <td class="mono">includes/excel_export.php</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                                <tr>
+                            <td class="mono">includes/chatbot_knowledge_en.php</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                                <tr>
+                            <td class="mono">config/env.php</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                                <tr>
+                            <td class="mono">assets/css/style.css</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                                <tr>
+                            <td class="mono">assets/js/main.js</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                                <tr>
+                            <td class="mono">setup.sql</td>
+                            <td><span class="badge badge-ok">OK</span></td>
+                        </tr>
+                                            </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick fix instructions -->
+    
+    <!-- Quick Links -->
+    <div class="section-label">Quick Links</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:32px">
+        <a href="http://localhost/school-erp-php/" target="_blank" style="text-decoration:none;background:#0a0a0a;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:500">🏠 Open App</a>
+        <a href="http://localhost/phpmyadmin" target="_blank" style="text-decoration:none;background:#f59e0b;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:500">🗄️ phpMyAdmin</a>
+        <a href="http://localhost/school-erp-php/api/health.php" target="_blank" style="text-decoration:none;background:#2563eb;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:500">📡 API Health JSON</a>
+        <a href="http://localhost/school-erp-php/diagnostic.php?access=erp2025" style="text-decoration:none;background:#6b7280;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:500">🔄 Refresh</a>
+    </div>
+
+    <div style="font-size:12px;color:#aaa;text-align:center">
+        School ERP v3.0 &middot; Diagnostic Page &middot; 2026 &middot; <strong>DELETE BEFORE PRODUCTION</strong>
+    </div>
+
+</div>
+</body>
+</html>

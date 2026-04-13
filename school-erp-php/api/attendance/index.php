@@ -5,6 +5,11 @@ require_once __DIR__ . '/../../includes/sms_service.php';
 require_auth();
 header('Content-Type: application/json');
 
+if ($_SERVER['REQUEST_METHOD'] !== 'GET' && $_SERVER['REQUEST_METHOD'] !== 'HEAD') {
+    require_once __DIR__ . '/../../includes/csrf.php';
+    CSRFProtection::verifyToken();
+}
+
 function truthy_flag($value)
 {
     if (is_bool($value)) {
@@ -76,6 +81,9 @@ $allowedStudentIds = attendance_allowed_student_ids();
 
 if ($method === 'GET' && (isset($_GET['student_id']) || preg_match('/\/student\/(\d+)$/', $_SERVER['REQUEST_URI'], $matches) || preg_match('/\/student\/(\d+)\/stats$/', $_SERVER['REQUEST_URI'], $statMatches))) {
     $studentId = (int) ($_GET['student_id'] ?? ($matches[1] ?? ($statMatches[1] ?? 0)));
+    if ($studentId <= 0 && is_array($allowedStudentIds) && count($allowedStudentIds) > 0) {
+        $studentId = $allowedStudentIds[0];
+    }
     if ($studentId <= 0) {
         json_response(['error' => 'student_id required'], 400);
     }
@@ -307,10 +315,21 @@ if ($method === 'POST') {
 
     $smsCount = 0;
     if ($sendSms && $absentStudents) {
+        require_once __DIR__ . '/../../includes/notify.php';
         $smsService = SMSService::getInstance();
         foreach ($absentStudents as $studentId) {
             $student = db_fetch("SELECT name, parent_phone FROM students WHERE id = ? AND parent_phone IS NOT NULL", [$studentId]);
             if ($student) {
+                // Internal system notification
+                notify_parent_of_student(
+                    $studentId,
+                    'attendance_alert',
+                    'Absence Alert',
+                    $student['name'] . ' is marked absent for ' . $date . '.',
+                    get_current_user_id()
+                );
+                
+                // SMS
                 $result = $smsService->notifyAbsence($student['name'], $student['parent_phone'], $date);
                 if (!empty($result['success'])) {
                     $smsCount++;

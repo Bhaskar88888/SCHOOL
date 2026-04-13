@@ -2,6 +2,12 @@
 require_once __DIR__ . '/../../includes/auth.php';
 require_auth();
 header('Content-Type: application/json');
+
+if ($_SERVER['REQUEST_METHOD'] !== 'GET' && $_SERVER['REQUEST_METHOD'] !== 'HEAD') {
+    require_once __DIR__ . '/../../includes/csrf.php';
+    CSRFProtection::verifyToken();
+}
+
 // Hostel Rooms
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     if (isset($_GET['allocations'])) {
@@ -12,26 +18,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     json_response($rooms);
 }
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    require_role(['superadmin','admin']);
+    require_role(['superadmin', 'admin']);
     $data = get_post_json();
     $action = $data['action'] ?? 'add_room';
     if ($action === 'add_room') {
-        $id = db_insert("INSERT INTO hostel_rooms (room_number, block, floor, capacity, type, monthly_fee) VALUES (?,?,?,?,?,?)",
-            [sanitize($data['room_number'] ?? ''), sanitize($data['block'] ?? ''), (int)($data['floor'] ?? 1), (int)($data['capacity'] ?? 4), sanitize($data['type'] ?? 'double'), (float)($data['monthly_fee'] ?? 0)]);
+        $id = db_insert(
+            "INSERT INTO hostel_rooms (room_number, block, floor, capacity, type, monthly_fee) VALUES (?,?,?,?,?,?)",
+            [sanitize($data['room_number'] ?? ''), sanitize($data['block'] ?? ''), (int) ($data['floor'] ?? 1), (int) ($data['capacity'] ?? 4), sanitize($data['type'] ?? 'double'), (float) ($data['monthly_fee'] ?? 0)]
+        );
         json_response(['success' => true, 'id' => $id]);
     }
     if ($action === 'allocate') {
         $pdo = get_db_connection();
         $pdo->beginTransaction();
         try {
-            $room = db_fetch("SELECT * FROM hostel_rooms WHERE id=? AND is_active=1 FOR UPDATE", [(int)$data['room_id']]);
-            if (!$room) { $pdo->rollBack(); json_response(['error' => 'Room not found'], 404); }
-            $occupants = db_count("SELECT COUNT(*) FROM hostel_allocations WHERE room_id=? AND is_active=1", [(int)$data['room_id']]);
-            if ($occupants >= (int)$room['capacity']) { $pdo->rollBack(); json_response(['error' => 'Room is full. No available beds.'], 400); }
-            $id = db_insert("INSERT INTO hostel_allocations (room_id, student_id, check_in_date, is_active) VALUES (?,?,?,1)",
-                [(int)$data['room_id'], (int)$data['student_id'], $data['check_in_date'] ?? date('Y-m-d')]);
+            $room = db_fetch("SELECT * FROM hostel_rooms WHERE id=? AND is_active=1 FOR UPDATE", [(int) $data['room_id']]);
+            if (!$room) {
+                $pdo->rollBack();
+                json_response(['error' => 'Room not found'], 404);
+            }
+            $occupants = db_count("SELECT COUNT(*) FROM hostel_allocations WHERE room_id=? AND is_active=1", [(int) $data['room_id']]);
+            if ($occupants >= (int) $room['capacity']) {
+                $pdo->rollBack();
+                json_response(['error' => 'Room is full. No available beds.'], 400);
+            }
+            $id = db_insert(
+                "INSERT INTO hostel_allocations (room_id, student_id, check_in_date, is_active) VALUES (?,?,?,1)",
+                [(int) $data['room_id'], (int) $data['student_id'], $data['check_in_date'] ?? date('Y-m-d')]
+            );
             if (db_column_exists('hostel_rooms', 'occupied_beds')) {
-                db_query("UPDATE hostel_rooms SET occupied_beds=occupied_beds+1 WHERE id=?", [(int)$data['room_id']]);
+                db_query("UPDATE hostel_rooms SET occupied_beds=occupied_beds+1 WHERE id=?", [(int) $data['room_id']]);
             }
             $pdo->commit();
             audit_log('ALLOCATE', 'hostel', $id, null, $data);
@@ -42,12 +58,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
     if ($action === 'deallocate') {
-        $alloc = db_fetch("SELECT * FROM hostel_allocations WHERE id=?", [(int)$data['allocation_id']]);
-        db_query("UPDATE hostel_allocations SET is_active=0, check_out_date=? WHERE id=?", [date('Y-m-d'), (int)$data['allocation_id']]);
+        $alloc = db_fetch("SELECT * FROM hostel_allocations WHERE id=?", [(int) $data['allocation_id']]);
+        db_query("UPDATE hostel_allocations SET is_active=0, check_out_date=? WHERE id=?", [date('Y-m-d'), (int) $data['allocation_id']]);
         if ($alloc && db_column_exists('hostel_rooms', 'occupied_beds')) {
             db_query("UPDATE hostel_rooms SET occupied_beds=GREATEST(0, occupied_beds-1) WHERE id=?", [$alloc['room_id']]);
         }
-        audit_log('DEALLOCATE', 'hostel', (int)$data['allocation_id']);
+        audit_log('DEALLOCATE', 'hostel', (int) $data['allocation_id']);
         json_response(['success' => true]);
     }
 }

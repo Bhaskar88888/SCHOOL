@@ -152,9 +152,10 @@ async function loadStudents() {
 
 async function loadStats() {
     const data = await apiGet('/api/dashboard/stats.php');
-    document.getElementById('statMonthly').textContent = '₹'+data.fee_this_month.toLocaleString('en-IN');
-    document.getElementById('statPending').textContent = '₹'+data.pending_fee.toLocaleString('en-IN');
-    document.getElementById('statCount').textContent = '-';
+    const s = data.stats || {};
+    document.getElementById('statMonthly').textContent = '₹'+ (s.fee_this_month||0).toLocaleString('en-IN');
+    document.getElementById('statPending').textContent  = '₹'+ (s.pending_fee||0).toLocaleString('en-IN');
+    document.getElementById('statCount').textContent    = (s.students || '-');
 }
 
 async function submitFee(e) {
@@ -166,11 +167,7 @@ async function submitFee(e) {
     let res;
     if (editingFeeId) {
         data.id = editingFeeId;
-        res = await fetch('/api/fee/index.php', {
-            method:'PUT', 
-            headers:{'Content-Type':'application/json'}, 
-            body:JSON.stringify(data)
-        }).then(r=>r.json());
+        res = await apiPut('/api/fee/index.php', data);
         editingFeeId = null;
     } else {
         res = await apiPost('/api/fee/index.php', data);
@@ -192,7 +189,7 @@ function editFee(id, data) {
     form.fee_type.value = data.fee_type;
     form.total_amount.value = data.total_amount;
     form.amount_paid.value = data.amount_paid;
-    if (form.discount) form.discount.value = 0;
+    if (form.discount) form.discount.value = data.discount || 0;
     form.payment_method.value = data.payment_method;
     form.remarks.value = data.remarks || '';
     document.querySelector('#addModal .modal-title').textContent = '✏️ Edit Fee Record';
@@ -201,7 +198,7 @@ function editFee(id, data) {
 
 async function deleteFee(id) {
     if(!confirm('Are you sure you want to delete this fee record?')) return;
-    const res = await fetch(`/api/fee/index.php?id=${id}`, {method:'DELETE'}).then(r=>r.json());
+    const res = await apiDelete(`/api/fee/index.php?id=${id}`);
     if (res.success) { showToast('Fee deleted'); loadFees(); loadStats(); }
     else showToast(res.error || 'Failed', 'danger');
 }

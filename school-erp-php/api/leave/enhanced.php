@@ -70,7 +70,7 @@ if ($method === 'PUT' && isset($_GET['action']) && $_GET['action'] === 'approve'
     }
     
     audit_log('LEAVE_APPROVED', 'leave', $data['id'], $leave, $data);
-    json_response(['message' => "Leave $data['status']"]);
+    json_response(['message' => "Leave {$data['status']}"]);
 }
 
 // Include regular leave API

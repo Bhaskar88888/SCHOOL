@@ -56,6 +56,11 @@ function loadNotifications() {
         });
 }
 
+// ---- CSRF Helper ----
+function getCsrfToken() {
+    return document.getElementById('topbar')?.dataset?.csrf || '';
+}
+
 // ---- AJAX Helpers ----
 async function apiGet(url) {
     const response = await fetch(url);
@@ -65,14 +70,32 @@ async function apiGet(url) {
 async function apiPost(url, data) {
     const response = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': getCsrfToken()
+        },
+        body: JSON.stringify(data)
+    });
+    return response.json();
+}
+
+async function apiPut(url, data) {
+    const response = await fetch(url, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': getCsrfToken()
+        },
         body: JSON.stringify(data)
     });
     return response.json();
 }
 
 async function apiDelete(url) {
-    const response = await fetch(url, { method: 'DELETE' });
+    const response = await fetch(url, {
+        method: 'DELETE',
+        headers: { 'X-CSRF-TOKEN': getCsrfToken() }
+    });
     return response.json();
 }
 
@@ -214,6 +237,65 @@ window.downloadCsv = downloadCsv;
 
 // ---- Chatbot ----
 let chatbotOpen = false;
+let chatbotLanguage = 'en';
+let chatbotLanguages = { 'en': 'English', 'hi': 'Hindi', 'as': 'Assamese' };
+
+function toggleChatbotLanguage() {
+    const sequence = ['en', 'hi', 'as'];
+    const currentIndex = sequence.indexOf(chatbotLanguage);
+    const nextIndex = (currentIndex + 1) % sequence.length;
+    chatbotLanguage = sequence[nextIndex];
+
+    const langBtn = document.getElementById('chatLangToggle');
+    if (langBtn) {
+        langBtn.innerText = `[${chatbotLanguage.toUpperCase()}]`;
+    }
+
+    const body = document.getElementById('chatBody');
+    if (body) {
+        body.innerHTML = ''; // Clear chat
+    }
+    initChatbot(); // Re-initialize with new language
+}
+
+function initChatbot() {
+    const body = document.getElementById('chatBody');
+    if (!body) return;
+    
+    // Setup Header Lang Button dynamically if not exists
+    let langBtn = document.getElementById('chatLangToggle');
+    if (!langBtn) {
+        const head = document.querySelector('.chatbot-head');
+        if (head) {
+            langBtn = document.createElement('button');
+            langBtn.id = 'chatLangToggle';
+            langBtn.className = 'chatbot-head-lang';
+            langBtn.style.cssText = 'background:none;border:none;color:#fff;font-size:12px;margin-right:10px;cursor:pointer;opacity:0.8;';
+            langBtn.innerText = `[${chatbotLanguage.toUpperCase()}]`;
+            langBtn.onclick = toggleChatbotLanguage;
+            
+            const closeBtn = document.querySelector('.chatbot-head-close');
+            if (closeBtn) {
+                head.insertBefore(langBtn, closeBtn);
+            }
+        }
+    }
+
+    // Include lang in URL
+    fetch(`/api/chatbot/bootstrap.php?lang=${chatbotLanguage}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.welcome) {
+                addBotMessage(data.welcome, true);
+            } else {
+                addBotMessage("Hello. I am your School ERP assistant.\n\nYou can ask me about students, fees, attendance, exams, leave, and other school records.", true);
+            }
+        })
+        .catch(err => {
+            console.error("Chatbot Init Error:", err);
+            addBotMessage("Hello. I am your School ERP assistant.", true);
+        });
+}
 
 function toggleChatbot() {
     chatbotOpen = !chatbotOpen;
@@ -226,14 +308,37 @@ function toggleChatbot() {
         windowEl.classList.add('open');
         document.getElementById('chatInput')?.focus();
         if (document.querySelectorAll('.chat-msg').length === 0) {
-            addBotMessage("Hello. I am your School ERP assistant.\n\nYou can ask me about students, fees, attendance, exams, leave, and other school records.");
+            initChatbot();
         }
     } else {
         windowEl.classList.remove('open');
     }
 }
 
-function addBotMessage(text) {
+function renderSuggestions(suggestions) {
+    if (!suggestions || !suggestions.length) return '';
+    const wrapper = document.createElement('div');
+    wrapper.className = 'chatbot-suggestions';
+    wrapper.style.cssText = 'display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;';
+    
+    suggestions.forEach(text => {
+        const chip = document.createElement('button');
+        chip.className = 'chatbot-suggestion-chip';
+        chip.style.cssText = 'background:rgba(0,0,0,0.05); border:1px solid rgba(0,0,0,0.1); border-radius:12px; padding:4px 10px; font-size:11px; cursor:pointer; color:var(--ink-2); font-family:var(--font-family);';
+        chip.innerText = text;
+        chip.onclick = () => {
+            const input = document.getElementById('chatInput');
+            if (input) {
+                input.value = text;
+                sendChatMessage();
+            }
+        };
+        wrapper.appendChild(chip);
+    });
+    return wrapper.outerHTML;
+}
+
+function addBotMessage(text, isHtml = false, suggestions = []) {
     const body = document.getElementById('chatBody');
     if (!body) {
         return;
@@ -242,7 +347,10 @@ function addBotMessage(text) {
     message.className = 'chat-msg bot';
     message.innerHTML = `
         <div class="chat-avatar">AI</div>
-        <div class="chat-bubble">${escHtml(text).replace(/\n/g, '<br>')}</div>
+        <div class="chat-bubble">
+            ${isHtml ? text : escHtml(text).replace(/\n/g, '<br>')}
+            ${renderSuggestions(suggestions)}
+        </div>
     `;
     body.appendChild(message);
     body.scrollTop = body.scrollHeight;
@@ -284,13 +392,23 @@ function sendChatMessage() {
 
     fetch('/api/chatbot/chat.php', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text })
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': getCsrfToken()
+        },
+        body: JSON.stringify({ message: text, language: chatbotLanguage })
     })
         .then((response) => response.json())
         .then((data) => {
             document.getElementById('typingIndicator')?.remove();
-            addBotMessage(data.reply || 'Sorry, I could not process that.');
+            
+            // Check for /lang shortcut
+            if (text === '/lang') {
+                toggleChatbotLanguage();
+                return;
+            }
+
+            addBotMessage(data.reply || 'Sorry, I could not process that.', false, data.suggestions || []);
         })
         .catch(() => {
             document.getElementById('typingIndicator')?.remove();
