@@ -3,6 +3,7 @@ require_once __DIR__ . '/includes/auth.php';
 require_auth();
 require_role(['superadmin', 'admin']);
 $pageTitle  = 'Transport Management';
+$students   = db_fetchAll("SELECT s.id, s.name, c.name as class_name FROM students s LEFT JOIN classes c ON s.class_id = c.id WHERE s.is_active = 1 ORDER BY s.name ASC");
 ?>
 <!DOCTYPE html>
 <html lang="en">

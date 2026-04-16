@@ -1,0 +1,200 @@
+<?php
+/**
+ * Database Connection & Helper Functions
+ * School ERP PHP v3.0
+ *
+ * TEMPLATE FILE — Copy this to includes/db.php and configure your database credentials.
+ * DO NOT commit includes/db.php with real credentials to version control!
+ *
+ * PDO wrapper for MySQL/MariaDB with prepared statements
+ * Provides db_query, db_fetch, db_fetchAll, db_insert, db_count, and transaction support
+ */
+
+// ═══════════════════════════════════════════════════════════════════════
+// CONFIGURE YOUR DATABASE CREDENTIALS BELOW
+// ═══════════════════════════════════════════════════════════════════════
+define('DB_HOST', 'localhost');
+define('DB_NAME', 'school_erp');
+define('DB_USER', 'root');
+define('DB_PASS', '');       // Set your database password here
+define('DB_CHARSET', 'utf8mb4');
+
+// Prevent redefinition
+if (!function_exists('get_db_connection')) {
+
+    // Ensure env is loaded
+    if (!defined('APP_NAME')) {
+        require_once __DIR__ . '/../includes/env_loader.php';
+    }
+
+    /**
+     * Global PDO instance (singleton pattern)
+     */
+    function get_db_connection()
+    {
+        static $pdo = null;
+
+        if ($pdo === null) {
+            $dsn = 'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=' . DB_CHARSET;
+            $options = [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::ATTR_EMULATE_PREPARES => false,
+                PDO::ATTR_PERSISTENT => false, // Disabled for connection pool safety
+            ];
+
+            try {
+                $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
+            } catch (PDOException $e) {
+                error_log('Database connection failed: ' . $e->getMessage());
+                if (defined('APP_DEBUG') && filter_var(APP_DEBUG, FILTER_VALIDATE_BOOLEAN)) {
+                    die('Database connection failed: ' . htmlspecialchars($e->getMessage()));
+                }
+                die('Database connection failed. Please try again later.');
+            }
+        }
+
+        return $pdo;
+    }
+
+    /**
+     * Execute a query with optional parameters (prepared statements)
+     */
+    function db_query($sql, $params = [])
+    {
+        $pdo = get_db_connection();
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        return $stmt;
+    }
+
+    /**
+     * Fetch a single row (first result)
+     */
+    function db_fetch($sql, $params = [])
+    {
+        $stmt = db_query($sql, $params);
+        return $stmt->fetch();
+    }
+
+    /**
+     * Fetch all rows
+     */
+    function db_fetchAll($sql, $params = [])
+    {
+        $stmt = db_query($sql, $params);
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * Fetch a single column value
+     */
+    function db_count($sql, $params = [])
+    {
+        $stmt = db_query($sql, $params);
+        $result = $stmt->fetchColumn();
+        return $result !== false ? (int) $result : 0;
+    }
+
+    /**
+     * Insert a row and return the last insert ID
+     */
+    function db_insert($sql, $params = [])
+    {
+        db_query($sql, $params);
+        return get_db_connection()->lastInsertId();
+    }
+
+    /**
+     * Begin database transaction
+     */
+    function db_beginTransaction()
+    {
+        get_db_connection()->beginTransaction();
+    }
+
+    /**
+     * Commit database transaction
+     */
+    function db_commit()
+    {
+        get_db_connection()->commit();
+    }
+
+    /**
+     * Rollback database transaction
+     */
+    function db_rollback()
+    {
+        if (get_db_connection()->inTransaction()) {
+            get_db_connection()->rollBack();
+        }
+    }
+
+    /**
+     * Execute raw SQL without parameters (use with caution!)
+     * Only for DDL statements or when no parameters needed
+     * NOTE: This function is dangerous — prefer db_query with prepared statements.
+     */
+    function db_exec($sql)
+    {
+        $lower = strtolower(trim($sql));
+        if (preg_match('/\b(drop|truncate|alter|grant|revoke|create)\b/i', $lower) && !defined('ALLOW_DDL_EXEC')) {
+            throw new InvalidArgumentException('db_exec() blocked: DDL statements require ALLOW_DDL_EXEC constant.');
+        }
+        return get_db_connection()->exec($sql);
+    }
+
+    /**
+     * Get the last error message
+     */
+    function db_error()
+    {
+        $error = get_db_connection()->errorInfo();
+        return $error[2] ?? 'Unknown error';
+    }
+
+    /**
+     * Check if inside a transaction
+     */
+    function db_in_transaction()
+    {
+        return get_db_connection()->inTransaction();
+    }
+
+    /**
+     * Ping the database to check connection
+     */
+    function db_ping()
+    {
+        try {
+            get_db_connection()->query('SELECT 1');
+            return true;
+        } catch (PDOException $e) {
+            return false;
+        }
+    }
+
+    /**
+     * Get database statistics
+     */
+    function db_stats()
+    {
+        $tables = db_fetchAll("SHOW TABLES");
+        $tableCount = count($tables);
+
+        $dbName = db_fetch("SELECT DATABASE()");
+        $dbSize = db_fetch(
+            "SELECT ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) AS size_mb
+             FROM information_schema.tables
+             WHERE table_schema = ?",
+            [DB_NAME]
+        );
+
+        return [
+            'database' => $dbName['DATABASE()'] ?? DB_NAME,
+            'table_count' => $tableCount,
+            'size_mb' => $dbSize['size_mb'] ?? 0,
+        ];
+    }
+}

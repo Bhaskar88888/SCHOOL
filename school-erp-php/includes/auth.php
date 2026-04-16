@@ -4,6 +4,9 @@
  */
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/audit_logger.php';
+require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/notify.php';
+require_once __DIR__ . '/bootstrap.php';
 
 // Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {
@@ -12,7 +15,7 @@ if (session_status() === PHP_SESSION_NONE) {
         ? filter_var(SESSION_COOKIE_SECURE, FILTER_VALIDATE_BOOLEAN)
         : false;
     session_set_cookie_params([
-        'secure'   => $cookieSecure,
+        'secure' => $cookieSecure,
         'httponly' => true,
         'samesite' => 'Lax'
     ]);
@@ -120,28 +123,29 @@ function get_post_json()
 
 function sanitize($value)
 {
-    return htmlspecialchars(strip_tags(trim($value)));
+    // Use htmlspecialchars only (strip_tags is redundant since htmlspecialchars encodes HTML chars)
+    return htmlspecialchars(trim($value), ENT_QUOTES, 'UTF-8');
 }
 
 function normalize_role_name($role)
 {
     $role = strtolower(trim((string) $role));
     $aliases = [
-        'accountant'  => 'accounts',
-        'accounts'    => 'accounts',
+        'accountant' => 'accounts',
+        'accounts' => 'accounts',
         'super admin' => 'superadmin',
         'super-admin' => 'superadmin',
-        'superadmin'  => 'superadmin',
-        'admin'       => 'admin',
-        'driver'      => 'driver',
-        'conductor'   => 'conductor',
-        'teacher'     => 'teacher',
-        'student'     => 'student',
-        'parent'      => 'parent',
-        'staff'       => 'staff',
-        'hr'          => 'hr',
-        'canteen'     => 'canteen',
-        'librarian'   => 'librarian',
+        'superadmin' => 'superadmin',
+        'admin' => 'admin',
+        'driver' => 'driver',
+        'conductor' => 'conductor',
+        'teacher' => 'teacher',
+        'student' => 'student',
+        'parent' => 'parent',
+        'staff' => 'staff',
+        'hr' => 'hr',
+        'canteen' => 'canteen',
+        'librarian' => 'librarian',
     ];
     return $aliases[$role] ?? $role;
 }
@@ -448,6 +452,24 @@ function generate_reset_token($email)
     );
 
     return $token;
+}
+
+/**
+ * Send password reset email
+ */
+function send_reset_email($email, $token)
+{
+    if (!function_exists('mail'))
+        return false;
+    // Use configured APP_URL instead of spoofable HTTP_HOST
+    $baseUrl = defined('APP_URL') ? rtrim(APP_URL, '/') : 'http://localhost';
+    $resetLink = $baseUrl . BASE_URL . "/reset_password.php?token=" . urlencode($token);
+
+    $subject = "Password Reset Request";
+    $message = "Please click the following link to reset your password:\n\n" . $resetLink . "\n\nIf you did not request this, please ignore this email.";
+    $fromEmail = defined('SMTP_FROM_EMAIL') ? SMTP_FROM_EMAIL : 'noreply@localhost';
+    $headers = "From: " . $fromEmail . "\r\n";
+    return @mail($email, $subject, $message, $headers);
 }
 
 /**

@@ -31,6 +31,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Handle password change if provided
     if (!empty($data['new_password'])) {
+        require_once __DIR__ . '/../../includes/validator.php';
+        Validator::reset();
+        Validator::password($data['new_password']);
+        if (Validator::hasErrors()) {
+            json_response(['error' => Validator::errors()['password']], 400);
+        }
+
         $oldPass = $data['old_password'] ?? '';
         $user = db_fetch("SELECT password FROM users WHERE id = ?", [$userId]);
         if (!password_verify($oldPass, $user['password'])) {

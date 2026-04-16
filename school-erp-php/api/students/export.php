@@ -14,13 +14,19 @@ fputcsv($output, ['ID', 'Name', 'Roll Number', 'Class', 'Gender', 'DOB', 'Parent
 
 // Data
 $classId = (int)($_GET['class_id'] ?? 0);
-$where = $classId ? "WHERE s.class_id = $classId" : "";
+$whereArr = ["s.is_active = 1"];
+$params = [];
+if ($classId > 0) {
+    $whereArr[] = "s.class_id = ?";
+    $params[] = $classId;
+}
+$whereSql = "WHERE " . implode(" AND ", $whereArr);
 $query = "SELECT s.id, s.name, s.roll_number, c.name as class_name, s.gender, s.dob, s.parent_name, s.phone, s.email, s.address, s.is_active 
           FROM students s 
           LEFT JOIN classes c ON s.class_id = c.id 
-          $where ORDER BY s.id DESC";
+          $whereSql ORDER BY s.id DESC";
 
-$students = db_fetchAll($query);
+$students = db_fetchAll($query, $params);
 
 foreach ($students as $row) {
     fputcsv($output, [

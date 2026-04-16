@@ -100,7 +100,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'rfid-pay' && $method === 'POS
         db_query("UPDATE students SET canteen_balance = canteen_balance - ? WHERE id = ?", [$data['total'], $student['id']]);
 
         // Record sale
-        $sql = "INSERT INTO canteen_sales (total, payment_mode, sold_to, sold_by) VALUES (?, 'wallet', ?, ?)";
+        $sql = "INSERT INTO canteen_sales (total_price, payment_mode, sold_to, sold_by) VALUES (?, 'wallet', ?, ?)";
         $saleId = db_insert($sql, [$data['total'], $student['id'], get_current_user_id()]);
 
         // Add sale items
@@ -110,9 +110,8 @@ if (isset($_GET['action']) && $_GET['action'] === 'rfid-pay' && $method === 'POS
                     "INSERT INTO canteen_sale_items (sale_id, item_id, quantity, price) VALUES (?, ?, ?, ?)",
                     [$saleId, $item['item_id'], $item['quantity'], $item['price']]
                 );
-                // Decrement stock
                 db_query(
-                    "UPDATE canteen_items SET quantity_available = GREATEST(quantity_available - ?, 0) WHERE id = ?",
+                    "UPDATE canteen_items SET available_qty = GREATEST(available_qty - ?, 0) WHERE id = ?",
                     [$item['quantity'], $item['item_id']]
                 );
             }
@@ -126,12 +125,15 @@ if (isset($_GET['action']) && $_GET['action'] === 'rfid-pay' && $method === 'POS
 
     audit_log('RFID_PAYMENT', 'canteen', $saleId, null, ['student_id' => $student['id'], 'amount' => $data['total']]);
 
+    // Fetch latest balance after transaction
+    $updatedStudent = db_fetch("SELECT canteen_balance FROM students WHERE id = ?", [$student['id']]);
+
     json_response([
         'success' => true,
         'sale_id' => $saleId,
         'student_name' => $student['name'],
         'amount' => $data['total'],
-        'new_balance' => $student['canteen_balance'] - $data['total'],
+        'new_balance' => $updatedStudent['canteen_balance'] ?? ($student['canteen_balance'] - $data['total']),
     ]);
 }
 
@@ -152,13 +154,13 @@ if (isset($_GET['action']) && $_GET['action'] === 'sell' && $method === 'POST') 
             $itemId = (int) ($item['item_id'] ?? 0);
             $qty = max(0, (int) ($item['quantity'] ?? 0));
             if ($itemId) {
-                $rows = db_query("UPDATE canteen_items SET quantity_available=quantity_available-? WHERE id=? AND quantity_available>=?", [$qty, $itemId, $qty]);
-                if ($rows === 0)
+                $stmt = db_query("UPDATE canteen_items SET available_qty=available_qty-? WHERE id=? AND available_qty>=?", [$qty, $itemId, $qty]);
+                if ($stmt->rowCount() === 0)
                     throw new Exception('INSUFFICIENT_STOCK');
             }
         }
         $saleId = db_insert(
-            "INSERT INTO canteen_sales (total_amount, sold_to, sold_by, payment_mode, created_at) VALUES (?,?,?,?,NOW())",
+            "INSERT INTO canteen_sales (total_price, sold_to, sold_by, payment_mode, created_at) VALUES (?,?,?,?,NOW())",
             [$total, $soldTo, get_current_user_id(), $paymentMode]
         );
         foreach ($items as $item) {
@@ -187,7 +189,7 @@ if ($method === 'PUT' && preg_match('/\/(\d+)\/restock$/', $_SERVER['REQUEST_URI
         json_response(['error' => 'quantity required'], 400);
     }
 
-    db_query("UPDATE canteen_items SET quantity_available = quantity_available + ?, is_available = 1 WHERE id = ?", [$data['quantity'], $itemId]);
+    db_query("UPDATE canteen_items SET available_qty = available_qty + ?, is_available = 1 WHERE id = ?", [$data['quantity'], $itemId]);
 
     json_response(['message' => 'Item restocked']);
 }

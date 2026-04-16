@@ -40,7 +40,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
     require_role(['superadmin', 'admin', 'teacher']);
-    db_query("DELETE FROM homework WHERE id = ?", [(int) ($_GET['id'] ?? 0)]);
+    $id = (int) ($_GET['id'] ?? 0);
+    $role = normalize_role_name(get_current_role());
+    if ($role === 'teacher') {
+        $hw = db_fetch("SELECT assigned_by FROM homework WHERE id = ?", [$id]);
+        if (!$hw || $hw['assigned_by'] != get_current_user_id()) {
+            json_response(['error' => 'Unauthorized to delete this homework'], 403);
+        }
+    }
+    db_query("DELETE FROM homework WHERE id = ?", [$id]);
     json_response(['success' => true]);
 }
 json_response(['error' => 'Method not allowed'], 405);

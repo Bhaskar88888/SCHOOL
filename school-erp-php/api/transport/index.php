@@ -10,6 +10,17 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET' && $_SERVER['REQUEST_METHOD'] !== 'HEAD
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $routes = db_fetchAll("SELECT r.*, v.vehicle_no, v.driver_name FROM bus_routes r LEFT JOIN transport_vehicles v ON r.vehicle_id = v.id WHERE r.is_active=1 ORDER BY r.route_name");
+    try {
+        $stops = db_fetchAll("SELECT * FROM bus_stops ORDER BY sequence ASC");
+        $stopsByRoute = [];
+        foreach ($stops as $stop) {
+            $stopsByRoute[$stop['route_id']][] = $stop;
+        }
+        foreach ($routes as &$route) {
+            $route['bus_stops_list'] = $stopsByRoute[$route['id']] ?? [];
+        }
+        unset($route);
+    } catch (Exception $e) {}
     $vehicles = db_fetchAll("SELECT * FROM transport_vehicles WHERE is_active=1");
     $allocations = [];
     try {
@@ -42,8 +53,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data = get_post_json();
     $type = $data['type'] ?? 'route';
     if ($type === 'assign') {
-        $student_id = (int) $data['student_id'];
-        $route_id = (int) $data['route_id'];
+        $student_id = (int) ($data['student_id'] ?? 0);
+        if ($student_id === 0 && !empty($data['user_id'])) {
+            $s = db_fetch("SELECT id FROM students WHERE user_id = ?", [(int)$data['user_id']]);
+            if ($s) $student_id = (int)$s['id'];
+        }
+        $route_id = (int) ($data['route_id'] ?? 0);
         try {
             if ($route_id === 0) {
                 db_query("DELETE FROM transport_allocations WHERE student_id = ?", [$student_id]);

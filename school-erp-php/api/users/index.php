@@ -6,6 +6,7 @@
 
 require_once __DIR__ . '/../../includes/db.php';
 require_once __DIR__ . '/../../includes/auth.php';
+require_once __DIR__ . '/../../includes/helpers.php';
 require_once __DIR__ . '/../../includes/validator.php';
 
 require_auth();
@@ -18,9 +19,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET' && $_SERVER['REQUEST_METHOD'] !== 'HEAD
 
 $requestData = get_post_json();
 $method = $_SERVER['REQUEST_METHOD'];
-if ($method === 'POST' && strtoupper($requestData['_method'] ?? '') === 'DELETE') {
-    $method = 'DELETE';
-}
+// Disable _method spoofing for security — use proper REST method
+// if ($method === 'POST' && strtoupper($requestData['_method'] ?? '') === 'DELETE') {
+//     $method = 'DELETE';
+// }
 
 if ($method === 'GET') {
     handle_users_list();
@@ -164,6 +166,9 @@ function handle_users_save(array $data)
 
         if (array_key_exists('role', $data)) {
             $role = normalize_role_name($data['role']);
+            if ($role === 'superadmin' && normalize_role_name(get_current_role()) !== 'superadmin') {
+                json_response(['error' => 'Only superadmins can assign the superadmin role'], 403);
+            }
             Validator::in($role, all_school_roles(), 'role');
             $updateData['role'] = storage_role_name($role);
         }
@@ -197,6 +202,19 @@ function handle_users_save(array $data)
             json_response(['errors' => Validator::errors()], 422);
         }
 
+        $resolvedRole = normalize_role_name($updateData['role'] ?? ($existing['role'] ?? ''));
+        if (role_requires_employee_id($resolvedRole)) {
+            if (array_key_exists('employee_id', $updateData) && empty($updateData['employee_id'])) {
+                $updateData['employee_id'] = !empty($existing['employee_id']) ? $existing['employee_id'] : generate_unique_employee_id();
+            } elseif (!array_key_exists('employee_id', $updateData) && empty($existing['employee_id'])) {
+                $updateData['employee_id'] = generate_unique_employee_id();
+            }
+        }
+
+        if (array_key_exists('employee_id', $updateData) && !empty($updateData['employee_id']) && employee_id_exists($updateData['employee_id'], $id)) {
+            json_response(['error' => 'Employee ID already exists'], 409);
+        }
+
         $updateData = db_filter_data_for_table('users', $updateData);
         if (empty($updateData)) {
             json_response(['error' => 'No data to update'], 400);
@@ -211,6 +229,7 @@ function handle_users_save(array $data)
         $params[] = $id;
 
         db_query("UPDATE users SET " . implode(', ', $setParts) . " WHERE id = ?", $params);
+        sync_parent_student_links($id, $resolvedRole, $data);
         audit_log('UPDATE', 'users', $id, normalize_user_record($existing), $updateData);
 
         $saved = db_fetch("SELECT * FROM users WHERE id = ?", [$id]);
@@ -225,6 +244,9 @@ function handle_users_save(array $data)
     Validator::email($data['email'] ?? '');
     Validator::password($data['password'] ?? '');
     $normalizedRole = normalize_role_name($data['role'] ?? '');
+    if ($normalizedRole === 'superadmin' && normalize_role_name(get_current_role()) !== 'superadmin') {
+        json_response(['error' => 'Only superadmins can create a superadmin user'], 403);
+    }
     Validator::in($normalizedRole, all_school_roles(), 'role');
 
     if (Validator::hasErrors()) {
@@ -237,12 +259,20 @@ function handle_users_save(array $data)
         json_response(['error' => 'Email already exists'], 409);
     }
 
+    $employeeId = nullable_text($data['employee_id'] ?? '');
+    if (role_requires_employee_id($normalizedRole) && empty($employeeId)) {
+        $employeeId = generate_unique_employee_id();
+    }
+    if (!empty($employeeId) && employee_id_exists($employeeId)) {
+        json_response(['error' => 'Employee ID already exists'], 409);
+    }
+
     $insertData = [
         'name' => Validator::sanitize($data['name']),
         'email' => $email,
         'password' => password_hash($data['password'], PASSWORD_BCRYPT),
         'role' => storage_role_name($normalizedRole),
-        'employee_id' => nullable_text($data['employee_id'] ?? ''),
+        'employee_id' => $employeeId,
         'department' => nullable_text($data['department'] ?? ''),
         'designation' => nullable_text($data['designation'] ?? ''),
         'phone' => nullable_text($data['phone'] ?? ''),
@@ -260,6 +290,8 @@ function handle_users_save(array $data)
         }, $columns)) . ") VALUES ($placeholders)",
         $params
     );
+
+    sync_parent_student_links($userId, $normalizedRole, $data);
 
     $created = db_fetch("SELECT * FROM users WHERE id = ?", [$userId]);
     audit_log('CREATE', 'users', $userId, null, normalize_user_record($created));
@@ -287,10 +319,10 @@ function handle_users_delete(array $data)
         json_response(['error' => 'User not found'], 404);
     }
 
-    db_query("DELETE FROM users WHERE id = ?", [$id]);
-    audit_log('DELETE', 'users', $id, normalize_user_record($user), null);
+    db_query("UPDATE users SET is_active = 0 WHERE id = ?", [$id]);
+    audit_log('ARCHIVE', 'users', $id, normalize_user_record($user), ['is_active' => 0]);
 
-    json_response(['message' => 'User deleted successfully']);
+    json_response(['message' => 'User deactivated successfully']);
 }
 
 function user_column_expr($column, $fallback = 'NULL')
@@ -326,4 +358,76 @@ function nullable_text($value)
 {
     $value = Validator::sanitize((string) $value);
     return $value === '' ? null : $value;
+}
+
+function role_requires_employee_id($role)
+{
+    return in_array(normalize_role_name($role), [
+        'superadmin',
+        'admin',
+        'teacher',
+        'staff',
+        'hr',
+        'accounts',
+        'librarian',
+        'canteen',
+        'conductor',
+        'driver',
+    ], true);
+}
+
+function employee_id_exists($employeeId, $excludeId = 0)
+{
+    if (!db_column_exists('users', 'employee_id') || empty($employeeId)) {
+        return false;
+    }
+
+    if ($excludeId > 0) {
+        return (bool) db_fetch(
+            "SELECT id FROM users WHERE employee_id = ? AND id <> ?",
+            [$employeeId, $excludeId]
+        );
+    }
+
+    return (bool) db_fetch("SELECT id FROM users WHERE employee_id = ?", [$employeeId]);
+}
+
+function generate_unique_employee_id()
+{
+    for ($attempt = 0; $attempt < 5; $attempt++) {
+        $employeeId = generate_auto_id('employee', 'EMP');
+        if (!employee_id_exists($employeeId)) {
+            return $employeeId;
+        }
+    }
+
+    throw new RuntimeException('Unable to generate a unique employee ID.');
+}
+
+function sync_parent_student_links($userId, $role, array $data)
+{
+    if (normalize_role_name($role) !== 'parent' || !db_column_exists('students', 'parent_user_id')) {
+        return;
+    }
+
+    $studentIds = [];
+    if (!empty($data['student_id'])) {
+        $studentIds[] = (int) $data['student_id'];
+    }
+    if (!empty($data['student_ids']) && is_array($data['student_ids'])) {
+        foreach ($data['student_ids'] as $studentId) {
+            if ((int) $studentId > 0) {
+                $studentIds[] = (int) $studentId;
+            }
+        }
+    }
+
+    $studentIds = array_values(array_unique(array_filter($studentIds)));
+    if (empty($studentIds)) {
+        return;
+    }
+
+    foreach ($studentIds as $studentId) {
+        db_query("UPDATE students SET parent_user_id = ? WHERE id = ?", [$userId, $studentId]);
+    }
 }

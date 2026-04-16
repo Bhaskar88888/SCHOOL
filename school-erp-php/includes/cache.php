@@ -7,15 +7,17 @@
  * Uses file system (no Redis required)
  */
 
-class Cache {
-    
+class Cache
+{
+
     private static $cacheDir;
     private static $defaultTTL = 300; // 5 minutes
-    
+
     /**
      * Initialize cache directory
      */
-    private static function init() {
+    private static function init()
+    {
         if (!self::$cacheDir) {
             self::$cacheDir = __DIR__ . '/../tmp/cache';
             if (!is_dir(self::$cacheDir)) {
@@ -23,30 +25,31 @@ class Cache {
             }
         }
     }
-    
+
     /**
      * Get cached value
      * Returns null if not found or expired
      */
-    public static function get($key) {
+    public static function get($key)
+    {
         self::init();
         $file = self::$cacheDir . '/' . md5($key) . '.cache';
-        
+
         if (!file_exists($file)) {
             return null;
         }
-        
+
         $data = json_decode(file_get_contents($file), true);
-        
+
         // Check if expired
         if ($data && $data['expires'] < time()) {
             @unlink($file);
             return null;
         }
-        
+
         return $data['value'] ?? null;
     }
-    
+
     /**
      * Set cache value
      * 
@@ -54,42 +57,45 @@ class Cache {
      * @param mixed $value Value to cache
      * @param int $ttl Time to live in seconds (default 5 min)
      */
-    public static function set($key, $value, $ttl = null) {
+    public static function set($key, $value, $ttl = null)
+    {
         self::init();
         $file = self::$cacheDir . '/' . md5($key) . '.cache';
-        
+
         $data = [
             'value' => $value,
             'expires' => time() + ($ttl ?? self::$defaultTTL),
             'created' => time(),
         ];
-        
+
         file_put_contents($file, json_encode($data), LOCK_EX);
     }
-    
+
     /**
      * Delete cached value
      */
-    public static function delete($key) {
+    public static function delete($key)
+    {
         self::init();
         $file = self::$cacheDir . '/' . md5($key) . '.cache';
-        
+
         if (file_exists($file)) {
             @unlink($file);
         }
     }
-    
+
     /**
      * Clear all cache
      */
-    public static function clear() {
+    public static function clear()
+    {
         self::init();
         $files = glob(self::$cacheDir . '/*.cache');
         foreach ($files as $file) {
             @unlink($file);
         }
     }
-    
+
     /**
      * Remember (get from cache or compute and cache)
      * 
@@ -98,27 +104,41 @@ class Cache {
      * @param int $ttl Time to live
      * @return mixed
      */
-    public static function remember($key, $callback, $ttl = null) {
+    public static function remember($key, $callback, $ttl = null)
+    {
         $value = self::get($key);
-        
+
         if ($value === null) {
-            $value = $callback();
-            self::set($key, $value, $ttl);
+            // Use a lock file to prevent thundering herd
+            $lockFile = self::$cacheDir . '/' . md5($key) . '.lock';
+            $lockHandle = fopen($lockFile, 'c');
+            if ($lockHandle && flock($lockHandle, LOCK_EX)) {
+                // Double-check after acquiring lock (another process may have computed it)
+                $value = self::get($key);
+                if ($value === null) {
+                    $value = $callback();
+                    self::set($key, $value, $ttl);
+                }
+                flock($lockHandle, LOCK_UN);
+                fclose($lockHandle);
+            }
+            @unlink($lockFile);
         }
-        
+
         return $value;
     }
-    
+
     /**
      * Get cache stats
      */
-    public static function stats() {
+    public static function stats()
+    {
         self::init();
         $files = glob(self::$cacheDir . '/*.cache');
         $totalSize = 0;
         $valid = 0;
         $expired = 0;
-        
+
         foreach ($files as $file) {
             $totalSize += filesize($file);
             $data = json_decode(file_get_contents($file), true);
@@ -128,7 +148,7 @@ class Cache {
                 $expired++;
             }
         }
-        
+
         return [
             'total_files' => count($files),
             'valid' => $valid,
@@ -142,18 +162,22 @@ class Cache {
 /**
  * Helper functions
  */
-function cache_get($key) {
+function cache_get($key)
+{
     return Cache::get($key);
 }
 
-function cache_set($key, $value, $ttl = null) {
+function cache_set($key, $value, $ttl = null)
+{
     Cache::set($key, $value, $ttl);
 }
 
-function cache_remember($key, $callback, $ttl = null) {
+function cache_remember($key, $callback, $ttl = null)
+{
     return Cache::remember($key, $callback, $ttl);
 }
 
-function cache_clear() {
+function cache_clear()
+{
     Cache::clear();
 }

@@ -241,7 +241,7 @@ $pageTitle = 'User Management';
             <div class="form-row">
                 <div class="form-group">
                     <label class="form-label" for="userEmployeeId">Employee ID</label>
-                    <input class="form-control" type="text" id="userEmployeeId" placeholder="EMP2026001">
+                    <input class="form-control" type="text" id="userEmployeeId" placeholder="Leave blank to auto-generate">
                 </div>
                 <div class="form-group">
                     <label class="form-label" for="userRole">Role</label>
@@ -261,6 +261,12 @@ $pageTitle = 'User Management';
                         <option value="driver">Driver</option>
                     </select>
                 </div>
+            </div>
+            <div class="form-group" id="parentStudentLinkGroup" style="display:none">
+                <label class="form-label" for="userStudentId">Link Student</label>
+                <select class="form-control" id="userStudentId">
+                    <option value="">Select student (optional)</option>
+                </select>
             </div>
             <div class="form-row">
                 <div class="form-group">
@@ -325,6 +331,7 @@ $pageTitle = 'User Management';
 let currentPage = 1;
 let totalPages = 1;
 let currentUsers = [];
+let studentLinkOptions = [];
 
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('searchInput').addEventListener('input', debounce(() => loadUsers(1), 250));
@@ -334,6 +341,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('prevPageBtn').addEventListener('click', () => loadUsers(Math.max(1, currentPage - 1)));
     document.getElementById('nextPageBtn').addEventListener('click', () => loadUsers(Math.min(totalPages, currentPage + 1)));
     document.getElementById('userForm').addEventListener('submit', saveUser);
+    document.getElementById('userRole').addEventListener('change', () => toggleParentStudentLink());
     loadUsers();
 });
 
@@ -417,6 +425,7 @@ async function openUserModal(userId = null) {
     document.getElementById('userModalTitle').textContent = userId ? 'Edit User' : 'Add User';
     document.getElementById('userId').value = userId || '';
     openModal('userModalOverlay');
+    await toggleParentStudentLink(userId || 0);
 
     if (!userId) {
         return;
@@ -436,6 +445,7 @@ async function openUserModal(userId = null) {
         document.getElementById('userDesignation').value = user.designation || '';
         document.getElementById('userPhone').value = user.phone || '';
         document.getElementById('userActive').checked = Number(user.is_active) === 1;
+        await toggleParentStudentLink(user.id);
     } catch (error) {
         closeUserModal();
         showToast(error.message || 'Failed to load user', 'error');
@@ -450,6 +460,8 @@ function resetUserForm() {
     document.getElementById('userForm').reset();
     document.getElementById('userId').value = '';
     document.getElementById('userActive').checked = true;
+    document.getElementById('userStudentId').innerHTML = '<option value="">Select student (optional)</option>';
+    document.getElementById('parentStudentLinkGroup').style.display = 'none';
 }
 
 async function saveUser(event) {
@@ -464,7 +476,8 @@ async function saveUser(event) {
         department: document.getElementById('userDepartment').value.trim(),
         designation: document.getElementById('userDesignation').value.trim(),
         phone: document.getElementById('userPhone').value.trim(),
-        is_active: document.getElementById('userActive').checked ? 1 : 0
+        is_active: document.getElementById('userActive').checked ? 1 : 0,
+        student_id: document.getElementById('userRole').value === 'parent' ? document.getElementById('userStudentId').value : ''
     };
 
     const password = document.getElementById('userPassword').value.trim();
@@ -494,7 +507,14 @@ async function deleteUser(userId, userName) {
     }
 
     try {
-        const response = await apiPost('/api/users/index.php', { _method: 'DELETE', id: userId });
+        const response = await fetch('/api/users/index.php', {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': getCsrfToken()
+            },
+            body: JSON.stringify({ id: userId })
+        }).then((res) => res.json());
         if (response.error) {
             throw new Error(response.error);
         }
@@ -546,6 +566,36 @@ function openIdCard(userId) {
 
 function closeIdCardModal() {
     closeModal('idCardModalOverlay');
+}
+
+async function toggleParentStudentLink(userId = 0) {
+    const role = document.getElementById('userRole').value;
+    const group = document.getElementById('parentStudentLinkGroup');
+    const select = document.getElementById('userStudentId');
+
+    if (role !== 'parent') {
+        group.style.display = 'none';
+        select.value = '';
+        return;
+    }
+
+    group.style.display = 'block';
+
+    if (!studentLinkOptions.length) {
+        const response = await apiGet('/api/students/index.php?page=1&limit=500&search=');
+        studentLinkOptions = Array.isArray(response.data) ? response.data : [];
+    }
+
+    let selectedStudentId = '';
+    if (userId) {
+        const linked = await apiGet(`/api/students/index.php?page=1&limit=50&parent_user_id=${userId}`);
+        selectedStudentId = linked.data?.[0]?.id ? String(linked.data[0].id) : '';
+    }
+
+    select.innerHTML = '<option value="">Select student (optional)</option>' + studentLinkOptions.map((student) => `
+        <option value="${student.id}">${escHtml(student.name || 'Student')} ${student.class_name ? `(${escHtml(student.class_name)})` : ''}</option>
+    `).join('');
+    select.value = selectedStudentId;
 }
 
 function debounce(callback, delay) {

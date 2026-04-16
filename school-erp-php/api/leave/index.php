@@ -110,6 +110,10 @@ if ($method === 'PUT') {
         json_response(['error' => 'Leave ID required'], 400);
     }
 
+    // Read CURRENT status BEFORE update so we can check if this is the first approval
+    $leave = db_fetch("SELECT * FROM leave_applications WHERE id=?", [$id]);
+    $prevStatus = $leave['status'] ?? 'pending';
+
     $set = ['status = ?', 'approved_by = ?'];
     $params = [$status, $currentUserId];
 
@@ -125,24 +129,24 @@ if ($method === 'PUT') {
     $params[] = $id;
     db_query("UPDATE leave_applications SET " . implode(', ', $set) . " WHERE id = ?", $params);
 
-    // Deduct balance only on first approval
-    if ($status === 'approved' && db_column_exists('users', 'casual_leave_balance')) {
-        $leave = db_fetch("SELECT * FROM leave_applications WHERE id=?", [$id]);
-        $prevStatus = $leave['status'] ?? '';
-        if ($prevStatus !== 'approved') {
-            $start = new DateTime($leave['from_date']);
-            $end = new DateTime($leave['to_date']);
-            $days = (int) $start->diff($end)->days + 1;
-            $leaveType = strtolower($leave['leave_type'] ?? '');
-            $column = match ($leaveType) {
-                'casual' => 'casual_leave_balance',
-                'earned' => 'earned_leave_balance',
-                'sick' => 'sick_leave_balance',
-                default => null
-            };
-            if ($column) {
-                db_query("UPDATE users SET $column = GREATEST(0, $column - ?) WHERE id=?", [$days, $leave['applicant_id']]);
-            }
+    // Deduct balance only on FIRST approval (prevStatus was not yet 'approved')
+    if ($status === 'approved' && $prevStatus !== 'approved' && db_column_exists('users', 'casual_leave_balance')) {
+        $start = new DateTime($leave['from_date']);
+        $end = new DateTime($leave['to_date']);
+        $days = (int) $start->diff($end)->days + 1;
+        $leaveType = strtolower($leave['leave_type'] ?? '');
+        // Normalize leave type (handles 'casual', 'casual leave', 'Casual Leave' etc.)
+        if (str_contains($leaveType, 'casual')) {
+            $column = 'casual_leave_balance';
+        } elseif (str_contains($leaveType, 'earned') || str_contains($leaveType, 'annual')) {
+            $column = 'earned_leave_balance';
+        } elseif (str_contains($leaveType, 'sick') || str_contains($leaveType, 'medical')) {
+            $column = 'sick_leave_balance';
+        } else {
+            $column = null;
+        }
+        if ($column) {
+            db_query("UPDATE users SET $column = GREATEST(0, $column - ?) WHERE id=?", [$days, $leave['applicant_id']]);
         }
     }
 

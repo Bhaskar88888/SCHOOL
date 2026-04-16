@@ -5,8 +5,10 @@
  */
 require_once __DIR__ . '/../../includes/db.php';
 require_once __DIR__ . '/../../includes/auth.php';
+require_once __DIR__ . '/../../includes/notify.php';
 
 require_auth();
+ensure_notifications_enhanced_schema();
 
 $method = $_SERVER['REQUEST_METHOD'];
 $userId = get_current_user_id();

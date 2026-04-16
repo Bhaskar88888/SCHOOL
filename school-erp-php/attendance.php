@@ -7,7 +7,7 @@ $pageTitle = 'Student Attendance';
 $currentRole = normalize_role_name(get_current_role());
 $isManager = in_array($currentRole, ['superadmin', 'admin', 'teacher']);
 
-$classes = db_fetchAll("SELECT id, name, section FROM classes WHERE is_active = 1 ORDER BY name ASC, section ASC");
+$classes = db_fetchAll("SELECT id, name, section FROM classes ORDER BY name ASC, section ASC");
 ?>
 <!DOCTYPE html>
 <html lang="en">

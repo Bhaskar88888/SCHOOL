@@ -31,9 +31,11 @@ function nullable_text($value, $default = null)
 function student_field_types()
 {
     return [
+        'user_id' => 'int',
         'name' => 'text',
         'admission_no' => 'text',
         'class_id' => 'int',
+        'parent_user_id' => 'int',
         'section' => 'text',
         'roll_number' => 'text',
         'dob' => 'date',
@@ -85,7 +87,7 @@ function build_student_payload(array $data, array $existing = [])
 
         $value = $data[$field];
         if ($type === 'int') {
-            $payload[$field] = (int) $value;
+            $payload[$field] = ($value === '' || $value === null) ? null : (int) $value;
         } elseif ($type === 'bool') {
             $payload[$field] = truthy_flag($value);
         } else {
@@ -130,6 +132,24 @@ function build_student_payload(array $data, array $existing = [])
 
     if (empty($payload['nationality'])) {
         $payload['nationality'] = $existing['nationality'] ?? 'Indian';
+    }
+
+    if (!empty($payload['parent_user_id']) && db_column_exists('students', 'parent_user_id')) {
+        $parentUser = db_fetch(
+            "SELECT name, phone, email FROM users WHERE id = ? AND role = ?",
+            [$payload['parent_user_id'], storage_role_name('parent')]
+        );
+        if ($parentUser) {
+            if (empty($payload['parent_name'])) {
+                $payload['parent_name'] = $parentUser['name'] ?? null;
+            }
+            if (empty($payload['parent_phone'])) {
+                $payload['parent_phone'] = $parentUser['phone'] ?? null;
+            }
+            if (empty($payload['parent_email'])) {
+                $payload['parent_email'] = $parentUser['email'] ?? null;
+            }
+        }
     }
 
     if (empty($payload['admission_no']) && db_column_exists('students', 'admission_no')) {
@@ -220,10 +240,11 @@ $method = $_SERVER['REQUEST_METHOD'];
 
 if ($method === 'GET' && !isset($_GET['id'])) {
     $page = max(1, (int) ($_GET['page'] ?? 1));
-    $limit = 20;
+    $limit = pagination_limit($_GET['limit'] ?? null);
     $offset = ($page - 1) * $limit;
     $search = trim((string) ($_GET['search'] ?? ''));
     $classId = (int) ($_GET['class_id'] ?? 0);
+    $parentUserId = (int) ($_GET['parent_user_id'] ?? 0);
     $gender = trim((string) ($_GET['gender'] ?? ''));
 
     $where = ['s.is_active = 1'];
@@ -239,6 +260,11 @@ if ($method === 'GET' && !isset($_GET['id'])) {
     if ($classId > 0) {
         $where[] = 's.class_id = ?';
         $params[] = $classId;
+    }
+
+    if ($parentUserId > 0 && db_column_exists('students', 'parent_user_id')) {
+        $where[] = 's.parent_user_id = ?';
+        $params[] = $parentUserId;
     }
 
     if ($gender !== '') {
@@ -361,6 +387,9 @@ if ($method === 'DELETE') {
 
     $params[] = $id;
     db_query("UPDATE students SET " . implode(', ', $updates) . " WHERE id = ?", $params);
+    if (db_column_exists('fees', 'is_active')) {
+        db_query("UPDATE fees SET is_active = 0 WHERE student_id = ?", [$id]);
+    }
     audit_log('ARCHIVE', 'students', $id, null, ['discharge_reason' => $data['discharge_reason'] ?? null]);
     json_response(['success' => true, 'message' => 'Student archived']);
 }

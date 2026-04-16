@@ -25,7 +25,7 @@ $criticalTables = ['users', 'students', 'classes', 'fees', 'attendance', 'exams'
 $tableStatus = [];
 foreach ($criticalTables as $table) {
     try {
-        $exists = db_fetch("SHOW TABLES LIKE '$table'");
+        $exists = db_fetch("SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?", [DB_NAME, $table]);
         $tableStatus[$table] = $exists ? 'OK' : 'MISSING';
     } catch (Exception $e) {
         $tableStatus[$table] = 'ERROR';
@@ -56,6 +56,17 @@ $health = [
     ],
     'timestamp' => date('Y-m-d H:i:s'),
 ];
+
+// Hide sensitive info from unauthenticated/non-admin users
+session_start();
+$role = $_SESSION['user_role'] ?? '';
+if ($role !== 'superadmin' && $role !== 'admin') {
+    unset($health['database']['host']);
+    unset($health['database']['database']);
+    unset($health['database']['tables']);
+    unset($health['php']);
+    unset($health['app']['environment']);
+}
 
 http_response_code($dbStatus === 'connected' ? 200 : 503);
 echo json_encode($health);

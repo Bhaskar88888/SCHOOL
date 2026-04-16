@@ -147,8 +147,8 @@ if ($method === 'GET') {
     $myOnly = isset($_GET['my']) && $_GET['my'] == '1';
     $staffId = (int) ($_GET['staff_id'] ?? 0);
 
-    $where = ['p.year = ?', '(p.month = ? OR p.month = ?)'];
-    $params = [$year, $monthNumber, payroll_month_label($monthNumber)];
+    $where = ['p.year = ?', 'p.month = ?'];
+    $params = [$year, $monthNumber];
 
     if ($myOnly || !$canViewAll) {
         $where[] = 'p.staff_id = ?';

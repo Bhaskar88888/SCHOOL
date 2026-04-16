@@ -1,13 +1,11 @@
 # Security - Never commit these!
 .env.php
 config/*.php
-includes/db.php
 tmp/
 uploads/
 logs/
 backups/
 *.log
-*.sql
 *.bak
 vendor/
 composer.lock
@@ -24,3 +22,7 @@ desktop.ini
 
 # Tests (optional - keep if you want)
 tests/seed_data.php
+
+# IMPORTANT: includes/db.php is generated from includes/db.php.template
+# Do NOT commit the actual db.php file with real credentials!
+includes/db.php

@@ -1,9 +1,18 @@
 <?php
 require_once __DIR__ . '/../../includes/auth.php';
+require_once __DIR__ . '/../../includes/helpers.php';
 require_auth();
 require_role(['superadmin', 'admin']);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
+    // Verify CSRF token sent with the form
+    require_once __DIR__ . '/../../includes/csrf.php';
+    $token = $_POST['csrf_token'] ?? '';
+    $sessionToken = $_SESSION['csrf_token'] ?? '';
+    if (empty($token) || empty($sessionToken) || !hash_equals($sessionToken, $token)) {
+        json_response(['error' => 'Invalid CSRF token'], 403);
+    }
+
     $file = $_FILES['csv_file']['tmp_name'];
     
     if (!is_uploaded_file($file)) {
@@ -28,18 +37,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
         $email = sanitize($data[6] ?? '');
         $address = sanitize($data[7] ?? '');
         
-        // Find class ID by name
-        $class = db_fetch("SELECT id FROM classes WHERE name = ?", [$className]);
+        // Case-insensitive class lookup to prevent duplicates (Bug #37)
+        $class = db_fetch("SELECT id FROM classes WHERE LOWER(name) = LOWER(?)", [$className]);
         $classId = $class ? $class['id'] : 0;
-        
+
         if (!$classId && !empty($className)) {
-            // Optionally create class if not exists
             $classId = db_insert("INSERT INTO classes (name) VALUES (?)", [$className]);
         }
-        
+
         try {
-            db_insert("INSERT INTO students (name, roll_number, class_id, gender, parent_name, phone, email, address, is_active) VALUES (?,?,?,?,?,?,?,?, 1) ON DUPLICATE KEY UPDATE name=VALUES(name)", 
-                [$name, $roll, $classId, $gender, $parent, $phone, $email, $address]);
+            // Generate unique admission number for each import (Bug #7)
+            $admissionNo = generate_auto_id('admission', 'ADM');
+            db_insert("INSERT INTO students (name, roll_number, class_id, gender, parent_name, phone, email, address, admission_no, dob, is_active) VALUES (?,?,?,?,?,?,?,?,?,?,1) ON DUPLICATE KEY UPDATE name=VALUES(name), class_id=VALUES(class_id)",
+                [$name, $roll, $classId, $gender, $parent, $phone, $email, $address, $admissionNo, !empty($data[8]) ? $data[8] : '2000-01-01']);
             $imported++;
         } catch (Exception $e) {
             $errors++;

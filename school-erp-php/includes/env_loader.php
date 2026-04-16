@@ -2,10 +2,15 @@
 /**
  * Environment Variable Loader
  * School ERP PHP v3.0 - Secure Configuration
- * 
+ *
  * Loads .env.php file and sets constants
  * Falls back to defaults if file doesn't exist
  */
+
+// PHP version check
+if (version_compare(PHP_VERSION, '7.4.0', '<')) {
+    die('Error: School ERP requires PHP 7.4 or higher. You are running PHP ' . PHP_VERSION . '.');
+}
 
 $envFile = __DIR__ . '/../.env.php';
 $exampleFile = __DIR__ . '/../.env.example';
@@ -19,8 +24,8 @@ if (!file_exists($envFile)) {
         $content = str_replace('CHANGE_THIS_TO_RANDOM_64_CHAR_STRING', bin2hex(random_bytes(32)), $content);
         file_put_contents($envFile, $content);
 
-        // WARNING: User must configure credentials
-        error_log("WARNING: .env.php was auto-generated from .env.example. Please configure your database credentials and security settings immediately!");
+        // CRITICAL WARNING: User MUST configure DB credentials before use
+        error_log("CRITICAL: .env.php was auto-generated. You MUST configure DB_HOST, DB_NAME, DB_USER, DB_PASS in .env.php before using the application!");
     }
 }
 

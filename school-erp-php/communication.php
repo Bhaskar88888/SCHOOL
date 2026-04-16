@@ -3,14 +3,56 @@ require_once __DIR__ . '/includes/auth.php';
 require_auth();
 
 $pageTitle = 'Communication Hub';
-$role = get_authenticated_user()['role'];
-$isAdmin = in_array($role, ['superadmin', 'admin', 'hr']);
+$role = normalize_role_name(get_authenticated_user()['role'] ?? '');
+$isAdmin = in_array($role, ['superadmin', 'admin', 'hr'], true);
 $isTeacher = $role === 'teacher';
 $isParent = $role === 'parent';
-$isStudent = $role === 'student';
 
-// Also include data for selects
-require_once __DIR__ . '/includes/data.php';
+$teacherComplaintStudents = [];
+if ($isTeacher) {
+    $teacherComplaintStudents = db_fetchAll(
+        "SELECT s.id, s.name, s.parent_user_id, c.name AS class_name, COALESCE(s.section, '') AS section
+         FROM students s
+         LEFT JOIN classes c ON s.class_id = c.id
+         WHERE s.is_active = 1
+         ORDER BY s.name ASC
+         LIMIT 1000"
+    );
+}
+
+$classTeacherColumn = db_column_exists('classes', 'teacher_id')
+    ? 'teacher_id'
+    : (db_column_exists('classes', 'class_teacher_id') ? 'class_teacher_id' : 'NULL');
+
+$parentComplaintClasses = [];
+if ($isParent) {
+    $parentComplaintClasses = db_fetchAll(
+        "SELECT DISTINCT c.id, c.name, COALESCE(c.section, '') AS section, $classTeacherColumn AS teacher_user_id
+         FROM students s
+         LEFT JOIN classes c ON s.class_id = c.id
+         WHERE s.is_active = 1 AND s.parent_user_id = ?
+         ORDER BY c.name ASC",
+        [get_current_user_id()]
+    );
+
+    if (empty($parentComplaintClasses)) {
+        $parentComplaintClasses = db_fetchAll(
+            "SELECT c.id, c.name, COALESCE(c.section, '') AS section, $classTeacherColumn AS teacher_user_id
+             FROM classes c
+             ORDER BY c.name ASC"
+        );
+    }
+}
+
+$staffMembers = [];
+if ($isAdmin) {
+    $staffMembers = db_fetchAll(
+        "SELECT id, name
+         FROM users
+         WHERE role NOT IN ('student', 'parent') AND is_active = 1
+         ORDER BY name ASC"
+    );
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -21,299 +63,483 @@ require_once __DIR__ . '/includes/data.php';
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css">
     <style>
-        .tabs { display:flex; gap:20px; border-bottom:1px solid var(--border-color); margin-bottom:20px; }
-        .tab-btn { background:none; border:none; padding:10px 15px; font-weight:600; color:var(--text-muted); cursor:pointer; font-family:'Outfit',sans-serif; border-bottom:2px solid transparent; transition:0.2s; }
-        .tab-btn:hover { color:var(--text-color); }
-        .tab-btn.active { color:var(--primary-color); border-bottom-color:var(--primary-color); }
-        .tab-content { display:none; }
-        .tab-content.active { display:block; }
-        
-        .message-thread { border:1px solid var(--border-color); border-radius:var(--radius-md); padding:15px; margin-bottom:15px; background:var(--surface-color); }
-        .message-header { display:flex; justify-content:space-between; margin-bottom:10px; font-size:14px; color:var(--text-muted); }
-        .message-body { font-size:15px; line-height:1.5; }
-        .msg-reply-box { margin-top:15px; display:flex; gap:10px; }
+        .tab-row { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:20px; }
+        .tab-btn { border:1px solid var(--border); background:var(--bg-card); color:var(--text-secondary); padding:10px 14px; border-radius:999px; cursor:pointer; font-weight:600; }
+        .tab-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+        .tab-panel { display:none; }
+        .tab-panel.active { display:block; }
+        .panel-toolbar { display:flex; justify-content:space-between; gap:12px; align-items:center; margin-bottom:18px; flex-wrap:wrap; }
+        .panel-toolbar .filters { display:flex; gap:12px; flex-wrap:wrap; }
+        .message-thread { border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-card); padding:16px; }
+        .message-thread.unread { border-left:4px solid var(--accent); }
+        .message-meta { display:flex; justify-content:space-between; gap:12px; font-size:12px; color:var(--text-muted); margin-bottom:8px; flex-wrap:wrap; }
+        .message-title { font-size:16px; font-weight:700; margin-bottom:6px; }
+        .message-body { color:var(--text-secondary); line-height:1.6; }
+        .stack { display:grid; gap:12px; }
+        .routing-note { margin-top:8px; font-size:12px; color:var(--text-muted); }
     </style>
 </head>
 <body>
-    <div class="app-layout">
-        <?php include __DIR__ . '/includes/sidebar.php'; ?>
-        <div class="main-content">
-            <?php include __DIR__ . '/includes/header.php'; ?>
-            
-            <div class="page-hero">
-                <div class="hero-content">
-                    <h1>🗣️ Communication Hub</h1>
-                    <p>Connect with stakeholders, view notifications, and manage complaints.</p>
-                </div>
-            </div>
+<div class="app-layout">
+    <?php include __DIR__ . '/includes/sidebar.php'; ?>
+    <div class="main-content">
+        <?php include __DIR__ . '/includes/header.php'; ?>
 
-            <div class="card" style="margin-top:-30px;">
-                <div class="tabs">
-                    <button class="tab-btn active" onclick="switchTab('tab-complaints')">📣 Complaints & Queries</button>
-                    <button class="tab-btn" onclick="switchTab('tab-notices')">📢 Announcements</button>
-                    <button class="tab-btn" onclick="switchTab('tab-notifications')">🔔 Notifications</button>
-                </div>
-
-                <!-- Complaints Tab -->
-                <div id="tab-complaints" class="tab-content active">
-                    <div class="page-toolbar">
-                        <div class="toolbar-left" style="display:flex;gap:15px">
-                            <select class="form-control" id="complaintStatus" onchange="loadComplaints()">
-                                <option value="">All Statuses</option>
-                                <option value="pending">Pending</option>
-                                <option value="in_progress">In Progress</option>
-                                <option value="resolved">Resolved</option>
-                            </select>
-                        </div>
-                        <button class="btn btn-primary" onclick="openModal('complaintModal')">+ New Query/Complaint</button>
-                    </div>
-                    <div class="table-wrap">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Title & Description</th>
-                                    <th>Category</th>
-                                    <th>Priority</th>
-                                    <th>Submitted By</th>
-                                    <th>Status</th>
-                                    <th>Date</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody id="complaintsTable"></tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- Announcements Tab -->
-                <div id="tab-notices" class="tab-content">
-                    <?php if($isAdmin || $isTeacher): ?>
-                    <div class="page-toolbar">
-                        <div style="flex:1"></div>
-                        <button class="btn btn-primary" onclick="openModal('noticeModal')">+ New Notice</button>
-                    </div>
-                    <?php endif; ?>
-                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;" id="noticesGrid"></div>
-                </div>
-
-                <!-- Notifications Tab -->
-                <div id="tab-notifications" class="tab-content">
-                    <div class="page-toolbar">
-                        <div style="flex:1"></div>
-                        <button class="btn btn-secondary" onclick="markAllNotificationsRead()">Mark All as Read</button>
-                    </div>
-                    <div id="notificationsList" style="display:flex;flex-direction:column;gap:10px"></div>
-                </div>
-
+        <div class="page-hero">
+            <div class="hero-content">
+                <h1>Communication Hub</h1>
+                <p>Complaints, announcements, inbox items, and notifications in one place.</p>
             </div>
         </div>
-    </div>
 
-    <!-- Complaint Modal -->
-    <div class="modal-overlay" id="complaintModal">
-        <div class="modal">
-            <div class="modal-header">
-                <div class="modal-title">Submit Query / Complaint</div>
-                <button class="modal-close" onclick="closeModal('complaintModal')">✕</button>
+        <div class="card" style="margin-top:-24px;">
+            <div class="tab-row">
+                <button class="tab-btn active" type="button" data-tab="tab-complaints" onclick="switchTab(event, 'tab-complaints')">Complaints</button>
+                <button class="tab-btn" type="button" data-tab="tab-inbox" onclick="switchTab(event, 'tab-inbox')">My Inbox</button>
+                <button class="tab-btn" type="button" data-tab="tab-notices" onclick="switchTab(event, 'tab-notices')">Announcements</button>
+                <button class="tab-btn" type="button" data-tab="tab-notifications" onclick="switchTab(event, 'tab-notifications')">Notifications</button>
             </div>
-            <form onsubmit="submitComplaint(event)">
-                <div class="form-group">
-                    <label class="form-label">Title *</label>
-                    <input type="text" class="form-control" name="title" required placeholder="Brief summary">
-                </div>
-                
-                <?php if ($isTeacher): ?>
-                <div class="form-group">
-                    <label class="form-label">Related Student (Optional, routes to Parent)</label>
-                    <select class="form-control" name="student_id">
-                        <option value="">None / General Admin</option>
-                        <?php foreach($students as $s): ?>
-                        <option value="<?= $s['id'] ?>"><?= htmlspecialchars($s['name']) ?> (<?= htmlspecialchars($s['class_name']?:'-') ?>)</option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <?php endif; ?>
 
-                <?php if ($isParent): ?>
-                <div class="form-group">
-                    <label class="form-label">Related Class (Optional, routes to Teacher)</label>
-                    <select class="form-control" name="class_id">
-                        <option value="">None / General Admin</option>
-                        <?php foreach($classes as $c): ?>
-                        <option value="<?= $c['id'] ?>"><?= htmlspecialchars($c['name']) ?> - <?= htmlspecialchars($c['section']?:'') ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <?php endif; ?>
-
-                <div style="display:flex;gap:15px;margin-bottom:15px">
-                    <div style="flex:1">
-                        <label class="form-label">Category</label>
-                        <select class="form-control" name="category">
-                            <option value="general">General</option>
-                            <option value="academic">Academic</option>
-                            <option value="behavior">Behavior/Discipline</option>
-                            <option value="infrastructure">Infrastructure</option>
-                            <option value="fee">Fees / Finance</option>
+            <div id="tab-complaints" class="tab-panel active">
+                <div class="panel-toolbar">
+                    <div class="filters">
+                        <select class="form-control" id="complaintStatus" onchange="loadComplaints()" style="min-width:180px">
+                            <option value="">All Statuses</option>
+                            <option value="pending">Pending</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="resolved">Resolved</option>
+                            <option value="rejected">Rejected</option>
                         </select>
                     </div>
-                    <div style="flex:1">
-                        <label class="form-label">Priority</label>
-                        <select class="form-control" name="priority">
-                            <option value="low">Low</option>
-                            <option value="medium" selected>Medium</option>
-                            <option value="high">High</option>
-                            <option value="urgent">Urgent</option>
-                        </select>
-                    </div>
+                    <button class="btn btn-primary" type="button" onclick="openModal('complaintModal')">New Complaint / Query</button>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Details *</label>
-                    <textarea class="form-control" name="description" rows="4" required></textarea>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Category</th>
+                                <th>Priority</th>
+                                <th>Route</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="complaintsTable"></tbody>
+                    </table>
                 </div>
-                <div style="display:flex;justify-content:flex-end;gap:10px">
-                    <button type="button" class="btn btn-secondary" onclick="closeModal('complaintModal')">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Submit</button>
+            </div>
+
+            <div id="tab-inbox" class="tab-panel">
+                <div class="panel-toolbar">
+                    <div style="font-weight:600">Complaints and queries directed to you</div>
                 </div>
-            </form>
+                <div class="stack" id="inboxList"></div>
+            </div>
+
+            <div id="tab-notices" class="tab-panel">
+                <?php if ($isAdmin || $isTeacher): ?>
+                <div class="panel-toolbar">
+                    <div style="font-weight:600">Announcements</div>
+                    <button class="btn btn-primary" type="button" onclick="openModal('noticeModal')">Create Notice</button>
+                </div>
+                <?php endif; ?>
+                <div class="stack" id="noticesList"></div>
+            </div>
+
+            <div id="tab-notifications" class="tab-panel">
+                <div class="panel-toolbar">
+                    <div style="font-weight:600">Recent notifications</div>
+                    <button class="btn btn-secondary" type="button" onclick="markAllNotificationsRead()">Mark All as Read</button>
+                </div>
+                <div class="stack" id="notificationsList"></div>
+            </div>
         </div>
     </div>
+</div>
 
-    <!-- Resolve/Reply Modal -->
-    <div class="modal-overlay" id="resolveModal">
-        <div class="modal">
-            <div class="modal-header">
-                <div class="modal-title">Update Status / Reply</div>
-                <button class="modal-close" onclick="closeModal('resolveModal')">✕</button>
+<div class="modal-overlay" id="complaintModal">
+    <div class="modal">
+        <div class="modal-header">
+            <div class="modal-title">Submit Complaint / Query</div>
+            <button class="modal-close" type="button" onclick="closeModal('complaintModal')">x</button>
+        </div>
+        <form id="complaintForm" onsubmit="submitComplaint(event)">
+            <div class="form-group">
+                <label class="form-label">Title *</label>
+                <input type="text" class="form-control" name="title" required placeholder="Brief summary">
             </div>
-            <form onsubmit="submitResolution(event)">
-                <input type="hidden" id="resolve_id" name="id">
+
+            <?php if ($isTeacher): ?>
+            <div class="form-group">
+                <label class="form-label">Related Student</label>
+                <select class="form-control" name="student_id" id="complaintStudentSelect" onchange="updateTeacherRouteNote()">
+                    <option value="">None (send to admin)</option>
+                    <?php foreach ($teacherComplaintStudents as $student): ?>
+                    <option value="<?= (int) $student['id'] ?>" data-linked-parent="<?= !empty($student['parent_user_id']) ? '1' : '0' ?>">
+                        <?= htmlspecialchars($student['name']) ?><?php if (!empty($student['class_name'])): ?> (<?= htmlspecialchars($student['class_name']) ?>)<?php endif; ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
+                <div class="routing-note" id="teacherRouteNote">Select a student to route this directly to the linked parent account. If no parent account is linked, it will fall back to admin.</div>
+            </div>
+            <?php endif; ?>
+
+            <?php if ($isParent): ?>
+            <div class="form-group">
+                <label class="form-label">Related Class</label>
+                <select class="form-control" name="class_id" id="complaintClassSelect" onchange="updateParentRouteNote()">
+                    <option value="">None (send to admin)</option>
+                    <?php foreach ($parentComplaintClasses as $class): ?>
+                    <option value="<?= (int) $class['id'] ?>" data-linked-teacher="<?= !empty($class['teacher_user_id']) ? '1' : '0' ?>">
+                        <?= htmlspecialchars($class['name']) ?><?= !empty($class['section']) ? ' - ' . htmlspecialchars($class['section']) : '' ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
+                <div class="routing-note" id="parentRouteNote">Select your child&apos;s class to notify the class teacher directly. If the class has no linked teacher, it will fall back to admin.</div>
+            </div>
+            <?php endif; ?>
+
+            <div class="form-row">
                 <div class="form-group">
-                    <label class="form-label">Status</label>
-                    <select class="form-control" name="status" id="resolve_status">
-                        <option value="pending">Pending</option>
-                        <option value="in_progress">In Progress</option>
-                        <option value="resolved">Resolved</option>
+                    <label class="form-label">Category</label>
+                    <select class="form-control" name="category">
+                        <option value="general">General</option>
+                        <option value="academic">Academic</option>
+                        <option value="behavior">Behavior</option>
+                        <option value="infrastructure">Infrastructure</option>
+                        <option value="fee">Fees / Finance</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Reply / Note</label>
-                    <textarea class="form-control" name="resolution_note" rows="3"></textarea>
+                    <label class="form-label">Priority</label>
+                    <select class="form-control" name="priority">
+                        <option value="low">Low</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="high">High</option>
+                        <option value="urgent">Urgent</option>
+                    </select>
                 </div>
-                <div style="display:flex;justify-content:flex-end;gap:10px">
-                    <button type="button" class="btn btn-secondary" onclick="closeModal('resolveModal')">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Update</button>
-                </div>
-            </form>
-        </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Details *</label>
+                <textarea class="form-control" name="description" rows="4" required></textarea>
+            </div>
+
+            <div style="display:flex;justify-content:flex-end;gap:10px">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('complaintModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Submit</button>
+            </div>
+        </form>
     </div>
+</div>
 
-    <script src="<?= BASE_URL ?>/assets/js/main.js"></script>
-    <script>
-        const isAdmin = <?= $isAdmin ? 'true' : 'false' ?>;
-        
-        function switchTab(tabId) {
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            event.currentTarget.classList.add('active');
-            document.getElementById(tabId).classList.add('active');
-            
-            if(tabId === 'tab-complaints') loadComplaints();
-            if(tabId === 'tab-notices') loadNotices();
-            if(tabId === 'tab-notifications') loadNotifications();
-        }
+<?php if ($isAdmin): ?>
+<div class="modal-overlay" id="resolveModal">
+    <div class="modal">
+        <div class="modal-header">
+            <div class="modal-title">Update Complaint</div>
+            <button class="modal-close" type="button" onclick="closeModal('resolveModal')">x</button>
+        </div>
+        <form id="resolveForm" onsubmit="submitResolution(event)">
+            <input type="hidden" id="resolveId" name="id">
+            <div class="form-group">
+                <label class="form-label">Assign To</label>
+                <select class="form-control" name="assigned_to" id="resolveAssignedTo">
+                    <option value="">Unassigned</option>
+                    <?php foreach ($staffMembers as $staffMember): ?>
+                    <option value="<?= (int) $staffMember['id'] ?>"><?= htmlspecialchars($staffMember['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Status</label>
+                <select class="form-control" name="status" id="resolveStatus">
+                    <option value="pending">Pending</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="resolved">Resolved</option>
+                    <option value="rejected">Rejected</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Reply / Note</label>
+                <textarea class="form-control" name="resolution_note" rows="3"></textarea>
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:10px">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('resolveModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Update</button>
+            </div>
+        </form>
+    </div>
+</div>
+<?php endif; ?>
 
-        // --- COMPLAINTS ---
-        async function loadComplaints() {
-            const status = document.getElementById('complaintStatus').value;
-            const data = await apiGet(`/api/complaints/index.php?status=${status}`);
-            
-            document.getElementById('complaintsTable').innerHTML = data.map(c => `
-                <tr>
-                    <td>
-                        <strong style="display:block;margin-bottom:4px">${escHtml(c.title)}</strong>
-                        <span style="font-size:13px;color:var(--text-muted);display:block;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(c.description||'')}</span>
-                        ${c.resolution_note ? `<div style="margin-top:5px;font-size:12px;background:var(--bg-color);padding:5px;border-radius:4px;border-left:2px solid var(--primary-color)"><strong>Reply:</strong> ${escHtml(c.resolution_note)}</div>` : ''}
-                    </td>
-                    <td>${escHtml(c.category)}</td>
-                    <td><span class="badge badge-${c.priority==='urgent'?'danger':(c.priority==='high'?'warning':'info')}">${c.priority}</span></td>
-                    <td>${escHtml(c.submitted_by_name)}<br><small style="color:var(--text-muted)">${c.raised_by_role}</small></td>
-                    <td><span class="badge badge-${c.status==='resolved'?'success':(c.status==='pending'?'warning':'info')}">${c.status}</span></td>
-                    <td style="font-size:12px;color:var(--text-muted)">${new Date(c.created_at).toLocaleDateString()}</td>
-                    <td>
-                        <button class="btn btn-sm btn-secondary" onclick="openResolveModal(${c.id}, '${c.status}')">Update</button>
-                    </td>
-                </tr>
-            `).join('') || '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted)">No items found</td></tr>';
-        }
-
-        async function submitComplaint(e) {
-            e.preventDefault();
-            const res = await apiPost('/api/complaints/index.php', Object.fromEntries(new FormData(e.target)));
-            if(res.success) { showToast('Submitted'); closeModal('complaintModal'); e.target.reset(); loadComplaints(); }
-            else showToast(res.error||'Error', 'danger');
-        }
-
-        function openResolveModal(id, status) {
-            document.getElementById('resolve_id').value = id;
-            document.getElementById('resolve_status').value = status;
-            openModal('resolveModal');
-        }
-
-        async function submitResolution(e) {
-            e.preventDefault();
-            const payload = Object.fromEntries(new FormData(e.target));
-            const res = await fetch('/api/complaints/index.php', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content },
-                body: JSON.stringify(payload)
-            }).then(r => r.json());
-            
-            if(res.success) { showToast('Updated'); closeModal('resolveModal'); loadComplaints(); }
-            else showToast(res.error||'Error', 'danger');
-        }
-
-        // --- NOTIFICATIONS ---
-        async function loadNotifications() {
-            const data = await apiGet('/api/notifications/index.php?limit=50');
-            const list = document.getElementById('notificationsList');
-            list.innerHTML = data.notifications.map(n => `
-                <div class="message-thread" style="${parseInt(n.is_read) === 0 ? 'border-left: 4px solid var(--primary-color)' : ''}">
-                    <div class="message-header">
-                        <strong>${escHtml(n.title)}</strong>
-                        <span>${new Date(n.created_at).toLocaleString()}</span>
-                    </div>
-                    <div class="message-body">${escHtml(n.message)}</div>
-                    ${parseInt(n.is_read) === 0 ? `<button class="btn btn-sm btn-secondary" style="margin-top:10px" onclick="markNotificationRead(${n.id})">Mark Read</button>` : ''}
+<?php if ($isAdmin || $isTeacher): ?>
+<div class="modal-overlay" id="noticeModal">
+    <div class="modal">
+        <div class="modal-header">
+            <div class="modal-title">Create Notice</div>
+            <button class="modal-close" type="button" onclick="closeModal('noticeModal')">x</button>
+        </div>
+        <form id="noticeForm" onsubmit="submitNotice(event)">
+            <div class="form-group">
+                <label class="form-label">Title *</label>
+                <input type="text" class="form-control" name="title" required>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Target Roles</label>
+                    <select class="form-control" name="target_roles">
+                        <option value="all">All</option>
+                        <option value="teacher">Teachers</option>
+                        <option value="student">Students</option>
+                        <option value="parent">Parents</option>
+                    </select>
                 </div>
-            `).join('') || '<div style="padding:20px;text-align:center;color:var(--text-muted)">No recent notifications.</div>';
-        }
-
-        async function markNotificationRead(id) {
-            await apiPost('/api/notifications/index.php', { id: id });
-            loadNotifications();
-        }
-
-        async function markAllNotificationsRead() {
-            await apiPost('/api/notifications/index.php', { mark_all: true });
-            loadNotifications();
-        }
-
-        // --- NOTICES (reused logic) ---
-        async function loadNotices() {
-            const data = await apiGet('/api/notices/index.php');
-            document.getElementById('noticesGrid').innerHTML = data.map(n => `
-                <div class="card" style="margin:0;padding:20px">
-                    <div style="font-size:12px;color:var(--text-muted);margin-bottom:5px">${new Date(n.published_date||n.created_at).toLocaleDateString()}</div>
-                    <h3 style="margin-bottom:10px;font-size:18px">${escHtml(n.title)}</h3>
-                    <p style="color:var(--text-color);margin-bottom:15px;line-height:1.5">${escHtml(n.content)}</p>
-                    <div style="font-size:13px;color:var(--text-muted)">By: ${escHtml(n.created_by_name)}</div>
+                <div class="form-group">
+                    <label class="form-label">Priority</label>
+                    <select class="form-control" name="priority">
+                        <option value="low">Low</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="high">High</option>
+                        <option value="urgent">Urgent</option>
+                    </select>
                 </div>
-            `).join('') || '<div style="padding:20px;color:var(--text-muted)">No announcements found.</div>';
-        }
+            </div>
+            <div class="form-group">
+                <label class="form-label">Content *</label>
+                <textarea class="form-control" name="content" rows="5" required></textarea>
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:10px">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('noticeModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Publish Notice</button>
+            </div>
+        </form>
+    </div>
+</div>
+<?php endif; ?>
 
-        // Init
+<script src="<?= BASE_URL ?>/assets/js/main.js"></script>
+<script>
+const isAdmin = <?= $isAdmin ? 'true' : 'false' ?>;
+let currentComplaints = [];
+
+function switchTab(event, tabId) {
+    document.querySelectorAll('.tab-btn').forEach((button) => button.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach((panel) => panel.classList.remove('active'));
+    event.currentTarget.classList.add('active');
+    document.getElementById(tabId).classList.add('active');
+
+    if (tabId === 'tab-complaints') {
         loadComplaints();
-    </script>
+    } else if (tabId === 'tab-inbox') {
+        loadInbox();
+    } else if (tabId === 'tab-notices') {
+        loadNotices();
+    } else if (tabId === 'tab-notifications') {
+        loadNotifications();
+    }
+}
+
+function complaintRouteLabel(complaint) {
+    if (complaint.target_user_name) {
+        return escHtml(complaint.target_user_name);
+    }
+    if (complaint.assigned_to_name) {
+        return escHtml(complaint.assigned_to_name);
+    }
+    return 'Admin';
+}
+
+async function loadComplaints() {
+    const status = document.getElementById('complaintStatus').value;
+    const data = await apiGet(`/api/complaints/index.php?status=${encodeURIComponent(status)}`);
+    const complaints = Array.isArray(data) ? data : [];
+    currentComplaints = complaints;
+
+    document.getElementById('complaintsTable').innerHTML = complaints.map((complaint) => `
+        <tr>
+            <td>
+                <strong style="display:block;margin-bottom:4px">${escHtml(complaint.title || '')}</strong>
+                <span style="font-size:12px;color:var(--text-muted)">${escHtml(complaint.description || '')}</span>
+                ${complaint.resolution_note ? `<div style="margin-top:8px;font-size:12px;color:var(--text-secondary)"><strong>Reply:</strong> ${escHtml(complaint.resolution_note)}</div>` : ''}
+            </td>
+            <td>${escHtml(complaint.category || '-')}</td>
+            <td><span class="badge badge-${complaint.priority === 'urgent' ? 'danger' : (complaint.priority === 'high' ? 'warning' : 'info')}">${escHtml(complaint.priority || 'medium')}</span></td>
+            <td>${complaintRouteLabel(complaint)}</td>
+            <td><span class="badge badge-${complaint.status === 'resolved' ? 'success' : (complaint.status === 'pending' ? 'warning' : 'info')}">${escHtml((complaint.status || 'pending').replace('_', ' '))}</span></td>
+            <td>${complaint.created_at ? new Date(complaint.created_at).toLocaleDateString() : '-'}</td>
+            <td>${isAdmin ? `<button class="btn btn-secondary btn-sm" type="button" onclick="openResolveModalById(${complaint.id})">Update</button>` : '<span style="color:var(--text-muted)">View only</span>'}</td>
+        </tr>
+    `).join('') || '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted)">No complaints found.</td></tr>';
+}
+
+async function loadInbox() {
+    const data = await apiGet('/api/complaints/index.php?inbox=1');
+    const complaints = Array.isArray(data) ? data : [];
+    document.getElementById('inboxList').innerHTML = complaints.map((complaint) => `
+        <div class="message-thread ${complaint.status !== 'resolved' ? 'unread' : ''}">
+            <div class="message-meta">
+                <span>From: ${escHtml(complaint.submitted_by_name || 'Unknown')}</span>
+                <span>${complaint.created_at ? new Date(complaint.created_at).toLocaleString() : ''}</span>
+            </div>
+            <div class="message-title">${escHtml(complaint.title || '')}</div>
+            <div class="message-body">${escHtml(complaint.description || '')}</div>
+            <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <span class="badge badge-${complaint.status === 'resolved' ? 'success' : (complaint.status === 'pending' ? 'warning' : 'info')}">${escHtml((complaint.status || 'pending').replace('_', ' '))}</span>
+                ${complaint.resolution_note ? `<span style="font-size:12px;color:var(--text-secondary)">Reply: ${escHtml(complaint.resolution_note)}</span>` : ''}
+            </div>
+        </div>
+    `).join('') || '<div style="padding:20px;text-align:center;color:var(--text-muted)">No complaints are currently assigned to you.</div>';
+}
+
+async function submitComplaint(event) {
+    event.preventDefault();
+    const response = await apiPost('/api/complaints/index.php', Object.fromEntries(new FormData(event.target)));
+    if (response.success) {
+        showToast(response.fallback_to_admin ? 'Submitted. No direct recipient was linked, so this was routed to admin.' : 'Complaint submitted successfully.');
+        event.target.reset();
+        updateTeacherRouteNote();
+        updateParentRouteNote();
+        closeModal('complaintModal');
+        loadComplaints();
+        loadInbox();
+        return;
+    }
+
+    showToast(response.error || 'Unable to submit complaint.', 'danger');
+}
+
+function openResolveModal(complaint) {
+    document.getElementById('resolveId').value = complaint.id || '';
+    document.getElementById('resolveStatus').value = complaint.status || 'pending';
+    document.getElementById('resolveAssignedTo').value = complaint.assigned_to || '';
+    document.querySelector('#resolveForm [name="resolution_note"]').value = complaint.resolution_note || '';
+    openModal('resolveModal');
+}
+
+function openResolveModalById(complaintId) {
+    const complaint = currentComplaints.find((item) => Number(item.id) === Number(complaintId));
+    if (!complaint) {
+        showToast('Complaint not found.', 'warning');
+        return;
+    }
+
+    openResolveModal(complaint);
+}
+
+async function submitResolution(event) {
+    event.preventDefault();
+    const payload = Object.fromEntries(new FormData(event.target));
+    const response = await apiPut('/api/complaints/index.php', payload);
+    if (response.success) {
+        showToast('Complaint updated successfully.');
+        closeModal('resolveModal');
+        loadComplaints();
+        loadInbox();
+        return;
+    }
+
+    showToast(response.error || 'Unable to update complaint.', 'danger');
+}
+
+async function loadNotices() {
+    const data = await apiGet('/api/notices/index.php');
+    const notices = Array.isArray(data) ? data : [];
+    document.getElementById('noticesList').innerHTML = notices.map((notice) => `
+        <div class="message-thread">
+            <div class="message-meta">
+                <span>${escHtml(notice.created_by_name || 'School')}</span>
+                <span>${new Date(notice.published_date || notice.created_at).toLocaleDateString()}</span>
+            </div>
+            <div class="message-title">${escHtml(notice.title || '')}</div>
+            <div class="message-body">${escHtml(notice.content || '')}</div>
+        </div>
+    `).join('') || '<div style="padding:20px;text-align:center;color:var(--text-muted)">No announcements found.</div>';
+}
+
+async function submitNotice(event) {
+    event.preventDefault();
+    const response = await apiPost('/api/notices/index.php', Object.fromEntries(new FormData(event.target)));
+    if (response.success) {
+        showToast('Notice published successfully.');
+        event.target.reset();
+        closeModal('noticeModal');
+        loadNotices();
+        return;
+    }
+
+    showToast(response.error || 'Unable to publish notice.', 'danger');
+}
+
+async function loadNotifications() {
+    const data = await apiGet('/api/notifications/index.php?limit=50');
+    const notifications = Array.isArray(data.notifications) ? data.notifications : [];
+    document.getElementById('notificationsList').innerHTML = notifications.map((notification) => `
+        <div class="message-thread ${parseInt(notification.is_read || 0, 10) === 0 ? 'unread' : ''}">
+            <div class="message-meta">
+                <strong>${escHtml(notification.title || '')}</strong>
+                <span>${notification.created_at ? new Date(notification.created_at).toLocaleString() : ''}</span>
+            </div>
+            <div class="message-body">${escHtml(notification.message || '')}</div>
+            ${parseInt(notification.is_read || 0, 10) === 0 ? `<button class="btn btn-secondary btn-sm" type="button" style="margin-top:10px" onclick="markNotificationRead(${notification.id})">Mark Read</button>` : ''}
+        </div>
+    `).join('') || '<div style="padding:20px;text-align:center;color:var(--text-muted)">No recent notifications.</div>';
+}
+
+async function markNotificationRead(id) {
+    await apiPost('/api/notifications/index.php', { id });
+    loadNotifications();
+}
+
+async function markAllNotificationsRead() {
+    await apiPost('/api/notifications/index.php', { mark_all: true });
+    loadNotifications();
+}
+
+function updateTeacherRouteNote() {
+    const select = document.getElementById('complaintStudentSelect');
+    const note = document.getElementById('teacherRouteNote');
+    if (!select || !note) {
+        return;
+    }
+
+    const selectedOption = select.options[select.selectedIndex];
+    if (!selectedOption || !selectedOption.value) {
+        note.textContent = 'No student selected. This complaint will go to admin.';
+        return;
+    }
+
+    note.textContent = selectedOption.dataset.linkedParent === '1'
+        ? 'This will notify the selected student\'s parent directly.'
+        : 'This student does not have a linked parent account yet, so the complaint will fall back to admin.';
+}
+
+function updateParentRouteNote() {
+    const select = document.getElementById('complaintClassSelect');
+    const note = document.getElementById('parentRouteNote');
+    if (!select || !note) {
+        return;
+    }
+
+    const selectedOption = select.options[select.selectedIndex];
+    if (!selectedOption || !selectedOption.value) {
+        note.textContent = 'No class selected. This complaint will go to admin.';
+        return;
+    }
+
+    note.textContent = selectedOption.dataset.linkedTeacher === '1'
+        ? 'This will notify the linked class teacher directly.'
+        : 'This class does not have a linked teacher account yet, so the complaint will fall back to admin.';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    updateTeacherRouteNote();
+    updateParentRouteNote();
+    loadComplaints();
+});
+</script>
 </body>
 </html>

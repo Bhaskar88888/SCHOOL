@@ -21,9 +21,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $whereOpts[] = "r.type = ?";
         $params[] = $type;
     }
+    
+    $role = normalize_role_name(get_current_role());
+    $userId = get_current_user_id();
+    if ($role === 'student' && db_column_exists('students', 'user_id')) {
+        $whereOpts[] = "s.user_id = ?";
+        $params[] = $userId;
+    } elseif ($role === 'parent' && db_column_exists('students', 'parent_user_id')) {
+        $whereOpts[] = "s.parent_user_id = ?";
+        $params[] = $userId;
+    }
+
     $where = count($whereOpts) > 0 ? "WHERE " . implode(' AND ', $whereOpts) : "";
 
-    $remarks = db_fetchAll("SELECT r.*, s.name as student_name, u.name as teacher_name FROM remarks r LEFT JOIN students s ON r.student_id = s.id LEFT JOIN users u ON r. teacher_id = u.id $where ORDER BY r.created_at DESC", $params);
+    $remarks = db_fetchAll("SELECT r.*, s.name as student_name, u.name as teacher_name FROM remarks r LEFT JOIN students s ON r.student_id = s.id LEFT JOIN users u ON r.teacher_id = u.id $where ORDER BY r.created_at DESC", $params);
     json_response($remarks);
 }
 

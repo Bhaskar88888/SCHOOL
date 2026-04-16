@@ -17,6 +17,86 @@ $categories = ['General', 'OBC', 'SC', 'ST', 'EWS', 'Minority'];
     <title>Students - School ERP</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css">
+    <style>
+        .student-id-card {
+            width: min(360px, 100%);
+            margin: 0 auto;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            background: linear-gradient(180deg, rgba(79,142,247,0.16), rgba(28,35,51,1));
+            overflow: hidden;
+            box-shadow: var(--shadow);
+        }
+        .student-id-head {
+            padding: 24px 24px 18px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        .student-id-body {
+            padding: 24px;
+            display: grid;
+            gap: 12px;
+        }
+        .student-id-avatar {
+            width: 72px;
+            height: 72px;
+            border-radius: 18px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255,255,255,0.12);
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+        .student-id-field {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            font-size: 13px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            padding-bottom: 10px;
+        }
+        .student-id-field:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+        .student-id-label {
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+        }
+        .student-id-value {
+            color: var(--text-primary);
+            text-align: right;
+            font-weight: 600;
+        }
+        .student-id-qr {
+            width: 72px;
+            height: 72px;
+            border: 1px dashed rgba(255,255,255,0.4);
+            border-radius: 12px;
+            display: grid;
+            place-items: center;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #studentIdCardPrintArea, #studentIdCardPrintArea * {
+                visibility: visible;
+            }
+            #studentIdCardPrintArea {
+                position: fixed;
+                inset: 0;
+                margin: auto;
+                width: 360px;
+                height: fit-content;
+            }
+        }
+    </style>
 </head>
 <body>
 <div class="app-layout">
@@ -225,9 +305,17 @@ $categories = ['General', 'OBC', 'SC', 'ST', 'EWS', 'Minority'];
                                 <input type="tel" class="form-control" name="mother_phone">
                             </div>
                             <div class="form-group">
+                                <label class="form-label">Link Parent Account</label>
+                                <select class="form-control" name="parent_user_id" id="parentUserSelect">
+                                    <option value="">None (no portal access)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
                                 <label class="form-label">Guardian Name</label>
                                 <input type="text" class="form-control" name="guardian_name">
                             </div>
+                        </div>
+                        <div class="form-row-3">
                             <div class="form-group">
                                 <label class="form-label">Guardian Phone</label>
                                 <input type="tel" class="form-control" name="guardian_phone">
@@ -335,17 +423,35 @@ $categories = ['General', 'OBC', 'SC', 'ST', 'EWS', 'Minority'];
 </div>
 <?php endif; ?>
 
+<div class="modal-overlay" id="studentIdCardModal">
+    <div class="modal" id="studentIdCardPrintArea">
+        <div class="modal-header">
+            <div class="modal-title">Student ID Card</div>
+            <button class="modal-close" type="button" onclick="closeModal('studentIdCardModal')">x</button>
+        </div>
+        <div class="student-id-card" id="studentIdCardContainer"></div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
+            <button class="btn btn-secondary" type="button" onclick="closeModal('studentIdCardModal')">Close</button>
+            <button class="btn btn-primary" type="button" onclick="window.print()">Print</button>
+        </div>
+    </div>
+</div>
+
 <script src="<?= BASE_URL ?>/assets/js/main.js"></script>
 <script>
 const canManage = <?= $canManage ? 'true' : 'false' ?>;
 const autoOpenAdd = <?= $autoOpenAdd ? 'true' : 'false' ?>;
+const schoolName = <?= json_encode(defined('APP_NAME') ? APP_NAME : 'School ERP') ?>;
 let currentPage = 1;
 let editingId = null;
+let currentStudents = [];
+let parentUsers = [];
+let parentUsersLoaded = false;
 
 const studentFields = [
     'name', 'admission_no', 'class_id', 'section', 'roll_number', 'dob', 'gender',
     'phone', 'email', 'parent_name', 'parent_phone', 'parent_email', 'father_name',
-    'father_occupation', 'mother_name', 'mother_phone', 'guardian_name', 'guardian_phone',
+    'father_occupation', 'mother_name', 'mother_phone', 'parent_user_id', 'guardian_name', 'guardian_phone',
     'aadhaar', 'blood_group', 'nationality', 'religion', 'category', 'mother_tongue',
     'address', 'address_line1', 'address_line2', 'city', 'state', 'pincode',
     'medical_conditions', 'allergies'
@@ -375,6 +481,7 @@ function resetStudentForm() {
     document.getElementById('studentForm').reset();
     document.getElementById('studentId').value = '';
     Object.entries(defaultStudentValues()).forEach(([name, value]) => setFormValue(name, value));
+    setFormValue('parent_user_id', '');
     document.getElementById('studentModalTitle').textContent = 'Add Student';
     document.getElementById('studentSubmitBtn').textContent = 'Save Student';
 }
@@ -390,13 +497,28 @@ function populateStudentForm(student) {
     document.getElementById('studentSubmitBtn').textContent = 'Update Student';
 }
 
-function openStudentModal(student = null) {
+async function loadParentUsers(selectedId = '') {
+    if (!parentUsersLoaded) {
+        const response = await apiGet('/api/users/index.php?role=parent&limit=500');
+        parentUsers = Array.isArray(response.users) ? response.users : [];
+        parentUsersLoaded = true;
+    }
+
+    const select = document.getElementById('parentUserSelect');
+    select.innerHTML = '<option value="">None (no portal access)</option>' + parentUsers.map((user) => `
+        <option value="${user.id}">${escHtml(user.name || 'Parent')} ${user.email ? `(${escHtml(user.email)})` : ''}</option>
+    `).join('');
+    select.value = selectedId || '';
+}
+
+async function openStudentModal(student = null) {
     if (!canManage) return;
     if (student) {
         populateStudentForm(student);
     } else {
         resetStudentForm();
     }
+    await loadParentUsers(student?.parent_user_id || '');
     openModal('studentModal');
 }
 
@@ -424,6 +546,7 @@ async function loadStudents(page = 1) {
 
     const data = await apiGet(`/api/students/index.php?page=${page}&search=${encodeURIComponent(search)}&class_id=${encodeURIComponent(classId)}`);
     const rows = Array.isArray(data.data) ? data.data : [];
+    currentStudents = rows;
     const body = document.getElementById('studentBody');
     const colspan = canManage ? 7 : 6;
 
@@ -463,6 +586,7 @@ async function loadStudents(page = 1) {
                     ${canManage ? `
                     <td>
                         <div style="display:flex;gap:6px">
+                            <button class="btn btn-secondary btn-sm" onclick="openStudentIdCard(${student.id})">ID Card</button>
                             <button class="btn btn-secondary btn-sm" onclick="editStudent(${student.id})">Edit</button>
                             <button class="btn btn-danger btn-sm" onclick="archiveStudent(${student.id}, ${JSON.stringify(student.name || '')})">Archive</button>
                         </div>
@@ -500,11 +624,7 @@ async function submitStudent(event) {
     const payload = studentPayloadFromForm();
     let response;
     if (editingId) {
-        response = await fetch('/api/students/index.php', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        }).then((res) => res.json());
+        response = await apiPut('/api/students/index.php', payload);
     } else {
         response = await apiPost('/api/students/index.php', payload);
     }
@@ -525,7 +645,10 @@ async function archiveStudent(id, name) {
     const reason = prompt('Discharge reason (optional):', '') || '';
     const response = await fetch('/api/students/index.php', {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': getCsrfToken()
+        },
         body: JSON.stringify({
             id,
             discharge_date: new Date().toISOString().slice(0, 10),
@@ -540,6 +663,52 @@ async function archiveStudent(id, name) {
     }
 
     showToast(response.error || 'Unable to archive student.', 'danger');
+}
+
+function openStudentIdCard(studentId) {
+    const student = currentStudents.find((row) => Number(row.id) === Number(studentId));
+    if (!student) {
+        showToast('Student record not loaded yet.', 'warning');
+        return;
+    }
+
+    const classLabel = [student.class_name || 'No Class', student.section || ''].filter(Boolean).join(' - ');
+    document.getElementById('studentIdCardContainer').innerHTML = `
+        <div class="student-id-head">
+            <div style="display:flex;justify-content:space-between;gap:16px;align-items:flex-start">
+                <div>
+                    <div style="font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em">${escHtml(schoolName)}</div>
+                    <div class="student-id-avatar">${escHtml((student.name || 'S').charAt(0).toUpperCase())}</div>
+                    <div style="font-size:24px;font-weight:800">${escHtml(student.name || 'Student')}</div>
+                    <div style="color:var(--text-muted);margin-top:6px">${escHtml(classLabel)}</div>
+                </div>
+                <div class="student-id-qr">QR</div>
+            </div>
+        </div>
+        <div class="student-id-body">
+            <div class="student-id-field">
+                <div class="student-id-label">Admission No</div>
+                <div class="student-id-value">${escHtml(student.admission_no || 'Pending')}</div>
+            </div>
+            <div class="student-id-field">
+                <div class="student-id-label">Roll Number</div>
+                <div class="student-id-value">${escHtml(student.roll_number || '-')}</div>
+            </div>
+            <div class="student-id-field">
+                <div class="student-id-label">Date of Birth</div>
+                <div class="student-id-value">${escHtml(student.dob || '-')}</div>
+            </div>
+            <div class="student-id-field">
+                <div class="student-id-label">Blood Group</div>
+                <div class="student-id-value">${escHtml(student.blood_group || '-')}</div>
+            </div>
+            <div class="student-id-field">
+                <div class="student-id-label">Parent / Guardian</div>
+                <div class="student-id-value">${escHtml(student.parent_name || student.guardian_name || student.father_name || '-')}</div>
+            </div>
+        </div>
+    `;
+    openModal('studentIdCardModal');
 }
 
 function exportData() {

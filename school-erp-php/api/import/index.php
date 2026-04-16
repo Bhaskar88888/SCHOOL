@@ -48,10 +48,10 @@ function handle_upload_preview()
 function handle_import($module)
 {
     $payload = get_post_json();
-    $defaultPassword = trim((string) ($payload['defaultPassword'] ?? 'Password123'));
+    $defaultPassword = trim((string) ($payload['defaultPassword'] ?? ''));
 
     if ($defaultPassword === '') {
-        $defaultPassword = 'Password123';
+        $defaultPassword = 'TempPass_' . substr(bin2hex(random_bytes(4)), 0, 8);
     }
 
     try {

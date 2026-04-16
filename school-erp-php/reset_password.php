@@ -130,7 +130,7 @@
             <div id="alertBox"></div>
 
             <form id="resetForm">
-                <input type="hidden" id="token" value="<?= $_GET['token'] ?? '' ?>">
+                <input type="hidden" id="token" value="<?= htmlspecialchars($_GET['token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
 
                 <div class="form-group">
                     <label for="password">New Password *</label>

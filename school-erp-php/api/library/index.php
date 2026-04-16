@@ -119,16 +119,31 @@ if ($method === 'POST') {
     }
     if ($action === 'return') {
         $issueId = (int) $data['issue_id'];
-        $issue = db_fetch("SELECT * FROM library_issues WHERE id = ?", [$issueId]);
-        $fine = 0;
-        if ($issue && strtotime(date('Y-m-d')) > strtotime($issue['due_date'])) {
-            $days = (strtotime(date('Y-m-d')) - strtotime($issue['due_date'])) / 86400;
-            $fine = $days * 2; // ₹2 per day
-        }
-        db_query("UPDATE library_issues SET is_returned=1, return_date=?, fine_amount=? WHERE id=?", [date('Y-m-d'), $fine, $issueId]);
-        if ($issue)
+        try {
+            db_beginTransaction();
+            $issue = db_fetch("SELECT * FROM library_issues WHERE id = ? FOR UPDATE", [$issueId]);
+            if (!$issue) {
+                db_rollback();
+                json_response(['error' => 'Issue record not found'], 404);
+            }
+            if ($issue['is_returned']) {
+                db_rollback();
+                json_response(['error' => 'Book already returned'], 400);
+            }
+            $fine = 0;
+            if (strtotime(date('Y-m-d')) > strtotime($issue['due_date'])) {
+                $days = (strtotime(date('Y-m-d')) - strtotime($issue['due_date'])) / 86400;
+                $finePerDay = (float) ($issue['fine_per_day'] ?? 5); // Use configured rate, default ₹5/day
+                $fine = $days * $finePerDay;
+            }
+            db_query("UPDATE library_issues SET is_returned=1, return_date=?, fine_amount=? WHERE id=?", [date('Y-m-d'), $fine, $issueId]);
             db_query("UPDATE library_books SET available_copies = available_copies + 1 WHERE id=?", [$issue['book_id']]);
-        json_response(['success' => true, 'fine' => $fine]);
+            db_commit();
+            json_response(['success' => true, 'fine' => $fine]);
+        } catch (Exception $e) {
+            db_rollback();
+            json_response(['error' => 'Return failed: ' . $e->getMessage()], 500);
+        }
     }
 }
 if ($method === 'DELETE') {

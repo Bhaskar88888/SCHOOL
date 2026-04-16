@@ -1,19 +1,33 @@
 <?php
 /**
- * Sidebar Navigation Component – Minimal Gallery UI
- * SVGs have explicit width/height/fill/stroke to prevent rendering issues
+ * Sidebar Navigation Component – School ERP v3.0
  */
 
 $currentPage = basename($_SERVER['PHP_SELF'], '.php');
 $user = get_authenticated_user();
 
-// SVG icon map — all have fill="none" stroke="currentColor" with explicit sizes
+// SVG icon map
 function nav_svg($paths, $extra = '') {
     return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ' . $extra . '>' . $paths . '</svg>';
 }
 
 require_once __DIR__ . '/notify.php';
 $unreadCountSidebar = get_unread_notification_count(get_current_user_id());
+
+// Unread messages count
+$unreadMsgSidebar = 0;
+if (db_table_exists('thread_participants') && db_table_exists('messages')) {
+    $unreadMsgSidebar = (int)db_count(
+        "SELECT COUNT(DISTINCT tp.thread_id)
+         FROM thread_participants tp
+         JOIN messages m ON m.thread_id = tp.thread_id
+         WHERE tp.user_id = ?
+           AND m.sender_id != ?
+           AND m.is_deleted = 0
+           AND (tp.last_read_at IS NULL OR m.created_at > tp.last_read_at)",
+        [get_current_user_id(), get_current_user_id()]
+    );
+}
 
 $icons = [
     'dashboard'        => nav_svg('<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>'),
@@ -32,6 +46,7 @@ $icons = [
     'routine'          => nav_svg('<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>'),
     'leave'            => nav_svg('<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'),
     'communication'    => nav_svg('<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'),
+    'messages'         => nav_svg('<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>'),
     'chatbot'          => nav_svg('<rect x="2" y="2" width="20" height="20" rx="5"/><line x1="7" y1="10" x2="17" y2="10"/><line x1="7" y1="14" x2="13" y2="14"/>'),
     'remarks'          => nav_svg('<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>'),
     'classes'          => nav_svg('<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>'),
@@ -44,30 +59,31 @@ $icons = [
 ];
 
 $navItems = [
-    ['key' => 'dashboard',        'label' => 'Dashboard',        'roles' => ['superadmin','admin','teacher','student','parent','accounts','librarian']],
+    ['key' => 'dashboard',        'label' => 'Dashboard',        'roles' => ['superadmin','admin','teacher','student','parent','accounts','accountant','librarian','hr','canteen','conductor','driver']],
     ['key' => 'students',         'label' => 'Students',         'roles' => ['superadmin','admin','teacher']],
     ['key' => 'attendance',       'label' => 'Attendance',       'roles' => ['superadmin','admin','teacher']],
-    ['key' => 'fee',              'label' => 'Fee',              'roles' => ['superadmin','admin','accounts']],
+    ['key' => 'fee',              'label' => 'Fee',              'roles' => ['superadmin','admin','accounts','accountant']],
     ['key' => 'exams',            'label' => 'Exams',            'roles' => ['superadmin','admin','teacher']],
     ['key' => 'hr',               'label' => 'HR / Staff',       'roles' => ['superadmin','admin']],
-    ['key' => 'payroll',          'label' => 'Payroll',          'roles' => ['superadmin','admin','accounts']],
+    ['key' => 'payroll',          'label' => 'Payroll',          'roles' => ['superadmin','admin','accounts','accountant']],
     ['key' => 'library',          'label' => 'Library',          'roles' => ['superadmin','admin','librarian','teacher']],
     ['key' => 'hostel',           'label' => 'Hostel',           'roles' => ['superadmin','admin']],
     ['key' => 'transport',        'label' => 'Transport',        'roles' => ['superadmin','admin']],
-    ['key' => 'canteen',          'label' => 'Canteen',          'roles' => ['superadmin','admin']],
+    ['key' => 'canteen',          'label' => 'Canteen',          'roles' => ['superadmin','admin','teacher','parent','canteen']],
     ['key' => 'homework',         'label' => 'Homework',         'roles' => ['superadmin','admin','teacher','student']],
     ['key' => 'notices',          'label' => 'Notices',          'roles' => ['superadmin','admin','teacher','student','parent']],
     ['key' => 'routine',          'label' => 'Routine',          'roles' => ['superadmin','admin','teacher','student']],
-    ['key' => 'leave',            'label' => 'Leave',            'roles' => ['superadmin','admin','teacher']],
+    ['key' => 'leave',            'label' => 'Leave',            'roles' => ['superadmin','admin','teacher','hr']],
     ['key' => 'communication',    'label' => 'Comms Hub',        'roles' => ['superadmin','admin','teacher','student','parent']],
-    ['key' => 'chatbot',          'label' => 'AI Chatbot',       'roles' => ['superadmin','admin','teacher','student','parent','accounts','librarian']],
+    ['key' => 'messages',         'label' => 'Messages',         'roles' => ['superadmin','admin','teacher','student','parent','accounts','accountant','librarian','hr','canteen']],
+    ['key' => 'chatbot',          'label' => 'AI Chatbot',       'roles' => ['superadmin','admin','teacher','student','parent','accounts','accountant','librarian']],
     ['key' => 'remarks',          'label' => 'Remarks',          'roles' => ['superadmin','admin','teacher']],
     ['key' => 'classes',          'label' => 'Classes',          'roles' => ['superadmin','admin']],
     ['key' => 'users',            'label' => 'Users',            'roles' => ['superadmin','admin','hr']],
     ['key' => 'salary-setup',     'label' => 'Salary Setup',     'roles' => ['superadmin','admin','hr']],
     ['key' => 'staff-attendance', 'label' => 'Staff Attend.',    'roles' => ['superadmin','admin','hr']],
     ['key' => 'archive',          'label' => 'Archive',          'roles' => ['superadmin','admin']],
-    ['key' => 'export',           'label' => 'Export Data',      'roles' => ['superadmin','admin','accounts','hr','teacher']],
+    ['key' => 'export',           'label' => 'Export Data',      'roles' => ['superadmin','admin','accounts','accountant','hr','teacher']],
     ['key' => 'audit',            'label' => 'Audit Log',        'roles' => ['superadmin']],
 ];
 ?>
@@ -96,7 +112,14 @@ $navItems = [
             $isActive  = ($currentPage === $item['key']) ? 'active' : '';
             $svg       = $icons[$item['key']] ?? $icons['dashboard'];
             $href      = BASE_URL . '/' . $item['key'] . '.php';
-            $badge     = ($item['key'] === 'communication' && $unreadCountSidebar > 0) ? '<span class="badge badge-danger" style="margin-left:auto">' . $unreadCountSidebar . '</span>' : '';
+
+            // Badge logic: notifications for Comms, messages for Messages
+            $badge = '';
+            if ($item['key'] === 'communication' && $unreadCountSidebar > 0) {
+                $badge = '<span class="badge badge-danger" style="margin-left:auto">' . $unreadCountSidebar . '</span>';
+            } elseif ($item['key'] === 'messages' && $unreadMsgSidebar > 0) {
+                $badge = '<span class="badge badge-danger" style="margin-left:auto">' . $unreadMsgSidebar . '</span>';
+            }
         ?>
         <a href="<?= $href ?>" class="nav-item <?= $isActive ?>">
             <span class="nav-icon"><?= $svg ?></span>

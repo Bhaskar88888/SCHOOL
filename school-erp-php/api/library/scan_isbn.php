@@ -44,7 +44,7 @@ if ($method === 'GET') {
         'isbn' => $isbn,
         'title' => $data['title'] ?? 'Unknown',
         'author' => isset($data['authors'][0]['key']) ? 
-                    self::getAuthorName($data['authors'][0]['key']) : 'Unknown Author',
+                    getAuthorName($data['authors'][0]['key']) : 'Unknown Author',
         'publisher' => $data['publishers'][0]['name'] ?? 'Unknown Publisher',
         'publish_date' => $data['publish_date'] ?? '',
         'cover_image' => "https://covers.openlibrary.org/b/isbn/{$isbn}-M.jpg",

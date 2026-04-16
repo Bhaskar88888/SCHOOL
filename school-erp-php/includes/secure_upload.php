@@ -13,8 +13,9 @@
 
 require_once __DIR__ . '/../config/env.php';
 
-class SecureFileUpload {
-    
+class SecureFileUpload
+{
+
     private static $allowedTypes = [
         'image/jpeg' => ['jpg', 'jpeg'],
         'image/png' => ['png'],
@@ -24,65 +25,93 @@ class SecureFileUpload {
         'application/msword' => ['doc'],
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => ['docx'],
     ];
-    
+
     private static $maxSize = 5242880; // fallback 5MB; overridden by getMaxSize()
 
-    private static function getMaxSize() {
-        return defined('UPLOAD_MAX_SIZE') ? (int)UPLOAD_MAX_SIZE : self::$maxSize;
+    private static function getMaxSize()
+    {
+        return defined('UPLOAD_MAX_SIZE') ? (int) UPLOAD_MAX_SIZE : self::$maxSize;
     }
-    
+
     private static $blockedExtensions = [
-        'php', 'php3', 'php4', 'php5', 'php7', 'phtml', 'phar',
-        'exe', 'bat', 'cmd', 'com', 'msi',
-        'sh', 'bash', 'zsh',
-        'js', 'jsx', 'ts', 'tsx',
-        'asp', 'aspx', 'jsp', 'jspx',
-        'cgi', 'pl', 'py', 'rb',
-        'htaccess', 'htpasswd',
-        'sql', 'dump',
+        'php',
+        'php3',
+        'php4',
+        'php5',
+        'php7',
+        'phtml',
+        'phar',
+        'exe',
+        'bat',
+        'cmd',
+        'com',
+        'msi',
+        'sh',
+        'bash',
+        'zsh',
+        'js',
+        'jsx',
+        'ts',
+        'tsx',
+        'asp',
+        'aspx',
+        'jsp',
+        'jspx',
+        'cgi',
+        'pl',
+        'py',
+        'rb',
+        'htaccess',
+        'htpasswd',
+        'sql',
+        'dump',
     ];
-    
+
     /**
      * Upload student photo/document
      */
-    public static function uploadStudentFile($file, $studentId, $type = 'photo') {
+    public static function uploadStudentFile($file, $studentId, $type = 'photo')
+    {
         $uploadDir = __DIR__ . '/../uploads/students/';
         return self::upload($file, $uploadDir, 'student_' . $studentId, $type);
     }
-    
+
     /**
      * Upload staff photo/document
      */
-    public static function uploadStaffFile($file, $staffId, $type = 'photo') {
+    public static function uploadStaffFile($file, $staffId, $type = 'photo')
+    {
         $uploadDir = __DIR__ . '/../uploads/staff/';
         return self::upload($file, $uploadDir, 'staff_' . $staffId, $type);
     }
-    
+
     /**
      * Upload book cover image
      */
-    public static function uploadBookCover($file, $bookId) {
+    public static function uploadBookCover($file, $bookId)
+    {
         $uploadDir = __DIR__ . '/../uploads/books/';
         return self::upload($file, $uploadDir, 'book_' . $bookId, 'cover');
     }
-    
+
     /**
      * Generic secure upload
      */
-    private static function upload($file, $uploadDir, $prefix, $type) {
+    private static function upload($file, $uploadDir, $prefix, $type)
+    {
         // Create directory if not exists
         if (!is_dir($uploadDir)) {
             mkdir($uploadDir, 0755, true);
             // Add .htaccess to prevent PHP execution
             self::createHtaccess($uploadDir);
         }
-        
+
         // Validate file
         $error = self::validate($file);
         if ($error) {
             return ['success' => false, 'error' => $error];
         }
-        
+
         // For images, re-save to prevent malicious content
         if (strpos($file['type'], 'image/') === 0) {
             $result = self::saveImage($file, $uploadDir, $prefix);
@@ -91,11 +120,11 @@ class SecureFileUpload {
             $extension = self::getExtension($file['type']);
             $filename = $prefix . '_' . time() . '_' . bin2hex(random_bytes(8)) . '.' . $extension;
             $filepath = $uploadDir . $filename;
-            
+
             if (!move_uploaded_file($file['tmp_name'], $filepath)) {
                 return ['success' => false, 'error' => 'Failed to save file'];
             }
-            
+
             $result = [
                 'success' => true,
                 'filename' => $filename,
@@ -104,14 +133,15 @@ class SecureFileUpload {
                 'size' => $file['size'],
             ];
         }
-        
+
         return $result;
     }
-    
+
     /**
      * Validate uploaded file
      */
-    private static function validate($file) {
+    private static function validate($file)
+    {
         // Check upload error
         if ($file['error'] !== UPLOAD_ERR_OK) {
             $errors = [
@@ -125,50 +155,51 @@ class SecureFileUpload {
             ];
             return $errors[$file['error']] ?? 'File upload error';
         }
-        
+
         // Check file size
         if ($file['size'] > self::getMaxSize()) {
             $maxMB = self::getMaxSize() / 1024 / 1024;
             return "File size exceeds {$maxMB}MB limit";
         }
-        
+
         // Check MIME type
         $finfo = finfo_open(FILEINFO_MIME_TYPE);
         $mimeType = finfo_file($finfo, $file['tmp_name']);
         finfo_close($finfo);
-        
+
         if (!isset(self::$allowedTypes[$mimeType])) {
             return "File type not allowed. Allowed: " . implode(', ', array_keys(self::$allowedTypes));
         }
-        
+
         // Check extension matches MIME type
         $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
         $allowedExtensions = self::$allowedTypes[$mimeType];
         if (!in_array($extension, $allowedExtensions)) {
             return "File extension does not match content type";
         }
-        
+
         // Check for blocked extensions
         if (in_array($extension, self::$blockedExtensions)) {
             return "File extension not allowed for security reasons";
         }
-        
+
         // Check for malicious filenames
         if (preg_match('/[<>:"\'|?*]/', $file['name'])) {
             return "Filename contains invalid characters";
         }
-        
+
         return null;
     }
-    
+
     /**
      * Re-save image to prevent malicious content
      */
-    private static function saveImage($file, $uploadDir, $prefix) {
+    private static function saveImage($file, $uploadDir, $prefix)
+    {
         $finfo = finfo_open(FILEINFO_MIME_TYPE);
         $mimeType = finfo_file($finfo, $file['tmp_name']);
         finfo_close($finfo);
-        
+
         // Create image resource based on type
         switch ($mimeType) {
             case 'image/jpeg':
@@ -190,15 +221,20 @@ class SecureFileUpload {
             default:
                 return ['success' => false, 'error' => 'Unsupported image type'];
         }
-        
+
         if (!$source) {
             return ['success' => false, 'error' => 'Invalid or corrupted image file'];
         }
-        
+
+        // Verify the image resource was created successfully
+        if (!is_resource($source) && !($source instanceof \GdImage)) {
+            return ['success' => false, 'error' => 'Failed to create image resource'];
+        }
+
         // Generate safe filename
         $filename = $prefix . '_' . time() . '_' . bin2hex(random_bytes(8)) . '.' . $extension;
         $filepath = $uploadDir . $filename;
-        
+
         // Save image (this strips any malicious metadata/code)
         switch ($mimeType) {
             case 'image/jpeg':
@@ -214,9 +250,9 @@ class SecureFileUpload {
                 imagewebp($source, $filepath, 90);
                 break;
         }
-        
+
         imagedestroy($source);
-        
+
         return [
             'success' => true,
             'filename' => $filename,
@@ -225,18 +261,20 @@ class SecureFileUpload {
             'size' => filesize($filepath),
         ];
     }
-    
+
     /**
      * Get file extension from MIME type
      */
-    private static function getExtension($mimeType) {
+    private static function getExtension($mimeType)
+    {
         return self::$allowedTypes[$mimeType][0] ?? 'bin';
     }
-    
+
     /**
      * Create .htaccess to prevent PHP execution
      */
-    private static function createHtaccess($directory) {
+    private static function createHtaccess($directory)
+    {
         $htaccess = $directory . '/.htaccess';
         if (!file_exists($htaccess)) {
             $content = "# Prevent PHP execution\n";
@@ -245,31 +283,33 @@ class SecureFileUpload {
             $content .= "</FilesMatch>\n";
             $content .= "# Disable PHP engine\n";
             $content .= "php_flag engine off\n";
-            
+
             file_put_contents($htaccess, $content);
         }
     }
-    
+
     /**
      * Delete uploaded file
      */
-    public static function delete($filepath) {
+    public static function delete($filepath)
+    {
         $fullPath = __DIR__ . '/../' . $filepath;
         if (file_exists($fullPath)) {
             return unlink($fullPath);
         }
         return false;
     }
-    
+
     /**
      * Get file info
      */
-    public static function getInfo($filepath) {
+    public static function getInfo($filepath)
+    {
         $fullPath = __DIR__ . '/../' . $filepath;
         if (!file_exists($fullPath)) {
             return null;
         }
-        
+
         return [
             'filename' => basename($filepath),
             'size' => filesize($fullPath),

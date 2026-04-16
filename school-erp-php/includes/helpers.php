@@ -6,19 +6,45 @@
 /**
  * Generate Auto ID (Admission Number, Employee ID, Receipt No, etc.)
  */
-function generate_auto_id($type, $prefix) {
+function ensure_counters_table()
+{
+    static $ensured = false;
+
+    if ($ensured) {
+        return;
+    }
+
+    db_query(
+        "CREATE TABLE IF NOT EXISTS counters (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(50) NOT NULL,
+            year VARCHAR(10) NOT NULL,
+            sequence INT DEFAULT 0,
+            UNIQUE KEY unique_counter (name, year)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+    );
+
+    $ensured = true;
+}
+
+function generate_auto_id($type, $prefix, $attempt = 0) {
+    ensure_counters_table();
+
+    $year = date('Y');
+    $ownsTransaction = !db_in_transaction();
+
     try {
-        db_beginTransaction();
-        $year = date('Y');
-        
-        // Get current sequence with row lock
+        if ($ownsTransaction) {
+            db_beginTransaction();
+        }
+
         $counter = db_fetch(
             "SELECT sequence FROM counters WHERE name = ? AND year = ? FOR UPDATE",
             [$type, $year]
         );
-        
+
         if ($counter) {
-            $newSequence = $counter['sequence'] + 1;
+            $newSequence = (int) $counter['sequence'] + 1;
             db_query(
                 "UPDATE counters SET sequence = ? WHERE name = ? AND year = ?",
                 [$newSequence, $type, $year]
@@ -30,12 +56,24 @@ function generate_auto_id($type, $prefix) {
                 [$type, $year, $newSequence]
             );
         }
-        db_commit();
+
+        if ($ownsTransaction) {
+            db_commit();
+        }
+
         return $prefix . $year . str_pad($newSequence, 5, '0', STR_PAD_LEFT);
-    } catch (Exception $e) {
-        db_rollback();
-        // Fallback
-        return $prefix . date('Y') . rand(10000, 99999);
+    } catch (Throwable $e) {
+        if ($ownsTransaction) {
+            db_rollback();
+        }
+
+        if ($attempt < 1) {
+            ensure_counters_table();
+            return generate_auto_id($type, $prefix, $attempt + 1);
+        }
+
+        error_log('Auto ID generation failed for ' . $type . ': ' . $e->getMessage());
+        throw $e;
     }
 }
 
@@ -113,40 +151,4 @@ function send_sms($to, $message) {
     error_log("SMS would be sent to $to: $message");
     return true;
 }
-}
-
-/**
- * Send notification
- */
-function send_notification($recipientId, $title, $message, $type = 'info', $senderId = null) {
-    $table = db_table_exists('notifications_enhanced') ? 'notifications_enhanced' : 'notifications';
-    
-    if ($table === 'notifications_enhanced') {
-        db_query(
-            "INSERT INTO notifications_enhanced (recipient_id, sender_id, title, message, type) VALUES (?, ?, ?, ?, ?)",
-            [$recipientId, $senderId, $title, $message, $type]
-        );
-    } else {
-        db_query(
-            "INSERT INTO notifications (target_user, title, message, is_read) VALUES (?, ?, ?, 0)",
-            [$recipientId, $title, $message]
-        );
-    }
-}
-
-/**
- * Get unread notification count
- */
-function get_unread_notification_count($userId) {
-    if (db_table_exists('notifications_enhanced')) {
-        return db_fetch(
-            "SELECT COUNT(*) as count FROM notifications_enhanced WHERE recipient_id = ? AND is_read = 0",
-            [$userId]
-        )['count'];
-    }
-    
-    return db_fetch(
-        "SELECT COUNT(*) as count FROM notifications WHERE target_user = ? AND is_read = 0",
-        [$userId]
-    )['count'];
 }

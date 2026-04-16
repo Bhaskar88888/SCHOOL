@@ -287,7 +287,8 @@ if ($method === 'POST') {
     foreach ($records as $record) {
         $studentId = (int) ($record['student_id'] ?? 0);
         $status = strtolower((string) ($record['status'] ?? 'present'));
-        $status = in_array($status, ['present', 'absent', 'late', 'excused', 'half-day'], true) ? $status : 'present';
+        if ($status === 'half-day' || $status === 'half_day') $status = 'excused';
+        $status = in_array($status, ['present', 'absent', 'late', 'excused'], true) ? $status : 'present';
 
         if ($studentId <= 0) {
             continue;

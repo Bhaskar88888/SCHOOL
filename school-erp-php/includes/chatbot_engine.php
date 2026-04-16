@@ -32,6 +32,9 @@ const CHATBOT_SPELL_CORRECTIONS = [
     'tehcer'        => 'teacher',    'techer'        => 'teacher',    'teachr'        => 'teacher',
     'fess'          => 'fee',        'canteem'       => 'canteen',    'rout'          => 'route',
     'rute'          => 'route',      'narks'         => 'marks',      'marrks'        => 'marks',
+    'homwork'       => 'homework',   'asignment'     => 'assignment', 'sholarship'    => 'scholarship',
+    'schollrship'   => 'scholarship','finer'         => 'fine',       'remak'         => 'remark',
+    'rimark'        => 'remark',     'cmplaint'      => 'complaint',  'complain'      => 'complaint',
 ];
 
 function chatbot_correct_spelling(string $text): string
@@ -54,14 +57,16 @@ const CHATBOT_SYNONYMS = [
     'holiday'    => ['vacation', 'break', 'chutti', 'বন্ধ', 'छुट्टी'],
     'teacher'    => ['sir', 'maam', 'guru', 'shikshak', 'শিক্ষক', 'शिक्षक'],
     'student'    => ['pupil', 'child', 'baccha', 'chatra', 'ছাত্ৰ', 'छात्र'],
-    'canteen'    => ['food', 'mess', 'lunch', 'khana', 'ahar', 'খাদ্য', 'खाना'],
-    'hostel'     => ['room', 'dormitory', 'boarding', 'awashan', 'হোষ্টেল', 'हॉस्टल'],
-    'transport'  => ['bus', 'vehicle', 'vahan', 'paribahan', 'পৰিবহণ', 'ट्रांसपोर्ट'],
-    'payroll'    => ['salary', 'dadarma', 'tanakha', 'দৰমহা', 'वेतन'],
-    'homework'   => ['assignment', 'griha kaam', 'গৃহকাৰ্য', 'होमवर्क'],
-    'notice'     => ['announcement', 'janani', 'suchana', 'নোটিছ', 'सूचना'],
-    'complaint'  => ['issue', 'problem', 'shikayat', 'abhiyog', 'অভিযোগ', 'शिकायत'],
-    'timetable'  => ['routine', 'schedule', 'samay suchi', 'ৰুটিন', 'समय सारणी'],
+    'canteen'    => ['food', 'mess', 'lunch', 'khana', 'ahar', 'খাদ্য', 'खाना', 'snacks', 'meal'],
+    'hostel'     => ['room', 'dormitory', 'boarding', 'awashan', 'হোষ্টেল', 'हॉस्टल', 'accommodation'],
+    'transport'  => ['bus', 'vehicle', 'vahan', 'paribahan', 'পৰিবহণ', 'ट्रांसपोर्ट', 'van', 'cab'],
+    'payroll'    => ['salary', 'dadarma', 'tanakha', 'দৰমহা', 'वेतन', 'wage', 'payslip'],
+    'homework'   => ['assignment', 'griha kaam', 'গৃহকাৰ্য', 'होमवर्क', 'task', 'project'],
+    'notice'     => ['announcement', 'janani', 'suchana', 'নোটিছ', 'सूचना', 'circular', 'news'],
+    'complaint'  => ['issue', 'problem', 'shikayat', 'abhiyog', 'অভিযোগ', 'शिकायत', 'report', 'grievance'],
+    'timetable'  => ['routine', 'schedule', 'samay suchi', 'ৰুটিন', 'समय सारणी', 'period'],
+    'fine'       => ['penalty', 'late fee', 'jurmana', 'jrimana', 'জৰিমনা', 'जुर्माना', 'charge'],
+    'remark'     => ['comment', 'feedback', 'review', 'tippani', 'mantavya', 'टिप्पणी', 'মন্তব্য'],
 ];
 
 function chatbot_expand_synonyms(string $text): string

@@ -56,6 +56,28 @@ function generate_fee_receipt_pdf()
         json_response(['error' => 'Fee record not found'], 404);
     }
 
+    $userRole = normalize_role_name(get_current_role());
+    $userId = get_current_user_id();
+    if (!in_array($userRole, ['superadmin', 'admin', 'accounts', 'accountant'])) {
+        if ($userRole === 'student') {
+            $student = db_fetch("SELECT id FROM students WHERE user_id=?", [$userId]);
+            if (!$student || $student['id'] != $fee['student_id']) json_response(['error' => 'Unauthorized'], 403);
+        } elseif ($userRole === 'parent') {
+            $student = db_fetch("SELECT id FROM students WHERE parent_phone=?", [(get_authenticated_user()['phone'] ?? '')]);
+            // or just use arbitrary for now if parent_user_id isn't guaranteed, actually just reject if not authorized explicitly correctly
+            // Let's just do a simpler check, if we don't have parent_user_id we check parent_phone matches user phone
+            // Actually complain API uses parent_user_id. Let's assume it exists.
+            if (!db_column_exists('students', 'parent_user_id')) {
+                 if (get_authenticated_user()['phone'] != $fee['parent_phone']) json_response(['error' => 'Unauthorized'], 403);
+            } else {
+                 $student = db_fetch("SELECT parent_user_id FROM students WHERE id=?", [$fee['student_id']]);
+                 if (!$student || $student['parent_user_id'] != $userId) json_response(['error' => 'Unauthorized'], 403);
+            }
+        } else {
+             json_response(['error' => 'Unauthorized'], 403);
+        }
+    }
+
     $balance = isset($fee['balance_amount']) ? (float) $fee['balance_amount'] : ((float) $fee['total_amount'] - (float) $fee['amount_paid']);
 
     audit_log('EXPORT', 'pdf', 'Generated fee receipt for fee ID ' . $feeId);

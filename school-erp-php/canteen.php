@@ -296,9 +296,12 @@ async function submitEditItem(e) {
     e.preventDefault();
     const data = Object.fromEntries(new FormData(e.target));
     const id = data.id;
-    const res = await fetch(\`/api/canteen/index.php?action=update&id=\${id}\`, {
+    const res = await fetch(`/api/canteen/index.php?action=update&id=${id}`, {
         method: 'PUT',
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': getCsrfToken()
+        },
         body: JSON.stringify(data)
     }).then(r => r.json());
     
@@ -346,7 +349,10 @@ async function submitSale(e) {
     const data = Object.fromEntries(new FormData(e.target));
     const res = await fetch('/api/canteen/index.php', {
         method: 'PUT',
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': getCsrfToken()
+        },
         body: JSON.stringify(data)
     }).then(r => r.json());
     
@@ -362,7 +368,10 @@ async function submitSale(e) {
 
 async function deleteItem(id) {
     if (!confirm('Remove this item from menu?')) return;
-    const res = await fetch(`/api/canteen/index.php?id=${id}`, {method: 'DELETE'}).then(r => r.json());
+    const res = await fetch(`/api/canteen/index.php?id=${id}`, {
+        method: 'DELETE',
+        headers: { 'X-CSRF-TOKEN': getCsrfToken() }
+    }).then(r => r.json());
     if (res.success) {
         showToast('Item removed.');
         loadItems();

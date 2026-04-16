@@ -44,12 +44,15 @@ RewriteRule ^\.git/ - [F,L]
 RewriteRule ^uploads/.*\.php$ - [F,L]
 
 # ============================================
-# SKIP SECURITY HEADERS ON LOCALHOST
-# (Apache on XAMPP may not have mod_headers enabled by default)
+# SECURITY HEADERS (enable on production)
 # ============================================
-# Uncomment below if mod_headers is enabled in xampp/apache/conf/httpd.conf
-# Header always set X-Frame-Options "SAMEORIGIN"
-# Header always set X-Content-Type-Options "nosniff"
+<IfModule mod_headers.c>
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+</IfModule>
 
 # ============================================
 # COMPRESSION (optional on localhost)

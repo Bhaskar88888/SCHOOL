@@ -29,17 +29,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         json_response(['success' => true, 'id' => $id]);
     }
     if ($action === 'allocate') {
-        $pdo = get_db_connection();
-        $pdo->beginTransaction();
         try {
+            db_beginTransaction();
             $room = db_fetch("SELECT * FROM hostel_rooms WHERE id=? AND is_active=1 FOR UPDATE", [(int) $data['room_id']]);
             if (!$room) {
-                $pdo->rollBack();
+                db_rollback();
                 json_response(['error' => 'Room not found'], 404);
             }
             $occupants = db_count("SELECT COUNT(*) FROM hostel_allocations WHERE room_id=? AND is_active=1", [(int) $data['room_id']]);
             if ($occupants >= (int) $room['capacity']) {
-                $pdo->rollBack();
+                db_rollback();
                 json_response(['error' => 'Room is full. No available beds.'], 400);
             }
             $id = db_insert(
@@ -49,11 +48,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (db_column_exists('hostel_rooms', 'occupied_beds')) {
                 db_query("UPDATE hostel_rooms SET occupied_beds=occupied_beds+1 WHERE id=?", [(int) $data['room_id']]);
             }
-            $pdo->commit();
+            db_commit();
             audit_log('ALLOCATE', 'hostel', $id, null, $data);
             json_response(['success' => true, 'id' => $id]);
         } catch (Exception $e) {
-            $pdo->rollBack();
+            db_rollback();
             json_response(['error' => 'Allocation failed: ' . $e->getMessage()], 500);
         }
     }
