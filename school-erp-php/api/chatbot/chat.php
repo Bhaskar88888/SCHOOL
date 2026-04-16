@@ -220,18 +220,16 @@ if ($message[0] === '/') {
             '/transport' => 'transport',
         ];
         if (isset($shortcutMap[$cmd])) {
-            // Override message and run intent detection
+            // Override message and let it fall through to normal intent detection below
             $msg = $shortcutMap[$cmd];
-            $result = chatbot_detect_and_respond($msg, $language, $role, $personality, $userId, $startTime);
-            json_response($result);
-            exit;
+        } else {
+            $intent = 'unknown_shortcut';
+            $reply = "❓ Unknown command. Type **/help** for available commands.";
         }
-        $intent = 'unknown_shortcut';
-        $reply = "❓ Unknown command. Type **/help** for available commands.";
     }
 
-    // If shortcut produced a reply, send response immediately
-    if ($reply) {
+    // If shortcut produced a reply (unknown or /clear, /lang, etc), send it immediately
+    if (!empty($reply)) {
         $responseTime = round((microtime(true) - $startTime) * 1000, 2);
         chatbot_update_context((string) $userId, $intent, $message);
         chatbot_add_assistant_message((string) $userId, $reply);

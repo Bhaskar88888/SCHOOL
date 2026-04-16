@@ -435,3 +435,15 @@ function filterTable(inputId, tableId) {
         row.style.display = row.textContent.toLowerCase().includes(query) ? '' : 'none';
     });
 }
+
+// ---- Capacitor Mobile App Detection ----
+document.addEventListener('DOMContentLoaded', () => {
+    // Inject 'is-capacitor' class to body if running inside Capacitor container
+    if (window.Capacitor || navigator.userAgent.includes('Capacitor')) {
+        document.body.classList.add('is-capacitor');
+        
+        // Example: hide topbar elements or specific UI if needed for native mobile
+        // const downloadBanner = document.getElementById('downloadAppBanner');
+        // if (downloadBanner) downloadBanner.style.display = 'none';
+    }
+});

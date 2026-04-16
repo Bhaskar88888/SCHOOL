@@ -14,16 +14,16 @@ $payrollStatus = db_table_exists('payroll')
 ?>
 <style>
 .acc-kpi { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:16px; margin-bottom:26px; }
-.acc-kpi-c { background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:20px 18px; border-top:3px solid var(--c,#6366f1); }
+.acc-kpi-c { background:var(--surface-container-lowest); border:1px solid rgba(172, 179, 180, 0.15); border-radius:14px; padding:20px 18px; border-top:3px solid var(--c,#6366f1); }
 .acc-kpi-v { font-size:26px; font-weight:800; }
-.acc-kpi-l { font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; margin-top:4px; }
+.acc-kpi-l { font-size:11px; color:var(--ink-3); text-transform:uppercase; letter-spacing:.06em; margin-top:4px; }
 .acc-cols { display:grid; grid-template-columns:1.2fr 1fr; gap:20px; }
 @media(max-width:640px){ .acc-cols{grid-template-columns:1fr;} }
-.acc-sh { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); margin-bottom:12px; }
-.acc-row { display:flex; align-items:center; padding:9px 0; border-bottom:1px solid var(--border); font-size:13px; gap:10px; }
+.acc-sh { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-3); margin-bottom:12px; }
+.acc-row { display:flex; align-items:center; padding:9px 0; border-bottom:1px solid rgba(172, 179, 180, 0.15); font-size:13px; gap:10px; }
 .acc-row:last-child { border-bottom:none; }
 .qa { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:22px; }
-.qa a { padding:8px 14px; border-radius:999px; font-size:12px; font-weight:600; border:1px solid var(--border); background:var(--bg-card); text-decoration:none; color:var(--text-primary); transition:background .15s; }
+.qa a { padding:8px 14px; border-radius:999px; font-size:12px; font-weight:600; border:1px solid rgba(172, 179, 180, 0.15); background:var(--surface-container-lowest); text-decoration:none; color:var(--ink); transition:background .15s; }
 .qa a:hover { background:var(--accent); color:#fff; border-color:var(--accent); }
 </style>
 
@@ -64,12 +64,12 @@ $payrollStatus = db_table_exists('payroll')
     <div class="card" style="padding:20px">
         <div class="acc-sh">Recent Receipts</div>
         <?php if (empty($recentReceipts)): ?>
-            <div style="font-size:13px;color:var(--text-muted)">No receipts yet.</div>
+            <div style="font-size:13px;color:var(--ink-3)">No receipts yet.</div>
         <?php else: foreach ($recentReceipts as $r): ?>
         <div class="acc-row">
             <div style="flex:1">
                 <div style="font-weight:600"><?= htmlspecialchars($r['student_name'] ?? '-') ?></div>
-                <div style="font-size:11px;color:var(--text-muted)"><?= htmlspecialchars($r['fee_type'] ?? '') ?> · <?= htmlspecialchars($r['receipt_no'] ?? '') ?></div>
+                <div style="font-size:11px;color:var(--ink-3)"><?= htmlspecialchars($r['fee_type'] ?? '') ?> · <?= htmlspecialchars($r['receipt_no'] ?? '') ?></div>
             </div>
             <div style="font-weight:700;color:#10b981">₹<?= number_format((float)$r['amount_paid'],0) ?></div>
         </div>
@@ -83,7 +83,7 @@ $payrollStatus = db_table_exists('payroll')
         <div class="acc-row">
             <div style="flex:1">
                 <div style="font-weight:600"><?= htmlspecialchars($d['name']) ?></div>
-                <div style="font-size:11px;color:var(--text-muted)"><?= htmlspecialchars($d['class_name'] ?? '-') ?></div>
+                <div style="font-size:11px;color:var(--ink-3)"><?= htmlspecialchars($d['class_name'] ?? '-') ?></div>
             </div>
             <div style="font-weight:700;color:#ef4444">₹<?= number_format((float)$d['total_due'],0) ?></div>
         </div>

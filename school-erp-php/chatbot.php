@@ -2,6 +2,7 @@
 require_once __DIR__ . '/includes/auth.php';
 require_auth();
 $pageTitle = 'AI Chatbot Assistant';
+$jsBaseUrl = rtrim(BASE_URL, '/');
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -127,19 +128,21 @@ $pageTitle = 'AI Chatbot Assistant';
 
             <div class="chat-input-area">
                 <form class="chat-input-wrapper" id="chatForm" onsubmit="chatbot.submitForm(event)">
-                    <input type="text" id="userInput" class="chat-input" placeholder="Type your message or /help..." autocomplete="off">
+                    <input type="text" id="userInput" class="chat-input" placeholder="Type your message or /help..." maxlength="500" autocomplete="off">
                     <button type="submit" class="btn-send">Send ➤</button>
                 </form>
                 <div class="chat-footer-hints">
                     <span>Type <strong>/help</strong> for shortcuts</span>
-                    <span id="charCount">0/200</span>
+                    <span id="charCount">0/500</span>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
+</script>
 <script>
+const CHAT_BASE_URL = '<?= $jsBaseUrl ?>';
 class SchoolERPChatbot {
     constructor() {
         this.lang = localStorage.getItem('chatbotLang') || 'en';
@@ -155,14 +158,14 @@ class SchoolERPChatbot {
         
         // Event Listeners
         this.inputEl.addEventListener('input', () => {
-            this.charCountEl.innerText = `${this.inputEl.value.length}/200`;
+        this.charCountEl.innerText = `${this.inputEl.value.length}/500`;
         });
     }
 
     async init() {
         try {
             // Load Bootstrap Data
-            const res = await fetch(`/api/chatbot/bootstrap.php?lang=${this.lang}`);
+            const res = await fetch(`${CHAT_BASE_URL}/api/chatbot/bootstrap.php?lang=${this.lang}`);
             const data = await res.json();
             
             this.shortcuts = data.shortcuts || {};
@@ -171,7 +174,7 @@ class SchoolERPChatbot {
             this.renderQuickActions(data.quickActions);
             
             // Load History
-            const histRes = await fetch(`/api/chatbot/history.php?lang=${this.lang}&limit=50`);
+            const histRes = await fetch(`${CHAT_BASE_URL}/api/chatbot/history.php?lang=${this.lang}&limit=50`);
             const histData = await histRes.json();
             
             if (histData.history && histData.history.length > 0) {
@@ -307,7 +310,7 @@ class SchoolERPChatbot {
         this.scrollToBottom();
 
         try {
-            const res = await fetch('/api/chatbot/chat.php', {
+            const res = await fetch(`${CHAT_BASE_URL}/api/chatbot/chat.php`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -321,7 +324,7 @@ class SchoolERPChatbot {
             
             // Check if language was switched via shortcut
             if (data.newLanguage) {
-                this.setLanguage(data.newLanguage, false); // false to avoid reloading bootstrap needlessly, but we might want to
+                this.setLanguage(data.newLanguage, true); // reload UI to update language buttons and quick actions
             }
             
             this.renderMessage('bot', data.reply, data.timestamp, data.intent);
@@ -346,17 +349,26 @@ class SchoolERPChatbot {
         }
     }
 
-    setPersonality(modeId, emoji) {
+    async setPersonality(modeId, emoji) {
         this.personality = modeId;
         localStorage.setItem('chatbotPersonality', modeId);
         document.getElementById('headerIcon').innerText = emoji;
-        this.init(); // reload to update greetings
+        // Update personality button states without wiping chat history
+        document.querySelectorAll('#personalityToggle .btn-toggle').forEach(btn => {
+            btn.classList.toggle('active', btn.title === emoji || btn.innerText === emoji);
+        });
+        // Re-fetch quick actions for the new personality (no history wipe)
+        try {
+            const res = await fetch(`${CHAT_BASE_URL}/api/chatbot/bootstrap.php?lang=${this.lang}`);
+            const data = await res.json();
+            this.renderQuickActions(data.quickActions);
+        } catch(e) {}
     }
 
     async clearHistory() {
         if (!confirm("Clear your chat history?")) return;
         try {
-            await fetch('/api/chatbot/history.php', { method: 'DELETE' });
+            await fetch(`${CHAT_BASE_URL}/api/chatbot/history.php`, { method: 'DELETE' });
             while (this.messagesDiv.firstChild && this.messagesDiv.firstChild !== this.typingIndicator) {
                 this.messagesDiv.removeChild(this.messagesDiv.firstChild);
             }
@@ -369,7 +381,7 @@ class SchoolERPChatbot {
 
     async exportConversation() {
         try {
-            const res = await fetch('/api/chatbot/history.php?export=1');
+            const res = await fetch(`${CHAT_BASE_URL}/api/chatbot/history.php?export=1`);
             const data = await res.json();
             
             let text = `School ERP Chatbot Log - ${data.timestamp}\n`;

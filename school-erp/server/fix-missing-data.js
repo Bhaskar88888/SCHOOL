@@ -20,22 +20,22 @@ require('dotenv').config();
 const prisma = require('./config/prisma');
 
 // ── Models ──────────────────────────────────────────────────────────────────
-const Student           = require('./models/Student');
-const Class             = require('./models/Class');
-const User              = require('./models/User');
-const Attendance        = require('./models/Attendance');
-const FeePayment        = require('./models/FeePayment');
-const TransportVehicle  = require('./models/TransportVehicle');
-const HostelRoomType    = require('./models/HostelRoomType');
-const HostelRoom        = require('./models/HostelRoom');
-const HostelAllocation  = require('./models/HostelAllocation');
+const Student = require('./models/Student');
+const Class = require('./models/Class');
+const User = require('./models/User');
+const Attendance = require('./models/Attendance');
+const FeePayment = require('./models/FeePayment');
+const TransportVehicle = require('./models/TransportVehicle');
+const HostelRoomType = require('./models/HostelRoomType');
+const HostelRoom = require('./models/HostelRoom');
+const HostelAllocation = require('./models/HostelAllocation');
 const HostelFeeStructure = require('./models/HostelFeeStructure');
-const SalaryStructure   = require('./models/SalaryStructure');
-const Exam              = require('./models/Exam');
-const Homework          = require('./models/Homework');
-const Payroll           = require('./models/Payroll');
-const Remark            = require('./models/Remark');
-const { trainChatbot }  = require('./ai/nlpEngine');
+const SalaryStructure = require('./models/SalaryStructure');
+const Exam = require('./models/Exam');
+const Homework = require('./models/Homework');
+const Payroll = require('./models/Payroll');
+const Remark = require('./models/Remark');
+const { trainChatbot } = require('./ai/nlpEngine');
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function randomChoice(arr) {
@@ -82,10 +82,10 @@ async function fixMissingData() {
   // ══════════════════════════════════════════════════════════════════════════
   console.log('📂 Loading reference data...');
   const allStudents = await Student.find().select('_id classId').lean();
-  let allClasses  = await Class.find().select('_id').lean();
-  const teachers    = await User.find({ role: 'teacher' }).select('_id').lean();
+  let allClasses = await Class.find().select('_id').lean();
+  const teachers = await User.find({ role: 'teacher' }).select('_id').lean();
   const accountsStaff = await User.find({ role: { $in: ['accounts', 'staff'] } }).select('_id').lean();
-  const allStaff    = await User.find({ role: { $in: ['teacher', 'staff', 'hr', 'accounts', 'canteen', 'conductor', 'driver'] } }).select('_id').lean();
+  const allStaff = await User.find({ role: { $in: ['teacher', 'staff', 'hr', 'accounts', 'canteen', 'conductor', 'driver'] } }).select('_id').lean();
 
   console.log(`   Students: ${allStudents.length}, Classes: ${allClasses.length}, Teachers: ${teachers.length}\n`);
 
@@ -169,7 +169,7 @@ async function fixMissingData() {
 
   if (existingAttendance < 5000) {
     const attStatuses = ['present', 'absent', 'late', 'half-day'];
-    const attWeights  = [0.75, 0.15, 0.05, 0.05];
+    const attWeights = [0.75, 0.15, 0.05, 0.05];
     function weightedStatus() {
       const r = Math.random(); let s = 0;
       for (let i = 0; i < attWeights.length; i++) {
@@ -195,14 +195,14 @@ async function fixMissingData() {
 
     while (attBatch.length < targetCount && attempts < maxAttempts) {
       attempts++;
-      const student  = randomChoice(allStudents);
-      const classId  = student.classId || (allClasses.length ? randomChoice(allClasses)._id : null);
+      const student = randomChoice(allStudents);
+      const classId = student.classId || (allClasses.length ? randomChoice(allClasses)._id : null);
       if (!classId) continue;
-      const teacher  = teachers.length ? randomChoice(teachers) : null;
+      const teacher = teachers.length ? randomChoice(teachers) : null;
       if (!teacher) continue;
-      const date     = randomChoice(dateRange);
+      const date = randomChoice(dateRange);
       // Use specific subject always (avoids null collision)
-      const subject  = randomChoice(subjects);
+      const subject = randomChoice(subjects);
 
       // Normalize date to midnight UTC (same as pre-validate hook)
       const normDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
@@ -260,17 +260,17 @@ async function fixMissingData() {
       if (!collector) continue;
 
       feePayments.push({
-        studentId:      student._id,
-        amountPaid:     randomInt(500, 25000),
+        studentId: student._id,
+        amountPaid: randomInt(500, 25000),
         originalAmount: randomInt(500, 25000),
-        discount:       randomFloat(0, 2000),
-        paymentDate:    randomDate(new Date(2025, 0, 1), new Date(2025, 11, 31)),
-        receiptNo:      `FIX${tsBase}${String(i).padStart(6, '0')}`,
-        collectedBy:    collector._id,
-        paymentMode:    randomChoice(paymentModes),
-        remarks:        Math.random() > 0.8 ? 'Partial payment' : '',
-        feeType:        randomChoice(feeTypes),
-        academicYear:   randomChoice(academicYears)
+        discount: randomFloat(0, 2000),
+        paymentDate: randomDate(new Date(2025, 0, 1), new Date(2025, 11, 31)),
+        receiptNo: `FIX${tsBase}${String(i).padStart(6, '0')}`,
+        collectedBy: collector._id,
+        paymentMode: randomChoice(paymentModes),
+        remarks: Math.random() > 0.8 ? 'Partial payment' : '',
+        feeType: randomChoice(feeTypes),
+        academicYear: randomChoice(academicYears)
       });
     }
 
@@ -318,13 +318,13 @@ async function fixMissingData() {
       const baseName = hostelRoomTypeNames[i % hostelRoomTypeNames.length];
       const blockLetter = String.fromCharCode(65 + (i % 10));
       rtBatch.push({
-        name:         `${baseName} - Block ${blockLetter} (${ts + i})`,
-        code:         `RT${ts}${String(i).padStart(3, '0')}`,
-        occupancy:    i % 4 === 0 ? 1 : i % 4 === 1 ? 2 : i % 4 === 2 ? 3 : 8,
+        name: `${baseName} - Block ${blockLetter} (${ts + i})`,
+        code: `RT${ts}${String(i).padStart(3, '0')}`,
+        occupancy: i % 4 === 0 ? 1 : i % 4 === 1 ? 2 : i % 4 === 2 ? 3 : 8,
         genderPolicy: randomChoice(['boys', 'girls', 'mixed']),
-        defaultFee:   randomInt(10000, 50000),
-        amenities:    randomChoice([['AC', 'WiFi', 'Attached Bathroom'], ['Fan', 'WiFi', 'Common Bathroom']]),
-        description:  `${baseName} type hostel room`
+        defaultFee: randomInt(10000, 50000),
+        amenities: randomChoice([['AC', 'WiFi', 'Attached Bathroom'], ['Fan', 'WiFi', 'Common Bathroom']]),
+        description: `${baseName} type hostel room`
       });
     }
 
@@ -354,17 +354,17 @@ async function fixMissingData() {
 
     for (let i = existingRooms; i < 200; i++) {
       const roomType = randomChoice(insertedHostelRoomTypes);
-      const roomNum  = `${randomChoice(['A', 'B', 'C', 'D'])}${ts % 1000}${String(i).padStart(3, '0')}`;
+      const roomNum = `${randomChoice(['A', 'B', 'C', 'D'])}${ts % 1000}${String(i).padStart(3, '0')}`;
       if (usedRoomNumbers.has(roomNum)) continue;
       usedRoomNumbers.add(roomNum);
       roomBatch.push({
-        roomTypeId:   roomType._id,
-        roomNumber:   roomNum,
-        block:        randomChoice(['A', 'B', 'C', 'D']),
-        floor:        randomChoice(['Ground', 'First', 'Second']),
-        capacity:     roomType.occupancy,
+        roomTypeId: roomType._id,
+        roomNumber: roomNum,
+        block: randomChoice(['A', 'B', 'C', 'D']),
+        floor: randomChoice(['Ground', 'First', 'Second']),
+        capacity: roomType.occupancy,
         occupiedBeds: randomInt(0, roomType.occupancy),
-        status:       randomChoice(['AVAILABLE', 'LIMITED', 'FULL'])
+        status: randomChoice(['AVAILABLE', 'LIMITED', 'FULL'])
       });
     }
 
@@ -392,14 +392,14 @@ async function fixMissingData() {
     for (let i = existingHFS; i < 50; i++) {
       const rt = randomChoice(insertedHostelRoomTypes);
       hfsBatch.push({
-        roomTypeId:          rt._id,
-        academicYear:        randomChoice(academicYears),
-        term:                randomChoice(['Annual', 'Quarterly', 'Monthly']),
-        billingCycle:        randomChoice(['monthly', 'quarterly', 'annual']),
-        amount:              randomInt(10000, 100000),
-        cautionDeposit:      randomInt(5000, 20000),
-        messCharge:          randomInt(3000, 10000),
-        maintenanceCharge:   randomInt(1000, 5000)
+        roomTypeId: rt._id,
+        academicYear: randomChoice(academicYears),
+        term: randomChoice(['Annual', 'Quarterly', 'Monthly']),
+        billingCycle: randomChoice(['monthly', 'quarterly', 'annual']),
+        amount: randomInt(10000, 100000),
+        cautionDeposit: randomInt(5000, 20000),
+        messCharge: randomInt(3000, 10000),
+        maintenanceCharge: randomInt(1000, 5000)
       });
     }
     const hfsInserted = await HostelFeeStructure.insertMany(hfsBatch, { ordered: false }).catch(() => []);
@@ -413,23 +413,23 @@ async function fixMissingData() {
   if (existingAllocs < 200 && insertedHostelRooms.length > 0) {
     const hostelStudents = allStudents.slice(0, 200);
     const firstNames = ['Aarav', 'Vivaan', 'Aditya', 'Ananya', 'Diya', 'Meera', 'Rahul'];
-    const lastNames  = ['Sharma', 'Verma', 'Gupta', 'Singh', 'Kumar'];
+    const lastNames = ['Sharma', 'Verma', 'Gupta', 'Singh', 'Kumar'];
     const allocBatch = [];
 
     for (let i = existingAllocs; i < Math.min(200, hostelStudents.length); i++) {
-      const student  = hostelStudents[i];
-      const room     = randomChoice(insertedHostelRooms);
+      const student = hostelStudents[i];
+      const room = randomChoice(insertedHostelRooms);
       const roomType = insertedHostelRoomTypes.find(rt => rt._id.toString() === room.roomTypeId.toString())
-                     || randomChoice(insertedHostelRoomTypes);
+        || randomChoice(insertedHostelRoomTypes);
       allocBatch.push({
-        studentId:            student._id,
-        roomTypeId:           roomType._id,
-        roomId:               room._id,
-        academicYear:         randomChoice(academicYears),
-        bedLabel:             `Bed ${randomInt(1, Math.max(1, room.capacity))}`,
-        allotmentDate:        randomDate(new Date(2025, 0, 1), new Date(2025, 11, 31)),
-        status:               Math.random() > 0.2 ? 'ACTIVE' : 'VACATED',
-        guardianContactName:  `${randomChoice(firstNames)} ${randomChoice(lastNames)}`,
+        studentId: student._id,
+        roomTypeId: roomType._id,
+        roomId: room._id,
+        academicYear: randomChoice(academicYears),
+        bedLabel: `Bed ${randomInt(1, Math.max(1, room.capacity))}`,
+        allotmentDate: randomDate(new Date(2025, 0, 1), new Date(2025, 11, 31)),
+        status: Math.random() > 0.2 ? 'ACTIVE' : 'VACATED',
+        guardianContactName: `${randomChoice(firstNames)} ${randomChoice(lastNames)}`,
         guardianContactPhone: `9${randomInt(100000000, 999999999)}`
       });
     }
@@ -471,17 +471,17 @@ async function fixMissingData() {
         await SalaryStructure.findOneAndUpdate(
           { staffId: staff._id },
           {
-            staffId:          staff._id,
-            basicSalary:      randomInt(15000, 80000),
-            hra:              randomInt(5000, 20000),
-            da:               randomInt(2000, 10000),
-            conveyance:       randomInt(1000, 5000),
+            staffId: staff._id,
+            basicSalary: randomInt(15000, 80000),
+            hra: randomInt(5000, 20000),
+            da: randomInt(2000, 10000),
+            conveyance: randomInt(1000, 5000),
             medicalAllowance: randomInt(1000, 5000),
             specialAllowance: randomInt(2000, 10000),
-            pfDeduction:      randomInt(1000, 5000),
-            taxDeduction:     randomInt(500, 5000),
-            otherDeductions:  randomInt(0, 2000),
-            effectiveFrom:    randomDate(new Date(2024, 0, 1), new Date(2025, 11, 31))
+            pfDeduction: randomInt(1000, 5000),
+            taxDeduction: randomInt(500, 5000),
+            otherDeductions: randomInt(0, 2000),
+            effectiveFrom: randomDate(new Date(2024, 0, 1), new Date(2025, 11, 31))
           },
           { upsert: true }
         );
@@ -553,7 +553,7 @@ async function fixMissingData() {
     }
 
     // Fix orphaned payroll (staffId)
-    const allStaffIds = new Set((await User.find({ role: { $ne: 'student' } }).select('_id').lean()).map(u => u._id.toString()));
+    const allStaffIds = new Set((await User.find({ role: { not: 'student' } }).select('_id').lean()).map(u => u._id.toString()));
     const allPayrolls = await Payroll.find().select('_id staffId').lean();
     const orphanedPayrolls = allPayrolls.filter(p => p.staffId && !allStaffIds.has(p.staffId.toString()));
     if (orphanedPayrolls.length > 0) {
@@ -594,12 +594,12 @@ async function fixMissingData() {
   const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
 
   const finalCounts = {
-    attendance:       await Attendance.countDocuments(),
-    feePayments:      await FeePayment.countDocuments(),
-    hostelRoomTypes:  await HostelRoomType.countDocuments(),
-    hostelRooms:      await HostelRoom.countDocuments(),
+    attendance: await Attendance.countDocuments(),
+    feePayments: await FeePayment.countDocuments(),
+    hostelRoomTypes: await HostelRoomType.countDocuments(),
+    hostelRooms: await HostelRoom.countDocuments(),
     hostelFeeStructures: await HostelFeeStructure.countDocuments(),
-    hostelAllocations:await HostelAllocation.countDocuments(),
+    hostelAllocations: await HostelAllocation.countDocuments(),
     salaryStructures: await SalaryStructure.countDocuments(),
   };
 

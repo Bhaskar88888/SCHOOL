@@ -60,7 +60,8 @@
       "Bash(context.formdata *)",
       "Bash(eof)",
       "Bash(mkdir *)",
-      "Bash(php *)"
+      "Bash(php *)",
+      "Bash(find *)"
     ]
   },
   "$version": 3

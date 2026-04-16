@@ -1,0 +1,12 @@
+{
+  "appId": "com.kashliv.schoolerp",
+  "appName": "SchoolERP",
+  "webDir": "www",
+  "server": {
+    "url": "https://school.kashliv.com",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true
+  }
+}

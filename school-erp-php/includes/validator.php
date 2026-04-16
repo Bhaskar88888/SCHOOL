@@ -179,17 +179,17 @@ class Validator
     }
 
     /**
-     * Check if has errors
+     * Check if has errors (instance method)
      */
-    public function hasErrors()
+    public function hasValidationErrors(): bool
     {
         return !empty($this->errors);
     }
 
     /**
-     * Reset errors
+     * Reset errors (instance method)
      */
-    public function reset()
+    public function resetValidation()
     {
         $this->errors = [];
         return $this;
@@ -264,9 +264,12 @@ class Validator
         return self::instance()->getErrors();
     }
 
-    public static function hasErrors()
+    /**
+     * Static hasErrors() — delegates to instance method hasValidationErrors()
+     */
+    public static function hasErrors(): bool
     {
-        return self::instance()->hasErrors();
+        return self::instance()->hasValidationErrors();
     }
 
     public static function reset()

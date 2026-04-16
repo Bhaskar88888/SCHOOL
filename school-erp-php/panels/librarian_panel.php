@@ -15,17 +15,17 @@ $recentIssues  = db_table_exists('library_issues') && db_table_exists('library_b
 ?>
 <style>
 .lib-kpi { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:14px; margin-bottom:24px; }
-.lib-kpi-c { background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:16px; border-left:3px solid var(--c,#6366f1); }
+.lib-kpi-c { background:var(--surface-container-lowest); border:1px solid rgba(172, 179, 180, 0.15); border-radius:12px; padding:16px; border-left:3px solid var(--c,#6366f1); }
 .lib-kpi-v { font-size:24px; font-weight:800; }
-.lib-kpi-l { font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; margin-top:3px; }
+.lib-kpi-l { font-size:11px; color:var(--ink-3); text-transform:uppercase; letter-spacing:.06em; margin-top:3px; }
 .lib-cols { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
 @media(max-width:640px){ .lib-cols{grid-template-columns:1fr;} }
-.lib-sh { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); margin-bottom:12px; }
-.lib-row { display:flex; align-items:flex-start; padding:9px 0; border-bottom:1px solid var(--border); font-size:13px; gap:10px; }
+.lib-sh { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-3); margin-bottom:12px; }
+.lib-row { display:flex; align-items:flex-start; padding:9px 0; border-bottom:1px solid rgba(172, 179, 180, 0.15); font-size:13px; gap:10px; }
 .lib-row:last-child { border-bottom:none; }
 .overdue-badge { padding:2px 7px; border-radius:6px; background:rgba(239,68,68,.15); color:#ef4444; font-size:10px; font-weight:700; white-space:nowrap; }
 .qa { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px; }
-.qa a { padding:8px 14px; border-radius:999px; font-size:12px; font-weight:600; border:1px solid var(--border); background:var(--bg-card); text-decoration:none; color:var(--text-primary); transition:background .15s; }
+.qa a { padding:8px 14px; border-radius:999px; font-size:12px; font-weight:600; border:1px solid rgba(172, 179, 180, 0.15); background:var(--surface-container-lowest); text-decoration:none; color:var(--ink); transition:background .15s; }
 .qa a:hover { background:var(--accent); color:#fff; border-color:var(--accent); }
 </style>
 
@@ -63,7 +63,7 @@ $recentIssues  = db_table_exists('library_issues') && db_table_exists('library_b
         <div class="lib-row">
             <div style="flex:1">
                 <div style="font-weight:600"><?= htmlspecialchars($o['student_name'] ?? '-') ?></div>
-                <div style="font-size:11px;color:var(--text-muted)"><?= htmlspecialchars($o['book_title'] ?? 'Unknown') ?></div>
+                <div style="font-size:11px;color:var(--ink-3)"><?= htmlspecialchars($o['book_title'] ?? 'Unknown') ?></div>
             </div>
             <span class="overdue-badge"><?= (int)$o['days_overdue'] ?>d late</span>
         </div>
@@ -72,12 +72,12 @@ $recentIssues  = db_table_exists('library_issues') && db_table_exists('library_b
     <div class="card" style="padding:20px">
         <div class="lib-sh">Recent Issues</div>
         <?php if (empty($recentIssues)): ?>
-            <div style="font-size:13px;color:var(--text-muted)">No recent issues.</div>
+            <div style="font-size:13px;color:var(--ink-3)">No recent issues.</div>
         <?php else: foreach ($recentIssues as $i): ?>
         <div class="lib-row">
             <div style="flex:1">
                 <div style="font-weight:600"><?= htmlspecialchars($i['book_title'] ?? 'Unknown') ?></div>
-                <div style="font-size:11px;color:var(--text-muted)"><?= htmlspecialchars($i['student_name'] ?? '-') ?> · <?= htmlspecialchars($i['issue_date'] ?? '') ?></div>
+                <div style="font-size:11px;color:var(--ink-3)"><?= htmlspecialchars($i['student_name'] ?? '-') ?> · <?= htmlspecialchars($i['issue_date'] ?? '') ?></div>
             </div>
             <?php if ($i['return_date']): ?>
             <span style="font-size:10px;color:#10b981;font-weight:700">RETURNED</span>

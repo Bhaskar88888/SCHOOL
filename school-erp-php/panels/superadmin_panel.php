@@ -8,7 +8,7 @@ $totalParents   = db_count("SELECT COUNT(*) FROM users WHERE role = 'parent' AND
 $monthRevenue   = (float)(db_fetch("SELECT COALESCE(SUM(amount_paid),0) AS t FROM fees WHERE YEAR(paid_date)=YEAR(NOW()) AND MONTH(paid_date)=MONTH(NOW())")['t'] ?? 0);
 $pendingFees    = (float)(db_fetch("SELECT COALESCE(SUM(balance_amount),0) AS t FROM fees WHERE balance_amount > 0")['t'] ?? 0);
 $pendingComps   = db_table_exists('complaints') ? db_count("SELECT COUNT(*) FROM complaints WHERE status='pending'") : 0;
-$pendingLeave   = db_table_exists('leave_requests') ? db_count("SELECT COUNT(*) FROM leave_requests WHERE status='pending'") : 0;
+$pendingLeave   = db_table_exists('leave_applications') ? db_count("SELECT COUNT(*) FROM leave_applications WHERE status='pending'") : 0;
 $todayAttendance = db_count("SELECT COUNT(*) FROM attendance WHERE date=CURDATE() AND status='present'");
 
 $recentAudit    = db_table_exists('audit_log')
@@ -52,27 +52,27 @@ $modules = [
 ];
 ?>
 <style>
-.sa-hero { background: linear-gradient(135deg, #1a1f35 0%, #0f172a 100%); border-radius: 16px; padding: 32px 36px; margin-bottom: 28px; display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+.sa-hero { background: linear-gradient(135deg, #1a1f35 0%, var(--accent-hover) 100%); border-radius: 16px; padding: 32px 36px; margin-bottom: 28px; display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
 .sa-hero-title { font-size: 26px; font-weight: 800; color: #fff; }
 .sa-hero-sub { color: #94a3b8; font-size: 14px; margin-top: 4px; }
 .sa-hero-badge { background: rgba(99,102,241,.25); border: 1px solid rgba(99,102,241,.5); color: #a5b4fc; padding: 8px 18px; border-radius: 999px; font-size: 13px; font-weight: 600; }
 .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(180px,1fr)); gap: 16px; margin-bottom: 28px; }
-.kpi-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 22px 20px; position: relative; overflow: hidden; }
+.kpi-card { background: var(--surface-container-lowest); border: 1px solid rgba(172, 179, 180, 0.15); border-radius: 14px; padding: 22px 20px; position: relative; overflow: hidden; }
 .kpi-card::before { content:''; position:absolute; top:0; left:0; width:4px; height:100%; background: var(--kpi-color, #6366f1); border-radius:4px 0 0 4px; }
-.kpi-value { font-size: 32px; font-weight: 800; color: var(--text-primary); }
-.kpi-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; margin-top: 4px; }
-.kpi-sub { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
-.section-heading { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted); margin: 0 0 16px; }
+.kpi-value { font-size: 32px; font-weight: 800; color: var(--ink); }
+.kpi-label { font-size: 12px; color: var(--ink-3); text-transform: uppercase; letter-spacing: .06em; margin-top: 4px; }
+.kpi-sub { font-size: 11px; color: var(--ink-3); margin-top: 6px; }
+.section-heading { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-3); margin: 0 0 16px; }
 .module-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; margin-bottom: 32px; }
-.module-tile { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 20px 18px; cursor: pointer; text-decoration: none; color: inherit; display: block; transition: transform .15s, box-shadow .15s, border-color .15s; position: relative; }
+.module-tile { background: var(--surface-container-lowest); border: 1px solid rgba(172, 179, 180, 0.15); border-radius: 14px; padding: 20px 18px; cursor: pointer; text-decoration: none; color: inherit; display: block; transition: transform .15s, box-shadow .15s, border-color .15s; position: relative; }
 .module-tile:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(0,0,0,.25); border-color: var(--accent); }
 .module-tile-icon { font-size: 30px; margin-bottom: 10px; line-height: 1; }
-.module-tile-label { font-size: 14px; font-weight: 700; color: var(--text-primary); }
-.module-tile-desc { font-size: 11px; color: var(--text-muted); margin-top: 3px; line-height: 1.4; }
+.module-tile-label { font-size: 14px; font-weight: 700; color: var(--ink); }
+.module-tile-desc { font-size: 11px; color: var(--ink-3); margin-top: 3px; line-height: 1.4; }
 .module-tile-badge { position: absolute; top: 12px; right: 12px; background: rgba(99,102,241,.15); color: var(--accent); font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px; }
 .bottom-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 @media(max-width:768px) { .bottom-grid { grid-template-columns: 1fr; } .module-grid { grid-template-columns: repeat(auto-fill, minmax(140px,1fr)); } }
-.audit-item { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.audit-item { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid rgba(172, 179, 180, 0.15); font-size: 13px; }
 .audit-item:last-child { border-bottom: none; }
 .audit-badge { padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: 700; white-space: nowrap; }
 .audit-CREATE { background: rgba(52,211,153,.15); color: #34d399; }
@@ -80,7 +80,7 @@ $modules = [
 .audit-DELETE { background: rgba(239,68,68,.15); color: #ef4444; }
 .chart-wrap { height: 180px; }
 .quick-actions { display: flex; gap: 10px; flex-wrap: wrap; }
-.qa-btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border-radius: 999px; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-primary); transition: background .15s, border-color .15s; }
+.qa-btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border-radius: 999px; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; border: 1px solid rgba(172, 179, 180, 0.15); background: var(--surface-container-lowest); color: var(--ink); transition: background .15s, border-color .15s; }
 .qa-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
 </style>
 
@@ -161,14 +161,14 @@ $modules = [
     <div class="card" style="padding:20px">
         <div class="section-heading">Recent Audit Activity</div>
         <?php if (empty($recentAudit)): ?>
-            <div style="color:var(--text-muted);font-size:13px">No audit records yet.</div>
+            <div style="color:var(--ink-3);font-size:13px">No audit records yet.</div>
         <?php else: ?>
             <?php foreach ($recentAudit as $log): ?>
             <div class="audit-item">
                 <span class="audit-badge audit-<?= htmlspecialchars($log['action'] ?? 'UPDATE') ?>"><?= htmlspecialchars($log['action'] ?? '—') ?></span>
                 <div>
                     <div style="font-weight:600"><?= htmlspecialchars($log['table_name'] ?? '') ?> #<?= (int)($log['record_id'] ?? 0) ?></div>
-                    <div style="color:var(--text-muted);font-size:11px"><?= htmlspecialchars($log['created_at'] ?? '') ?></div>
+                    <div style="color:var(--ink-3);font-size:11px"><?= htmlspecialchars($log['created_at'] ?? '') ?></div>
                 </div>
             </div>
             <?php endforeach; ?>

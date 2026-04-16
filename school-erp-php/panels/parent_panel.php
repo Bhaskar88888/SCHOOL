@@ -52,7 +52,7 @@ $unreadMessages = db_table_exists('thread_participants')
 
 // My complaints
 $myComplaints = db_table_exists('complaints')
-    ? db_fetchAll("SELECT title, status, created_at FROM complaints WHERE submitted_by=? ORDER BY created_at DESC LIMIT 4", [$myUserId])
+    ? db_fetchAll("SELECT title, status, created_at FROM complaints WHERE (submitted_by=? OR user_id=?) ORDER BY created_at DESC LIMIT 4", [$myUserId, $myUserId])
     : [];
 
 // School Notices
@@ -61,25 +61,25 @@ $notices = db_table_exists('notices')
     : [];
 ?>
 <style>
-.p-hero { background:linear-gradient(135deg,#1e293b,#0f172a); border-radius:14px; padding:22px 26px; margin-bottom:22px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px; }
+.p-hero { background:linear-gradient(135deg,var(--accent),var(--accent-hover)); border-radius:14px; padding:22px 26px; margin-bottom:22px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px; }
 .p-hero-name { font-size:19px; font-weight:800; color:#fff; }
 .p-hero-sub { color:#94a3b8; font-size:13px; margin-top:3px; }
 .p-actions { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:22px; }
-.p-actions a { padding:8px 14px; border-radius:999px; font-size:12px; font-weight:600; border:1px solid var(--border); background:var(--bg-card); text-decoration:none; color:var(--text-primary); transition:background .15s; }
+.p-actions a { padding:8px 14px; border-radius:999px; font-size:12px; font-weight:600; border:1px solid rgba(172, 179, 180, 0.15); background:var(--surface-container-lowest); text-decoration:none; color:var(--ink); transition:background .15s; }
 .p-actions a:hover { background:var(--accent); color:#fff; border-color:var(--accent); }
-.child-card { background:var(--bg-card); border:1px solid var(--border); border-radius:16px; padding:20px 22px; margin-bottom:18px; }
+.child-card { background:var(--surface-container-lowest); border:1px solid rgba(172, 179, 180, 0.15); border-radius:16px; padding:20px 22px; margin-bottom:18px; }
 .child-header { display:flex; align-items:center; gap:14px; margin-bottom:16px; }
 .child-avatar { width:48px; height:48px; border-radius:50%; background:rgba(99,102,241,.2); color:var(--accent); display:grid; place-items:center; font-size:20px; font-weight:800; flex-shrink:0; }
 .child-name { font-size:16px; font-weight:800; }
-.child-meta { font-size:12px; color:var(--text-muted); margin-top:2px; }
+.child-meta { font-size:12px; color:var(--ink-3); margin-top:2px; }
 .child-kpis { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:16px; }
 .child-kpi { background:var(--bg-secondary,rgba(255,255,255,.04)); border-radius:10px; padding:12px; text-align:center; }
 .child-kpi-v { font-size:20px; font-weight:800; }
-.child-kpi-l { font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.05em; margin-top:2px; }
+.child-kpi-l { font-size:10px; color:var(--ink-3); text-transform:uppercase; letter-spacing:.05em; margin-top:2px; }
 .child-mini-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
 @media(max-width:480px){ .child-mini-grid{grid-template-columns:1fr;} .child-kpis{grid-template-columns:1fr 1fr;} }
-.mini-sh { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); margin-bottom:8px; }
-.mini-row { display:flex; justify-content:space-between; padding:7px 0; border-bottom:1px solid var(--border); font-size:12px; }
+.mini-sh { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-3); margin-bottom:8px; }
+.mini-row { display:flex; justify-content:space-between; padding:7px 0; border-bottom:1px solid rgba(172, 179, 180, 0.15); font-size:12px; }
 .mini-row:last-child { border-bottom:none; }
 .status-pill { padding:1px 7px; border-radius:6px; font-size:10px; font-weight:700; }
 .stat-pend { background:rgba(251,191,36,.15); color:#fbbf24; }
@@ -115,7 +115,7 @@ $notices = db_table_exists('notices')
 <div class="card" style="padding:36px;text-align:center">
     <div style="font-size:40px;margin-bottom:12px">👶</div>
     <div style="font-size:16px;font-weight:700;margin-bottom:6px">No children linked yet</div>
-    <div style="color:var(--text-muted);font-size:13px">Please ask the school admin to link your child's record to this parent account.</div>
+    <div style="color:var(--ink-3);font-size:13px">Please ask the school admin to link your child's record to this parent account.</div>
 </div>
 <?php else: ?>
 
@@ -151,18 +151,18 @@ $notices = db_table_exists('notices')
         <div>
             <div class="mini-sh">Due Homework</div>
             <?php if (empty($child['homework'])): ?>
-                <div style="font-size:12px;color:var(--text-muted)">All clear 🎉</div>
+                <div style="font-size:12px;color:var(--ink-3)">All clear 🎉</div>
             <?php else: foreach ($child['homework'] as $hw): ?>
             <div class="mini-row">
                 <span style="font-weight:600"><?= htmlspecialchars($hw['title'] ?? '-') ?></span>
-                <span style="color:var(--text-muted)"><?= htmlspecialchars($hw['due_date'] ?? '') ?></span>
+                <span style="color:var(--ink-3)"><?= htmlspecialchars($hw['due_date'] ?? '') ?></span>
             </div>
             <?php endforeach; endif; ?>
         </div>
         <div>
             <div class="mini-sh">Recent Results</div>
             <?php if (empty($child['results'])): ?>
-                <div style="font-size:12px;color:var(--text-muted)">No results yet.</div>
+                <div style="font-size:12px;color:var(--ink-3)">No results yet.</div>
             <?php else: foreach ($child['results'] as $r): ?>
             <div class="mini-row">
                 <span><?= htmlspecialchars($r['exam_name'] ?? '-') ?></span>
@@ -178,9 +178,9 @@ $notices = db_table_exists('notices')
 <!-- Bottom: Complaints + Notices -->
 <div class="p-bottom">
     <div class="card" style="padding:18px">
-        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:12px">My Complaints</div>
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-3);margin-bottom:12px">My Complaints</div>
         <?php if (empty($myComplaints)): ?>
-            <div style="font-size:13px;color:var(--text-muted)">No complaints filed.</div>
+            <div style="font-size:13px;color:var(--ink-3)">No complaints filed.</div>
         <?php else: foreach ($myComplaints as $c):
             $s = $c['status'] ?? 'pending';
             $sc = $s==='resolved'?'stat-reso':($s==='rejected'?'stat-rej':'stat-pend');
@@ -193,13 +193,13 @@ $notices = db_table_exists('notices')
         <div style="margin-top:12px"><a href="<?= BASE_URL ?>/communication.php" style="font-size:12px;color:var(--accent)">View all complaints →</a></div>
     </div>
     <div class="card" style="padding:18px">
-        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:12px">School Notices</div>
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-3);margin-bottom:12px">School Notices</div>
         <?php if (empty($notices)): ?>
-            <div style="font-size:13px;color:var(--text-muted)">No recent notices.</div>
+            <div style="font-size:13px;color:var(--ink-3)">No recent notices.</div>
         <?php else: foreach ($notices as $n): ?>
         <div class="notice-item">
             <div style="font-weight:600"><?= htmlspecialchars($n['title']) ?></div>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:2px"><?= htmlspecialchars($n['created_at']) ?></div>
+            <div style="font-size:11px;color:var(--ink-3);margin-top:2px"><?= htmlspecialchars($n['created_at']) ?></div>
         </div>
         <?php endforeach; endif; ?>
     </div>

@@ -251,7 +251,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <label class="login-label">
                     <span>Password</span>
-                    <a href="forgot-password.php">Forgot?</a>
+                    <a href="<?= BASE_URL ?>/forgot_password.php">Forgot?</a>
                 </label>
                 <input type="password" name="password" class="login-input" placeholder="••••••••" required>
 

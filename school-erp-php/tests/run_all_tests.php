@@ -29,6 +29,11 @@ class BugFinder {
     private $passed = 0;
     private $failed = 0;
     private $warnings = 0;
+    private $startTime_global;
+    
+    public function __construct() {
+        $this->startTime_global = microtime(true);
+    }
     
     public function run() {
         echo BOLD . BLUE . "\n═══════════════════════════════════════════════════════════\n";
@@ -71,6 +76,10 @@ class BugFinder {
     }
     
     private function getCurrentFile() {
+        $trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 3);
+        if (isset($trace[2]['file'])) {
+            return basename($trace[2]['file']) . ':' . ($trace[2]['line'] ?? '?');
+        }
         return 'Unknown';
     }
     
@@ -612,7 +621,7 @@ class BugFinder {
     }
 }
 
-// Store start time globally
+// Store start time globally (legacy fallback)
 $GLOBALS['startTime_global'] = microtime(true);
 
 // Run tests

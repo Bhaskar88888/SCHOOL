@@ -18,6 +18,8 @@ $panelMap = [
     'librarian'  => 'librarian_panel.php',
     'hr'         => 'hr_panel.php',
     'canteen'    => 'canteen_panel.php',
+    'conductor'  => 'conductor_panel.php',
+    'driver'     => 'driver_panel.php',
 ];
 
 $panelFile = isset($panelMap[$role])
@@ -34,7 +36,7 @@ if (!file_exists($panelFile)) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($pageTitle) ?> — School ERP</title>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
@@ -50,10 +52,11 @@ if (!file_exists($panelFile)) {
 </div>
 <script src="<?= BASE_URL ?>/assets/js/main.js"></script>
 <script>
+const APP_BASE_URL = '<?= rtrim(BASE_URL, '/') ?>';
 // Notification bell polling (every 30s)
 async function pollNotifBadge() {
     try {
-        const d = await apiGet('/api/notifications/index.php?count=1');
+        const d = await apiGet(APP_BASE_URL + '/api/notifications/index.php?count=1');
         const badge = document.getElementById('notifBadge');
         const total = (d.unread || 0) + (d.unread_messages || 0);
         if (badge) {

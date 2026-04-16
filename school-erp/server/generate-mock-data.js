@@ -177,7 +177,7 @@ async function generateMockData() {
   try {
     // Clear existing data (except superadmin)
     console.log('🗑️  Clearing existing data...');
-    await User.deleteMany({ role: { $ne: 'superadmin' } });
+    await User.deleteMany({ role: { not: 'superadmin' } });
     await Student.deleteMany({});
     await Class.deleteMany({});
     await Attendance.deleteMany({});

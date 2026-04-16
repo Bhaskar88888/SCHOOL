@@ -25,17 +25,17 @@ if (db_table_exists('canteen_sales') || db_table_exists('canteen_orders')) {
 ?>
 <style>
 .can-kpi { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:14px; margin-bottom:24px; }
-.can-kpi-c { background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:16px; border-top:3px solid var(--c,#6366f1); }
+.can-kpi-c { background:var(--surface-container-lowest); border:1px solid rgba(172, 179, 180, 0.15); border-radius:12px; padding:16px; border-top:3px solid var(--c,#6366f1); }
 .can-kpi-v { font-size:24px; font-weight:800; }
-.can-kpi-l { font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; margin-top:3px; }
+.can-kpi-l { font-size:11px; color:var(--ink-3); text-transform:uppercase; letter-spacing:.06em; margin-top:3px; }
 .can-cols { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
 @media(max-width:640px){ .can-cols{grid-template-columns:1fr;} }
-.can-sh { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); margin-bottom:12px; }
-.can-row { display:flex; align-items:center; padding:9px 0; border-bottom:1px solid var(--border); font-size:13px; gap:10px; }
+.can-sh { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-3); margin-bottom:12px; }
+.can-row { display:flex; align-items:center; padding:9px 0; border-bottom:1px solid rgba(172, 179, 180, 0.15); font-size:13px; gap:10px; }
 .can-row:last-child { border-bottom:none; }
 .low-badge { padding:2px 7px; border-radius:6px; background:rgba(239,68,68,.15); color:#ef4444; font-size:10px; font-weight:700; }
 .qa { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px; }
-.qa a { padding:8px 14px; border-radius:999px; font-size:12px; font-weight:600; border:1px solid var(--border); background:var(--bg-card); text-decoration:none; color:var(--text-primary); transition:background .15s; }
+.qa a { padding:8px 14px; border-radius:999px; font-size:12px; font-weight:600; border:1px solid rgba(172, 179, 180, 0.15); background:var(--surface-container-lowest); text-decoration:none; color:var(--ink); transition:background .15s; }
 .qa a:hover { background:var(--accent); color:#fff; border-color:var(--accent); }
 </style>
 
@@ -68,12 +68,12 @@ if (db_table_exists('canteen_sales') || db_table_exists('canteen_orders')) {
     <div class="card" style="padding:20px">
         <div class="can-sh">Recent Sales</div>
         <?php if (empty($recentSales)): ?>
-            <div style="font-size:13px;color:var(--text-muted)">No sales recorded today.</div>
+            <div style="font-size:13px;color:var(--ink-3)">No sales recorded today.</div>
         <?php else: foreach ($recentSales as $s): ?>
         <div class="can-row">
             <div style="flex:1">
                 <div style="font-weight:600"><?= htmlspecialchars($s['buyer'] ?? 'Walk-in') ?></div>
-                <div style="font-size:11px;color:var(--text-muted)"><?= htmlspecialchars(substr($s['sale_dt'] ?? '',0,16)) ?></div>
+                <div style="font-size:11px;color:var(--ink-3)"><?= htmlspecialchars(substr($s['sale_dt'] ?? '',0,16)) ?></div>
             </div>
             <div style="font-weight:700;color:#10b981">₹<?= number_format((float)$s['total'],0) ?></div>
         </div>
@@ -87,7 +87,7 @@ if (db_table_exists('canteen_sales') || db_table_exists('canteen_orders')) {
         <div class="can-row">
             <div style="flex:1">
                 <div style="font-weight:600"><?= htmlspecialchars($item['name']) ?></div>
-                <div style="font-size:11px;color:var(--text-muted)"><?= htmlspecialchars($item['category'] ?? '') ?></div>
+                <div style="font-size:11px;color:var(--ink-3)"><?= htmlspecialchars($item['category'] ?? '') ?></div>
             </div>
             <span class="low-badge"><?= (int)$item['available_qty'] ?> left</span>
         </div>

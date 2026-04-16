@@ -9,6 +9,11 @@ require_once __DIR__ . '/../../includes/chatbot_engine.php';
 
 require_auth();
 
+// Defensive: ensure session is active before reading/writing $_SESSION
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 $userId   = get_current_user_id();
 $role     = get_current_role() ?? 'guest';
 $language = $_GET['lang'] ?? 'en';

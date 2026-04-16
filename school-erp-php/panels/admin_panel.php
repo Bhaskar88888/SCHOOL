@@ -6,7 +6,7 @@ $totalStudents   = db_count("SELECT COUNT(*) FROM students WHERE is_active=1");
 $todayAtt        = db_count("SELECT COUNT(*) FROM attendance WHERE date=CURDATE() AND status='present'");
 $monthRevenue    = (float)(db_fetch("SELECT COALESCE(SUM(amount_paid),0) AS t FROM fees WHERE YEAR(paid_date)=YEAR(NOW()) AND MONTH(paid_date)=MONTH(NOW())")['t'] ?? 0);
 $pendingFees     = (float)(db_fetch("SELECT COALESCE(SUM(balance_amount),0) AS t FROM fees WHERE balance_amount>0")['t'] ?? 0);
-$pendingLeave    = db_table_exists('leave_requests') ? db_count("SELECT COUNT(*) FROM leave_requests WHERE status='pending'") : 0;
+$pendingLeave    = db_table_exists('leave_applications') ? db_count("SELECT COUNT(*) FROM leave_applications WHERE status='pending'") : 0;
 $pendingComps    = db_table_exists('complaints')     ? db_count("SELECT COUNT(*) FROM complaints WHERE status='pending'") : 0;
 $recentStudents  = db_fetchAll("SELECT s.name, s.admission_no, c.name AS class_name, s.created_at FROM students s LEFT JOIN classes c ON s.class_id=c.id WHERE s.is_active=1 ORDER BY s.created_at DESC LIMIT 5");
 $recentFees      = db_fetchAll("SELECT f.receipt_no, f.amount_paid, f.fee_type, s.name AS student_name, f.created_at FROM fees f LEFT JOIN students s ON f.student_id=s.id ORDER BY f.created_at DESC LIMIT 5");
@@ -33,27 +33,32 @@ $adminModules = [
 ];
 ?>
 <style>
-.adm-kpi { display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:28px; }
-.adm-kpi-card { background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:20px 18px;border-left:4px solid var(--kc,#6366f1); }
-.adm-kpi-v { font-size:28px;font-weight:800; }
-.adm-kpi-l { font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-top:4px; }
-.adm-mods { display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:28px; }
-.adm-mod { background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px;text-decoration:none;color:inherit;display:block;transition:transform .15s,border-color .15s; }
-.adm-mod:hover { transform:translateY(-3px);border-color:var(--accent); }
-.adm-mod-icon { font-size:24px;margin-bottom:8px; }
-.adm-mod-label { font-size:13px;font-weight:700; }
-.adm-mod-desc { font-size:11px;color:var(--text-muted);margin-top:2px; }
-.adm-tables { display:grid;grid-template-columns:1fr 1fr;gap:20px; }
+.adm-kpi { display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:24px;margin-bottom:36px; }
+.adm-kpi-card { background:var(--surface-container-lowest);border:none;border-radius:var(--r-lg);padding:24px 28px; }
+.adm-kpi-v { font-family:'Manrope',sans-serif;font-size:32px;font-weight:700;letter-spacing:-1px; }
+.adm-kpi-l { font-size:12px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;margin-top:6px;font-weight:600; }
+
+.adm-mods { display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px;margin-bottom:36px; }
+.adm-mod { background:var(--surface-container-lowest);border:none;border-radius:var(--r-lg);padding:20px;text-decoration:none;color:inherit;display:block;transition:var(--ease); }
+.adm-mod:hover { transform:translateY(-3px);box-shadow:var(--shadow-ambient); background:var(--white); }
+.adm-mod-icon { font-size:26px;margin-bottom:12px; }
+.adm-mod-label { font-family:'Manrope',sans-serif;font-size:14px;font-weight:700;color:var(--ink); }
+.adm-mod-desc { font-size:12px;color:var(--ink-4);margin-top:4px; }
+
+.adm-tables { display:grid;grid-template-columns:1fr 1fr;gap:24px; }
 @media(max-width:640px){ .adm-tables{grid-template-columns:1fr;} }
-.sh { font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:14px; }
-.mini-row { display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px; }
-.mini-row:last-child { border-bottom:none; }
-.alert-pill { padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;margin-left:auto; }
-.alert-warn { background:rgba(251,191,36,.15);color:#fbbf24; }
-.alert-danger { background:rgba(239,68,68,.15);color:#ef4444; }
-.qa { display:flex;gap:8px;flex-wrap:wrap;margin-bottom:28px; }
-.qa a { display:inline-flex;align-items:center;gap:5px;padding:8px 14px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary);text-decoration:none;transition:background .15s; }
-.qa a:hover { background:var(--accent);color:#fff;border-color:var(--accent); }
+
+.sh { font-family:'Manrope',sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-3);margin-bottom:20px; }
+.mini-row { display:flex;justify-content:space-between;align-items:center;padding:12px 0;font-size:13px;transition:var(--ease);border-radius:var(--r-sm); }
+.mini-row:hover { background:var(--surface-container-low); margin:0 -12px; padding:12px; }
+
+.alert-pill { padding:4px 10px;border-radius:999px;font-size:12px;font-weight:600;margin-left:auto; }
+.alert-warn { background:var(--amber-bg);color:var(--amber); }
+.alert-danger { background:var(--red-bg);color:var(--red); }
+
+.qa { display:flex;gap:12px;flex-wrap:wrap;margin-bottom:36px; }
+.qa a { display:inline-flex;align-items:center;gap:6px;padding:10px 18px;border-radius:999px;font-size:13px;font-weight:600;border:1px solid rgba(172,179,180,.15);background:var(--surface-container-lowest);color:var(--ink);text-decoration:none;transition:var(--ease); }
+.qa a:hover { background:var(--accent);color:#fff;border-color:transparent;box-shadow:var(--shadow-ambient); }
 </style>
 
 <div style="font-size:22px;font-weight:800;margin-bottom:20px">
