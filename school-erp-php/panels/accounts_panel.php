@@ -2,6 +2,10 @@
 /**
  * Accounts Panel
  */
+// Role guard — only accounts/accountant (admin/superadmin bypass via role_matches)
+if (!role_matches(get_current_role(), ['accounts', 'accountant'])) {
+    header('Location: ' . BASE_URL . '/dashboard.php'); exit;
+}
 $todayRevenue  = (float)(db_fetch("SELECT COALESCE(SUM(amount_paid),0) AS t FROM fees WHERE DATE(paid_date)=CURDATE()")['t'] ?? 0);
 $monthRevenue  = (float)(db_fetch("SELECT COALESCE(SUM(amount_paid),0) AS t FROM fees WHERE YEAR(paid_date)=YEAR(NOW()) AND MONTH(paid_date)=MONTH(NOW())")['t'] ?? 0);
 $totalDues     = (float)(db_fetch("SELECT COALESCE(SUM(balance_amount),0) AS t FROM fees WHERE balance_amount>0")['t'] ?? 0);

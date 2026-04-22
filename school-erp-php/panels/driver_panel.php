@@ -3,6 +3,10 @@
  * Driver Panel — Dashboard
  * Shows assigned vehicle, route, and daily notices.
  */
+// Role guard
+if (!role_matches(get_current_role(), ['driver'])) {
+    header('Location: ' . BASE_URL . '/dashboard.php'); exit;
+}
 $me       = get_authenticated_user();
 $myUserId = get_current_user_id();
 

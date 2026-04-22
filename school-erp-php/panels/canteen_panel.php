@@ -2,6 +2,10 @@
 /**
  * Canteen Panel
  */
+// Role guard — only canteen (admin/superadmin bypass via role_matches)
+if (!role_matches(get_current_role(), ['canteen'])) {
+    header('Location: ' . BASE_URL . '/dashboard.php'); exit;
+}
 $todayRevenue = 0; $topItems = []; $lowStock = [];
 if (db_table_exists('canteen_sales') || db_table_exists('canteen_orders')) {
     $t = db_table_exists('canteen_sales') ? 'canteen_sales' : 'canteen_orders';

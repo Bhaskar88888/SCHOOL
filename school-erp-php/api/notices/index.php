@@ -20,7 +20,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     } elseif ($role === 'parent') {
         $whereExtra = " AND (target_roles LIKE '%parent%' OR target_roles LIKE '%all%' OR target_roles = '' OR target_roles IS NULL)";
     }
-    $whereExtra .= " AND is_active = 1";
     if (db_column_exists('notices', 'expiry_date')) {
         $whereExtra .= " AND (n.expiry_date IS NULL OR n.expiry_date >= CURDATE())";
     }

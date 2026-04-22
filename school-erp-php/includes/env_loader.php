@@ -22,6 +22,8 @@ if (!file_exists($envFile)) {
         // Generate secure secrets
         $content = file_get_contents($envFile);
         $content = str_replace('CHANGE_THIS_TO_RANDOM_64_CHAR_STRING', bin2hex(random_bytes(32)), $content);
+        $guard = "<?php\nif (PHP_SAPI !== 'cli' && PHP_SAPI !== 'phpdbg') {\n    http_response_code(403);\n    exit('Forbidden');\n}\n__halt_compiler();\n";
+        $content = $guard . ltrim($content);
         file_put_contents($envFile, $content);
 
         // CRITICAL WARNING: User MUST configure DB credentials before use
@@ -33,13 +35,21 @@ if (!file_exists($envFile)) {
 if (file_exists($envFile)) {
     $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($lines as $line) {
+        $trimmedLine = trim($line);
+
         // Skip comments
-        if (strpos(trim($line), '#') === 0)
+        if ($trimmedLine === '' || strpos($trimmedLine, '#') === 0) {
             continue;
+        }
+
+        // Skip PHP guards or any non ENV-style lines
+        if (!preg_match('/^[A-Z][A-Z0-9_]*\s*=/', $trimmedLine)) {
+            continue;
+        }
 
         // Parse key=value
-        if (strpos($line, '=') !== false) {
-            list($key, $value) = explode('=', $line, 2);
+        if (strpos($trimmedLine, '=') !== false) {
+            list($key, $value) = explode('=', $trimmedLine, 2);
             $key = trim($key);
             $value = trim($value);
 

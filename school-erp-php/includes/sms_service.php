@@ -173,10 +173,15 @@ class SMSService {
 /**
  * Helper function
  */
+if (!function_exists('send_sms')) {
 function send_sms($to, $message) {
-    return SMSService::getInstance()->send($to, $message);
+    $result = SMSService::getInstance()->send($to, $message);
+    return !empty($result['success']);
+}
 }
 
+if (!function_exists('send_bulk_sms')) {
 function send_bulk_sms($recipients, $message) {
     return SMSService::getInstance()->sendBulk($recipients, $message);
+}
 }

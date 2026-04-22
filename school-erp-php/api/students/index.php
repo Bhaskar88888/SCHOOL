@@ -334,7 +334,26 @@ if ($method === 'POST') {
 
     $id = insert_row('students', $payload);
     audit_log('CREATE', 'students', $id, null, $payload);
-    json_response(['success' => true, 'id' => $id, 'message' => 'Student saved successfully']);
+
+    // ── Auto-create parent portal account ──────────────────────────────
+    // Only runs when parent_email or parent_phone is provided AND the
+    // admin did not already manually link a parent account.
+    if (empty($payload['parent_user_id'] ?? null)) {
+        require_once __DIR__ . '/../../includes/parent_credentials.php';
+        $parentEmail = $payload['parent_email'] ?? $data['parent_email'] ?? '';
+        $parentPhone = $payload['parent_phone'] ?? $data['parent_phone'] ?? '';
+        $parentName  = $payload['parent_name']  ?? $data['parent_name']  ?? 'Parent';
+        $admNo       = $payload['admission_no'] ?? $data['admission_no'] ?? (string)$id;
+
+        $parentUserId = ParentCredentials::ensureAccount($parentEmail, $parentPhone, $admNo, $parentName);
+
+        if ($parentUserId && db_column_exists('students', 'parent_user_id')) {
+            db_query("UPDATE students SET parent_user_id = ? WHERE id = ?", [$parentUserId, $id]);
+        }
+    }
+    // ── End parent account auto-creation ──────────────────────────────
+
+    json_response(['success' => true, 'id' => $id, 'message' => 'Student saved successfully. Parent credentials sent.']);
 }
 
 if ($method === 'PUT') {

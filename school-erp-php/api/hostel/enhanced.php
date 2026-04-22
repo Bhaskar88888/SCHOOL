@@ -5,6 +5,7 @@
  */
 require_once __DIR__ . '/../../includes/db.php';
 require_once __DIR__ . '/../../includes/auth.php';
+require_once __DIR__ . '/../../includes/hostel_compat.php';
 require_once __DIR__ . '/../../includes/validator.php';
 
 require_auth();
@@ -13,14 +14,24 @@ $method = $_SERVER['REQUEST_METHOD'];
 // GET - Hostel endpoints
 if ($method === 'GET') {
     $action = $_GET['action'] ?? '';
+    $allocationActive = hostel_allocation_active_condition('ha');
+    $roomActive = hostel_room_active_condition('hostel_rooms');
+    $roomNumberExpr = hostel_room_number_expr('hr');
+    $roomBlockExpr = hostel_room_block_expr('hr');
+    $allocationStartExpr = hostel_allocation_start_expr('ha');
     
     // Dashboard
     if ($action === 'dashboard') {
+        $availableRoomsWhere = db_column_exists('hostel_rooms', 'status')
+            ? "status = 'available'"
+            : (db_column_exists('hostel_rooms', 'occupied_beds') ? "occupied_beds < capacity" : $roomActive);
+        $activeAllocationExpr = hostel_allocation_active_condition('hostel_allocations');
+
         $stats = db_fetch("SELECT 
             (SELECT COUNT(*) FROM students WHERE hostel_required = 1 AND is_active = 1) as hostel_students,
             (SELECT COUNT(*) FROM hostel_room_types) as room_types,
-            (SELECT COUNT(*) FROM hostel_rooms WHERE status = 'available') as available_rooms,
-            (SELECT COUNT(*) FROM hostel_allocations WHERE status = 'ACTIVE') as active_allocations,
+            (SELECT COUNT(*) FROM hostel_rooms WHERE $availableRoomsWhere) as available_rooms,
+            (SELECT COUNT(*) FROM hostel_allocations WHERE $activeAllocationExpr) as active_allocations,
             (SELECT COUNT(*) FROM hostel_fee_structures) as fee_structures");
         json_response($stats);
     }
@@ -42,14 +53,17 @@ if ($method === 'GET') {
     
     // Allocations
     if ($action === 'allocations') {
-        $allocations = db_fetchAll("SELECT ha.*, s.name as student_name, s.admission_no, 
-                                           hr.room_number, hr.block, hrt.name as room_type_name
-                                    FROM hostel_allocations ha 
-                                    LEFT JOIN students s ON ha.student_id = s.id 
-                                    LEFT JOIN hostel_rooms hr ON ha.room_id = hr.id 
-                                    LEFT JOIN hostel_room_types hrt ON ha.room_type_id = hrt.id 
-                                    WHERE ha.status = 'ACTIVE' 
-                                    ORDER BY ha.allotment_date DESC");
+        $allocations = db_fetchAll("SELECT ha.*, s.name as student_name, s.admission_no,
+                                           $roomNumberExpr as room_number,
+                                           $roomBlockExpr as block,
+                                           $allocationStartExpr as allotment_date,
+                                           hrt.name as room_type_name
+                                    FROM hostel_allocations ha
+                                    LEFT JOIN students s ON ha.student_id = s.id
+                                    LEFT JOIN hostel_rooms hr ON ha.room_id = hr.id
+                                    LEFT JOIN hostel_room_types hrt ON ha.room_type_id = hrt.id
+                                    WHERE $allocationActive
+                                    ORDER BY $allocationStartExpr DESC");
         json_response(['allocations' => $allocations]);
     }
     
@@ -60,6 +74,9 @@ if ($method === 'GET') {
 if ($method === 'POST') {
     require_role(['admin', 'superadmin']);
     $data = get_post_json();
+    if (empty($data) && !empty($_POST)) {
+        $data = $_POST;
+    }
     $action = $data['action'] ?? '';
     
     // Create room type
@@ -93,6 +110,7 @@ if ($method === 'POST') {
     
     // Allocate student
     if ($action === 'allocate') {
+        Validator::reset();
         Validator::required($data, ['student_id', 'room_type_id', 'room_id']);
         if (Validator::hasErrors()) {
             json_response(['errors' => Validator::errors()], 422);
@@ -104,9 +122,8 @@ if ($method === 'POST') {
             json_response(['error' => 'Room is full'], 400);
         }
         
-        $sql = "INSERT INTO hostel_allocations (student_id, room_type_id, room_id, fee_structure_id, academic_year, bed_label, allotment_date, status) 
-                VALUES (?, ?, ?, ?, ?, ?, NOW(), 'ACTIVE')";
-        $id = db_insert($sql, [$data['student_id'], $data['room_type_id'], $data['room_id'], $data['fee_structure_id'] ?? null, $data['academic_year'] ?? '2025-2026', $data['bed_label'] ?? 'A']);
+        $payload = hostel_allocation_payload($data, ['room_type_id' => $data['room_type_id'] ?? null]);
+        $id = hostel_insert_row('hostel_allocations', $payload);
         
         // Update room occupancy
         db_query("UPDATE hostel_rooms SET occupied_beds = occupied_beds + 1, status = CASE WHEN occupied_beds + 1 >= capacity THEN 'occupied' ELSE status END WHERE id = ?", [$data['room_id']]);
@@ -125,18 +142,21 @@ if ($method === 'POST') {
 if ($method === 'PATCH' || ($method === 'POST' && isset($_GET['action']) && $_GET['action'] === 'vacate')) {
     require_role(['admin', 'superadmin']);
     $data = get_post_json();
+    if (empty($data) && !empty($_POST)) {
+        $data = $_POST;
+    }
     $id = $data['allocation_id'] ?? null;
     
     if (!$id) {
         json_response(['error' => 'allocation_id required'], 400);
     }
     
-    $allocation = db_fetch("SELECT * FROM hostel_allocations WHERE id = ? AND status = 'ACTIVE'", [$id]);
+    $allocation = db_fetch("SELECT * FROM hostel_allocations WHERE id = ? AND " . hostel_allocation_active_condition('hostel_allocations'), [$id]);
     if (!$allocation) {
         json_response(['error' => 'Allocation not found'], 404);
     }
-    
-    db_query("UPDATE hostel_allocations SET status = 'VACATED', vacated_on = NOW() WHERE id = ?", [$id]);
+
+    hostel_update_row('hostel_allocations', hostel_vacate_payload(), 'id = ?', [$id]);
     
     // Update room occupancy
     db_query("UPDATE hostel_rooms SET occupied_beds = GREATEST(occupied_beds - 1, 0), status = 'available' WHERE id = ? AND occupied_beds > 0", [$allocation['room_id']]);

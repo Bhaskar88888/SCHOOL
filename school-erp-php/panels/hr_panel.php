@@ -2,6 +2,10 @@
 /**
  * HR Panel
  */
+// Role guard — only hr (admin/superadmin bypass via role_matches)
+if (!role_matches(get_current_role(), ['hr'])) {
+    header('Location: ' . BASE_URL . '/dashboard.php'); exit;
+}
 $totalStaff    = db_count("SELECT COUNT(*) FROM users WHERE role NOT IN ('student','parent') AND is_active=1");
 $pendingLeave  = db_table_exists('leave_applications') ? db_count("SELECT COUNT(*) FROM leave_applications WHERE status='pending'") : 0;
 $approvedLeave = db_table_exists('leave_applications') ? db_count("SELECT COUNT(*) FROM leave_applications WHERE status='approved' AND MONTH(from_date)=MONTH(NOW()) AND YEAR(from_date)=YEAR(NOW())") : 0;

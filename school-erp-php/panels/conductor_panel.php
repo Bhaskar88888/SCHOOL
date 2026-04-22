@@ -3,6 +3,10 @@
  * Conductor Panel — Dashboard
  * Shows route info, transport attendance, and daily student manifest.
  */
+// Role guard
+if (!role_matches(get_current_role(), ['conductor'])) {
+    header('Location: ' . BASE_URL . '/dashboard.php'); exit;
+}
 $me       = get_authenticated_user();
 $myUserId = get_current_user_id();
 

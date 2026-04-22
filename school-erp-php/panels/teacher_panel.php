@@ -2,6 +2,10 @@
 /**
  * Teacher Panel
  */
+// Role guard — only teacher (admin/superadmin bypass via role_matches)
+if (!role_matches(get_current_role(), ['teacher'])) {
+    header('Location: ' . BASE_URL . '/dashboard.php'); exit;
+}
 $me = get_authenticated_user();
 $myUserId = get_current_user_id();
 

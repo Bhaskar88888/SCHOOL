@@ -57,6 +57,7 @@ class Validator
      */
     public function validateMinLength($value, $min, $field = 'value')
     {
+        $value = (string) ($value ?? '');
         if (strlen($value) < $min) {
             $this->errors[$field] = ucfirst($field) . " must be at least $min characters";
             return false;
@@ -69,6 +70,7 @@ class Validator
      */
     public function validateMaxLength($value, $max, $field = 'value')
     {
+        $value = (string) ($value ?? '');
         if (strlen($value) > $max) {
             $this->errors[$field] = ucfirst($field) . " must not exceed $max characters";
             return false;
@@ -131,6 +133,7 @@ class Validator
      */
     public function validatePhone($phone, $field = 'phone')
     {
+        $phone = (string) ($phone ?? '');
         if (!preg_match('/^[+]?[\d\s\-()]{10,20}$/', $phone)) {
             $this->errors[$field] = 'Invalid phone number format';
             return false;
@@ -143,6 +146,7 @@ class Validator
      */
     public function validatePassword($password)
     {
+        $password = (string) ($password ?? '');
         if (strlen($password) < 8) {
             $this->errors['password'] = 'Password must be at least 8 characters';
             return false;
@@ -167,7 +171,7 @@ class Validator
      */
     public static function sanitize($value)
     {
-        return htmlspecialchars(strip_tags(trim($value)), ENT_QUOTES, 'UTF-8');
+        return htmlspecialchars(strip_tags(trim((string) ($value ?? ''))), ENT_QUOTES, 'UTF-8');
     }
 
     /**

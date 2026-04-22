@@ -35,6 +35,8 @@ ADD COLUMN IF NOT EXISTS `updated_at` datetime DEFAULT NOW() ON UPDATE NOW() AFT
 -- Update students table with additional fields
 ALTER TABLE `students`
 ADD COLUMN IF NOT EXISTS `user_id` int UNIQUE AFTER `id`,
+ADD COLUMN IF NOT EXISTS `section` varchar(20) AFTER `class_id`,
+ADD COLUMN IF NOT EXISTS `roll_number` varchar(50) AFTER `section`,
 ADD COLUMN IF NOT EXISTS `parent_phone` varchar(20) AFTER `phone`,
 ADD COLUMN IF NOT EXISTS `parent_email` varchar(150) AFTER `parent_phone`,
 ADD COLUMN IF NOT EXISTS `structured_address` text AFTER `address`,
@@ -48,6 +50,386 @@ ADD COLUMN IF NOT EXISTS `discharge_reason` text AFTER `discharge_date`,
 ADD COLUMN IF NOT EXISTS `previous_school` varchar(200) AFTER `discharge_reason`,
 ADD COLUMN IF NOT EXISTS `bank_account` varchar(50) AFTER `previous_school`,
 ADD COLUMN IF NOT EXISTS `bank_ifsc` varchar(20) AFTER `bank_account`;
+
+ALTER TABLE `users`
+ADD COLUMN IF NOT EXISTS `date_of_birth` date DEFAULT NULL AFTER `updated_at`,
+ADD COLUMN IF NOT EXISTS `joining_date` date DEFAULT NULL AFTER `date_of_birth`,
+ADD COLUMN IF NOT EXISTS `gender` enum('male','female','other') DEFAULT NULL AFTER `joining_date`,
+ADD COLUMN IF NOT EXISTS `blood_group` varchar(10) DEFAULT NULL AFTER `gender`,
+ADD COLUMN IF NOT EXISTS `highest_qualification` varchar(150) DEFAULT NULL AFTER `blood_group`,
+ADD COLUMN IF NOT EXISTS `experience_years` int DEFAULT 0 AFTER `highest_qualification`,
+ADD COLUMN IF NOT EXISTS `emergency_contact_name` varchar(150) DEFAULT NULL AFTER `experience_years`,
+ADD COLUMN IF NOT EXISTS `emergency_contact_phone` varchar(20) DEFAULT NULL AFTER `emergency_contact_name`,
+ADD COLUMN IF NOT EXISTS `staff_address` text DEFAULT NULL AFTER `emergency_contact_phone`,
+ADD COLUMN IF NOT EXISTS `casual_leave_balance` int DEFAULT 12 AFTER `staff_address`,
+ADD COLUMN IF NOT EXISTS `earned_leave_balance` int DEFAULT 15 AFTER `casual_leave_balance`,
+ADD COLUMN IF NOT EXISTS `sick_leave_balance` int DEFAULT 10 AFTER `earned_leave_balance`;
+
+ALTER TABLE `classes`
+ADD COLUMN IF NOT EXISTS `teacher_id` int DEFAULT NULL AFTER `class_teacher_id`;
+
+-- ============================================
+-- LEGACY MODULE TABLES REQUIRED BEFORE LATER ALTERS
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS `exams` (
+  `id` int AUTO_INCREMENT PRIMARY KEY,
+  `name` varchar(255) NOT NULL,
+  `class_id` int NOT NULL,
+  `subject` varchar(100) DEFAULT NULL,
+  `exam_date` date DEFAULT NULL,
+  `start_time` time DEFAULT NULL,
+  `end_time` time DEFAULT NULL,
+  `max_marks` int DEFAULT 100,
+  `pass_marks` int DEFAULT 33,
+  `description` text,
+  `is_archived` tinyint(1) DEFAULT 0,
+  `created_at` datetime DEFAULT NOW(),
+  `updated_at` datetime DEFAULT NOW() ON UPDATE NOW(),
+  INDEX `idx_exams_class` (`class_id`),
+  INDEX `idx_exams_date` (`exam_date`),
+  FOREIGN KEY (`class_id`) REFERENCES `classes`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `exam_results` (
+  `id` int AUTO_INCREMENT PRIMARY KEY,
+  `exam_id` int NOT NULL,
+  `student_id` int NOT NULL,
+  `marks_obtained` decimal(8,2) DEFAULT 0,
+  `grade` varchar(10) DEFAULT NULL,
+  `status` varchar(20) DEFAULT 'pending',
+  `remarks` text,
+  `entered_by` int DEFAULT NULL,
+  `created_at` datetime DEFAULT NOW(),
+  `updated_at` datetime DEFAULT NOW() ON UPDATE NOW(),
+  UNIQUE KEY `unique_exam_student` (`exam_id`, `student_id`),
+  INDEX `idx_exam_results_exam` (`exam_id`),
+  INDEX `idx_exam_results_student` (`student_id`),
+  FOREIGN KEY (`exam_id`) REFERENCES `exams`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`student_id`) REFERENCES `students`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`entered_by`) REFERENCES `users`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `library_books` (
+  `id` int AUTO_INCREMENT PRIMARY KEY,
+  `title` varchar(255) NOT NULL,
+  `author` varchar(255) DEFAULT NULL,
+  `isbn` varchar(50) DEFAULT NULL,
+  `category` varchar(100) DEFAULT NULL,
+  `publisher` varchar(150) DEFAULT NULL,
+  `total_copies` int DEFAULT 1,
+  `available_copies` int DEFAULT 1,
+  `shelf_location` varchar(100) DEFAULT NULL,
+  `cover_image_url` text,
+  `created_at` datetime DEFAULT NOW(),
+  `updated_at` datetime DEFAULT NOW() ON UPDATE NOW(),
+  INDEX `idx_library_books_isbn` (`isbn`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `library_issues` (
+  `id` int AUTO_INCREMENT PRIMARY KEY,
+  `book_id` int NOT NULL,
+  `student_id` int DEFAULT NULL,
+  `staff_id` int DEFAULT NULL,
+  `issue_date` date DEFAULT NULL,
+  `due_date` date DEFAULT NULL,
+  `return_date` date DEFAULT NULL,
+  `fine_amount` decimal(8,2) DEFAULT 0,
+  `fine_per_day` decimal(8,2) DEFAULT 5.00,
+  `is_returned` tinyint(1) DEFAULT 0,
+  `issued_by` int DEFAULT NULL,
+  `created_at` datetime DEFAULT NOW(),
+  INDEX `idx_library_issues_book` (`book_id`),
+  INDEX `idx_library_issues_due_date` (`due_date`),
+  FOREIGN KEY (`book_id`) REFERENCES `library_books`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`student_id`) REFERENCES `students`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`staff_id`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+  FOREIGN KEY (`issued_by`) REFERENCES `users`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `transport_vehicles` (
+  `id` int AUTO_INCREMENT PRIMARY KEY,
+  `vehicle_no` varchar(100) NOT NULL,
+  `type` varchar(50) DEFAULT NULL,
+  `capacity` int DEFAULT 50,
+  `driver_name` varchar(150) DEFAULT NULL,
+  `driver_phone` varchar(20) DEFAULT NULL,
+  `route_id` int DEFAULT NULL,
+  `number_plate` varchar(50) DEFAULT NULL,
+  `conductor_name` varchar(150) DEFAULT NULL,
+  `conductor_phone` varchar(20) DEFAULT NULL,
+  `driver_id` int DEFAULT NULL,
+  `conductor_id` int DEFAULT NULL,
+  `is_active` tinyint(1) DEFAULT 1,
+  `created_at` datetime DEFAULT NOW(),
+  `updated_at` datetime DEFAULT NOW() ON UPDATE NOW(),
+  INDEX `idx_transport_vehicles_active` (`is_active`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `bus_routes` (
+  `id` int AUTO_INCREMENT PRIMARY KEY,
+  `route_name` varchar(150) NOT NULL,
+  `route_code` varchar(50) DEFAULT NULL,
+  `vehicle_id` int DEFAULT NULL,
+  `driver_id` int DEFAULT NULL,
+  `conductor_id` int DEFAULT NULL,
+  `stops` text,
+  `monthly_fee` decimal(10,2) DEFAULT 0,
+  `total_distance` decimal(8,2) DEFAULT 0,
+  `capacity` int DEFAULT 50,
+  `is_active` tinyint(1) DEFAULT 1,
+  `description` text,
+  `created_at` datetime DEFAULT NOW(),
+  `updated_at` datetime DEFAULT NOW() ON UPDATE NOW(),
+  INDEX `idx_bus_routes_active` (`is_active`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `canteen_items` (
+  `id` int AUTO_INCREMENT PRIMARY KEY,
+  `name` varchar(255) NOT NULL,
+  `category` varchar(100) DEFAULT NULL,
+  `price` decimal(10,2) NOT NULL DEFAULT 0,
+  `is_available` tinyint(1) DEFAULT 1,
+  `available_qty` int DEFAULT 0,
+  `created_at` datetime DEFAULT NOW(),
+  `updated_at` datetime DEFAULT NOW() ON UPDATE NOW(),
+  UNIQUE KEY `unique_canteen_item_name` (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `canteen_orders` (
+  `id` int AUTO_INCREMENT PRIMARY KEY,
+  `item_id` int DEFAULT NULL,
+  `ordered_by` int DEFAULT NULL,
+  `quantity` int DEFAULT 1,
+  `total_price` decimal(10,2) DEFAULT 0,
+  `created_at` datetime DEFAULT NOW(),
+  INDEX `idx_canteen_orders_item` (`item_id`),
+  FOREIGN KEY (`item_id`) REFERENCES `canteen_items`(`id`) ON DELETE SET NULL,
+  FOREIGN KEY (`ordered_by`) REFERENCES `users`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `hostel_rooms` (
+  `id` int AUTO_INCREMENT PRIMARY KEY,
+  `room_no` varchar(50) NOT NULL,
+  `block` varchar(100) DEFAULT NULL,
+  `room_type_id` int DEFAULT NULL,
+  `capacity` int DEFAULT 1,
+  `occupied_beds` int DEFAULT 0,
+  `floor` varchar(50) DEFAULT NULL,
+  `type` varchar(50) DEFAULT NULL,
+  `monthly_fee` decimal(10,2) DEFAULT 0,
+  `status` varchar(20) DEFAULT 'available',
+  `is_active` tinyint(1) DEFAULT 1,
+  `created_at` datetime DEFAULT NOW(),
+  `updated_at` datetime DEFAULT NOW() ON UPDATE NOW(),
+  UNIQUE KEY `unique_hostel_room_no` (`room_no`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `hostel_allocations` (
+  `id` int AUTO_INCREMENT PRIMARY KEY,
+  `student_id` int NOT NULL,
+  `room_id` int NOT NULL,
+  `room_type_id` int DEFAULT NULL,
+  `fee_structure_id` int DEFAULT NULL,
+  `bed_label` varchar(10) DEFAULT NULL,
+  `academic_year` varchar(20) DEFAULT NULL,
+  `allocated_date` date DEFAULT NULL,
+  `check_in_date` date DEFAULT NULL,
+  `vacated_date` date DEFAULT NULL,
+  `check_out_date` date DEFAULT NULL,
+  `allotment_date` datetime DEFAULT NULL,
+  `vacated_on` datetime DEFAULT NULL,
+  `status` varchar(20) DEFAULT 'ACTIVE',
+  `is_active` tinyint(1) DEFAULT 1,
+  `created_at` datetime DEFAULT NOW(),
+  INDEX `idx_hostel_allocations_student` (`student_id`),
+  FOREIGN KEY (`student_id`) REFERENCES `students`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`room_id`) REFERENCES `hostel_rooms`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `leave_applications` (
+  `id` int AUTO_INCREMENT PRIMARY KEY,
+  `applicant_id` int NOT NULL,
+  `leave_type` varchar(50) NOT NULL,
+  `from_date` date NOT NULL,
+  `to_date` date NOT NULL,
+  `reason` text,
+  `status` varchar(20) DEFAULT 'pending',
+  `approved_by` int DEFAULT NULL,
+  `review_note` text,
+  `created_at` datetime DEFAULT NOW(),
+  `updated_at` datetime DEFAULT NOW() ON UPDATE NOW(),
+  INDEX `idx_leave_applicant` (`applicant_id`),
+  INDEX `idx_leave_status` (`status`),
+  FOREIGN KEY (`applicant_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`approved_by`) REFERENCES `users`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `payroll` (
+  `id` int AUTO_INCREMENT PRIMARY KEY,
+  `staff_id` int NOT NULL,
+  `month` tinyint NOT NULL,
+  `year` smallint NOT NULL,
+  `basic_salary` decimal(10,2) DEFAULT 0,
+  `allowances` decimal(10,2) DEFAULT 0,
+  `deductions` decimal(10,2) DEFAULT 0,
+  `net_salary` decimal(10,2) DEFAULT 0,
+  `status` varchar(20) DEFAULT 'pending',
+  `paid_date` date DEFAULT NULL,
+  `created_at` datetime DEFAULT NOW(),
+  `updated_at` datetime DEFAULT NOW() ON UPDATE NOW(),
+  UNIQUE KEY `uq_payroll_staff_month_year` (`staff_id`, `month`, `year`),
+  FOREIGN KEY (`staff_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `notices` (
+  `id` int AUTO_INCREMENT PRIMARY KEY,
+  `title` varchar(255) NOT NULL,
+  `content` text NOT NULL,
+  `target_roles` varchar(255) DEFAULT 'all',
+  `priority` varchar(20) DEFAULT 'normal',
+  `expiry_date` date DEFAULT NULL,
+  `published` tinyint(1) DEFAULT 1,
+  `is_active` tinyint(1) DEFAULT 1,
+  `created_by` int DEFAULT NULL,
+  `related_class_id` int DEFAULT NULL,
+  `related_student_id` int DEFAULT NULL,
+  `created_at` datetime DEFAULT NOW(),
+  `updated_at` datetime DEFAULT NOW() ON UPDATE NOW(),
+  INDEX `idx_notices_active` (`is_active`),
+  FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `complaints` (
+  `id` int AUTO_INCREMENT PRIMARY KEY,
+  `title` varchar(255) NOT NULL,
+  `description` text,
+  `category` varchar(50) DEFAULT 'general',
+  `type` varchar(50) DEFAULT 'general',
+  `priority` varchar(20) DEFAULT 'medium',
+  `submitted_by` int DEFAULT NULL,
+  `target_user_id` int DEFAULT NULL,
+  `student_id` int DEFAULT NULL,
+  `class_id` int DEFAULT NULL,
+  `assigned_to` int DEFAULT NULL,
+  `assigned_to_role` varchar(50) DEFAULT NULL,
+  `raised_by_role` varchar(50) DEFAULT NULL,
+  `status` varchar(20) DEFAULT 'pending',
+  `resolution_note` text,
+  `resolution` text,
+  `resolved_at` datetime DEFAULT NULL,
+  `is_visible_to_target` tinyint(1) DEFAULT 1,
+  `created_at` datetime DEFAULT NOW(),
+  `updated_at` datetime DEFAULT NOW() ON UPDATE NOW(),
+  INDEX `idx_complaints_status` (`status`),
+  FOREIGN KEY (`submitted_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+  FOREIGN KEY (`target_user_id`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+  FOREIGN KEY (`assigned_to`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+  FOREIGN KEY (`student_id`) REFERENCES `students`(`id`) ON DELETE SET NULL,
+  FOREIGN KEY (`class_id`) REFERENCES `classes`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `homework` (
+  `id` int AUTO_INCREMENT PRIMARY KEY,
+  `title` varchar(255) NOT NULL,
+  `description` text,
+  `attachments` text,
+  `class_id` int NOT NULL,
+  `subject` varchar(100) DEFAULT NULL,
+  `due_date` date DEFAULT NULL,
+  `assigned_by` int DEFAULT NULL,
+  `created_at` datetime DEFAULT NOW(),
+  `updated_at` datetime DEFAULT NOW() ON UPDATE NOW(),
+  INDEX `idx_homework_class` (`class_id`),
+  INDEX `idx_homework_due` (`due_date`),
+  FOREIGN KEY (`class_id`) REFERENCES `classes`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`assigned_by`) REFERENCES `users`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `routine` (
+  `id` int AUTO_INCREMENT PRIMARY KEY,
+  `class_id` int NOT NULL,
+  `day` varchar(20) NOT NULL,
+  `subject` varchar(100) DEFAULT NULL,
+  `teacher_id` int DEFAULT NULL,
+  `start_time` time DEFAULT NULL,
+  `end_time` time DEFAULT NULL,
+  `room` varchar(100) DEFAULT NULL,
+  `timetable` text,
+  `created_at` datetime DEFAULT NOW(),
+  `updated_at` datetime DEFAULT NOW() ON UPDATE NOW(),
+  INDEX `idx_routine_class` (`class_id`),
+  INDEX `idx_routine_day` (`day`),
+  FOREIGN KEY (`class_id`) REFERENCES `classes`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`teacher_id`) REFERENCES `users`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `remarks` (
+  `id` int AUTO_INCREMENT PRIMARY KEY,
+  `student_id` int NOT NULL,
+  `teacher_id` int DEFAULT NULL,
+  `remark` text NOT NULL,
+  `type` varchar(50) DEFAULT 'general',
+  `created_at` datetime DEFAULT NOW(),
+  `updated_at` datetime DEFAULT NOW() ON UPDATE NOW(),
+  INDEX `idx_remarks_student` (`student_id`),
+  INDEX `idx_remarks_teacher` (`teacher_id`),
+  FOREIGN KEY (`student_id`) REFERENCES `students`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`teacher_id`) REFERENCES `users`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `notifications` (
+  `id` int AUTO_INCREMENT PRIMARY KEY,
+  `title` varchar(255) NOT NULL,
+  `message` text NOT NULL,
+  `target_user` int DEFAULT NULL,
+  `is_read` tinyint(1) DEFAULT 0,
+  `created_at` datetime DEFAULT NOW(),
+  INDEX `idx_notifications_read` (`is_read`),
+  INDEX `idx_notifications_user` (`target_user`),
+  FOREIGN KEY (`target_user`) REFERENCES `users`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `message_threads` (
+  `id` int AUTO_INCREMENT PRIMARY KEY,
+  `subject` varchar(255) NOT NULL DEFAULT 'No Subject',
+  `type` enum('direct','group','system') DEFAULT 'direct',
+  `created_by` int DEFAULT NULL,
+  `created_at` datetime DEFAULT NOW(),
+  `updated_at` datetime DEFAULT NOW() ON UPDATE NOW(),
+  INDEX `idx_message_threads_type` (`type`),
+  FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `thread_participants` (
+  `id` int AUTO_INCREMENT PRIMARY KEY,
+  `thread_id` int NOT NULL,
+  `user_id` int NOT NULL,
+  `last_read_at` datetime DEFAULT NULL,
+  `created_at` datetime DEFAULT NOW(),
+  UNIQUE KEY `uq_thread_participant` (`thread_id`, `user_id`),
+  INDEX `idx_thread_participants_user` (`user_id`),
+  FOREIGN KEY (`thread_id`) REFERENCES `message_threads`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `messages` (
+  `id` int AUTO_INCREMENT PRIMARY KEY,
+  `thread_id` int NOT NULL,
+  `sender_id` int NOT NULL,
+  `receiver_id` int DEFAULT NULL,
+  `body` text NOT NULL,
+  `is_read` tinyint(1) DEFAULT 0,
+  `is_deleted` tinyint(1) DEFAULT 0,
+  `related_complaint_id` int DEFAULT NULL,
+  `created_at` datetime DEFAULT NOW(),
+  INDEX `idx_messages_thread` (`thread_id`),
+  INDEX `idx_messages_sender` (`sender_id`),
+  INDEX `idx_messages_deleted` (`is_deleted`),
+  FOREIGN KEY (`thread_id`) REFERENCES `message_threads`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`sender_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`receiver_id`) REFERENCES `users`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================
 -- NEW TABLES - MISSING FROM v2.0
@@ -285,7 +667,10 @@ ADD COLUMN IF NOT EXISTS `percentage` decimal(5,2) GENERATED ALWAYS AS ((`marks_
 -- Update existing hostel_rooms table
 ALTER TABLE `hostel_rooms`
 ADD COLUMN IF NOT EXISTS `room_type_id` int AFTER `id`,
+ADD COLUMN IF NOT EXISTS `block` varchar(100) DEFAULT NULL AFTER `room_no`,
 ADD COLUMN IF NOT EXISTS `occupied_beds` int DEFAULT 0 AFTER `capacity`,
+ADD COLUMN IF NOT EXISTS `type` varchar(50) DEFAULT NULL AFTER `floor`,
+ADD COLUMN IF NOT EXISTS `monthly_fee` decimal(10,2) DEFAULT 0 AFTER `type`,
 ADD COLUMN IF NOT EXISTS `status` enum('available','occupied','maintenance','blocked') DEFAULT 'available' AFTER `is_active`;
 
 -- Update existing hostel_allocations table
@@ -293,7 +678,12 @@ ALTER TABLE `hostel_allocations`
 ADD COLUMN IF NOT EXISTS `room_type_id` int AFTER `student_id`,
 ADD COLUMN IF NOT EXISTS `fee_structure_id` int AFTER `room_type_id`,
 ADD COLUMN IF NOT EXISTS `bed_label` varchar(10) AFTER `is_active`,
-ADD COLUMN IF NOT EXISTS `academic_year` varchar(20) AFTER `bed_label`;
+ADD COLUMN IF NOT EXISTS `academic_year` varchar(20) AFTER `bed_label`,
+ADD COLUMN IF NOT EXISTS `check_in_date` date DEFAULT NULL AFTER `allocated_date`,
+ADD COLUMN IF NOT EXISTS `check_out_date` date DEFAULT NULL AFTER `vacated_date`,
+ADD COLUMN IF NOT EXISTS `allotment_date` datetime DEFAULT NULL AFTER `check_out_date`,
+ADD COLUMN IF NOT EXISTS `vacated_on` datetime DEFAULT NULL AFTER `allotment_date`,
+ADD COLUMN IF NOT EXISTS `status` varchar(20) DEFAULT 'ACTIVE' AFTER `vacated_on`;
 
 -- Update existing transport_vehicles table
 ALTER TABLE `transport_vehicles`

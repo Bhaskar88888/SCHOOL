@@ -2,6 +2,10 @@
 /**
  * Librarian Panel
  */
+// Role guard
+if (!role_matches(get_current_role(), ['librarian'])) {
+    header('Location: ' . BASE_URL . '/dashboard.php'); exit;
+}
 $totalBooks    = db_table_exists('library_books')  ? db_count("SELECT COUNT(*) FROM library_books") : 0;
 $totalIssued   = db_table_exists('library_issues') ? db_count("SELECT COUNT(*) FROM library_issues WHERE return_date IS NULL") : 0;
 $overdueCount  = db_table_exists('library_issues') ? db_count("SELECT COUNT(*) FROM library_issues WHERE return_date IS NULL AND due_date < CURDATE()") : 0;

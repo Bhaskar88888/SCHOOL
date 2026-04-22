@@ -88,6 +88,21 @@ ALTER TABLE library_issues
   ADD COLUMN IF NOT EXISTS staff_id int DEFAULT NULL AFTER student_id;
 
 -- -----------------------------------------------------
+-- Hostel compatibility columns used by current UI/API
+-- -----------------------------------------------------
+ALTER TABLE hostel_rooms
+  ADD COLUMN IF NOT EXISTS block varchar(100) DEFAULT NULL AFTER room_no,
+  ADD COLUMN IF NOT EXISTS type varchar(50) DEFAULT NULL AFTER floor,
+  ADD COLUMN IF NOT EXISTS monthly_fee decimal(10,2) DEFAULT 0 AFTER type;
+
+ALTER TABLE hostel_allocations
+  ADD COLUMN IF NOT EXISTS check_in_date date DEFAULT NULL AFTER allocated_date,
+  ADD COLUMN IF NOT EXISTS check_out_date date DEFAULT NULL AFTER vacated_date,
+  ADD COLUMN IF NOT EXISTS allotment_date datetime DEFAULT NULL AFTER check_out_date,
+  ADD COLUMN IF NOT EXISTS vacated_on datetime DEFAULT NULL AFTER allotment_date,
+  ADD COLUMN IF NOT EXISTS status varchar(20) DEFAULT 'ACTIVE' AFTER vacated_on;
+
+-- -----------------------------------------------------
 -- Canteen Items
 -- -----------------------------------------------------
 ALTER TABLE canteen_items
@@ -169,18 +184,43 @@ CREATE TABLE IF NOT EXISTS fee_notifications (
   FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 5. Message threads
-CREATE TABLE IF NOT EXISTS messages (
+-- 5. Messaging schema expected by api/messages and sidebar
+CREATE TABLE IF NOT EXISTS message_threads (
   id int AUTO_INCREMENT PRIMARY KEY,
-  thread_id varchar(80) NOT NULL,
-  sender_id int NOT NULL,
-  receiver_id int NOT NULL,
-  body text NOT NULL,
-  is_read tinyint(1) DEFAULT 0,
-  related_complaint_id int DEFAULT NULL,
+  subject varchar(255) NOT NULL DEFAULT 'No Subject',
+  type enum('direct','group','system') DEFAULT 'direct',
+  created_by int DEFAULT NULL,
   created_at datetime DEFAULT NOW(),
-  INDEX idx_thread (thread_id),
-  INDEX idx_receiver (receiver_id)
+  updated_at datetime DEFAULT NOW() ON UPDATE NOW(),
+  INDEX idx_message_threads_type (type)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS thread_participants (
+  id int AUTO_INCREMENT PRIMARY KEY,
+  thread_id int NOT NULL,
+  user_id int NOT NULL,
+  last_read_at datetime DEFAULT NULL,
+  created_at datetime DEFAULT NOW(),
+  UNIQUE KEY uq_thread_participant (thread_id, user_id),
+  INDEX idx_thread_participants_user (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS messages (
+  id int AUTO_INCREMENT PRIMARY KEY,
+  thread_id int NOT NULL,
+  sender_id int NOT NULL,
+  receiver_id int DEFAULT NULL,
+  body text NOT NULL,
+  is_read tinyint(1) DEFAULT 0,
+  is_deleted tinyint(1) DEFAULT 0,
+  related_complaint_id int DEFAULT NULL,
+  created_at datetime DEFAULT NOW(),
+  INDEX idx_messages_thread (thread_id),
+  INDEX idx_messages_sender (sender_id),
+  INDEX idx_messages_deleted (is_deleted),
+  INDEX idx_messages_receiver (receiver_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+ALTER TABLE messages
+  ADD COLUMN IF NOT EXISTS is_deleted tinyint(1) DEFAULT 0 AFTER is_read,
+  MODIFY COLUMN receiver_id int DEFAULT NULL;
