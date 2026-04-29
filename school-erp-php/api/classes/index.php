@@ -27,6 +27,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_role(['superadmin', 'admin']);
     $data = get_post_json();
+
+    // Subject management actions
+    $action = $data['action'] ?? 'create_class';
+
+    if ($action === 'add_subject') {
+        $classId  = (int)  ($data['class_id']  ?? 0);
+        $subject  = sanitize($data['subject']  ?? '');
+        $teacherId = (int) ($data['teacher_id'] ?? 0);
+        $ppw      = (int)  ($data['periods_per_week'] ?? 5);
+        if (!$classId || !$subject)
+            json_response(['error' => 'class_id and subject required'], 400);
+        db_query(
+            "INSERT INTO class_subjects (class_id, subject, teacher_id, periods_per_week)
+             VALUES (?,?,?,?)
+             ON DUPLICATE KEY UPDATE teacher_id = VALUES(teacher_id), periods_per_week = VALUES(periods_per_week)",
+            [$classId, $subject, $teacherId ?: null, $ppw]
+        );
+        json_response(['success' => true]);
+    }
+
+    if ($action === 'remove_subject') {
+        $classId = (int) ($data['class_id'] ?? 0);
+        $subject = sanitize($data['subject'] ?? '');
+        if (!$classId || !$subject)
+            json_response(['error' => 'class_id and subject required'], 400);
+        db_query("DELETE FROM class_subjects WHERE class_id = ? AND subject = ?", [$classId, $subject]);
+        json_response(['success' => true]);
+    }
+
+    // Default: create class
     if (empty($data['name']))
         json_response(['error' => 'Class name required'], 400);
     $id = db_insert(

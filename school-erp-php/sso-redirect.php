@@ -1,21 +1,29 @@
 <?php
 /**
- * SSO Redirect — WebView Single Sign-On Entry Point
- * Called by Android WebView:
- *   https://school.hostinger.com/sso-redirect.php?sso_token=xxxx&panel=parent_panel.php
- *
- * 1. Validates the one-time SSO token
- * 2. Creates a PHP session for the user
- * 3. Redirects to the requested panel (no login screen)
+ * SSO Redirect - WebView Single Sign-On Entry Point
  */
 
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/bootstrap.php';
 
-$ssoToken = trim((string)($_GET['sso_token'] ?? ''));
-$panel    = basename((string)($_GET['panel'] ?? 'dashboard.php'));  // basename for safety
+$allowedOrigin = defined('APP_MOBILE_ORIGIN') ? APP_MOBILE_ORIGIN : '*';
+$deepLink = defined('APP_DEEPLINK_URL') ? APP_DEEPLINK_URL : 'schoolerp://dashboard';
 
-if (empty($ssoToken)) {
+header('Access-Control-Allow-Origin: ' . $allowedOrigin);
+header('Access-Control-Allow-Methods: GET, OPTIONS');
+header('Access-Control-Allow-Headers: Authorization, Content-Type, X-App-Client');
+header('X-App-Deeplink: ' . $deepLink);
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(204);
+    exit;
+}
+
+$ssoToken = trim((string) ($_GET['sso_token'] ?? $_GET['token'] ?? ''));
+
+if ($ssoToken === '') {
     header('Location: ' . BASE_URL . '/index.php?error=sso_missing');
     exit;
 }
@@ -25,7 +33,6 @@ if (!db_table_exists('webview_sso_tokens')) {
     exit;
 }
 
-// Look up token — must be unused and not expired
 $tokenRow = db_fetch(
     "SELECT * FROM webview_sso_tokens WHERE token = ? AND used = 0 AND expires_at > NOW() LIMIT 1",
     [$ssoToken]
@@ -36,24 +43,19 @@ if (!$tokenRow) {
     exit;
 }
 
-// Mark token as used (single-use)
 db_query("UPDATE webview_sso_tokens SET used = 1 WHERE token = ?", [$ssoToken]);
 
-// Load user
 $user = db_fetch("SELECT * FROM users WHERE id = ? AND is_active = 1", [$tokenRow['user_id']]);
 if (!$user) {
     header('Location: ' . BASE_URL . '/index.php?error=sso_user');
     exit;
 }
 
-// Create session — exactly the same as normal login
 login_user($user);
 
-// Update last_login
 if (db_column_exists('users', 'last_login_at')) {
     db_query("UPDATE users SET last_login_at = NOW() WHERE id = ?", [$user['id']]);
 }
 
-// Redirect to dashboard
 header('Location: ' . BASE_URL . '/dashboard.php');
 exit;

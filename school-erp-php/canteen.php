@@ -78,8 +78,8 @@ $pageTitle = 'Canteen Management';
                             <tr>
                                 <th>Order ID</th>
                                 <th>Buyer</th>
-                                <th>Item</th>
-                                <th>Quantity</th>
+                                <th>Item(s)</th>
+                                <th>Qty</th>
                                 <th>Total</th>
                                 <th>Date/Time</th>
                             </tr>
@@ -89,6 +89,29 @@ $pageTitle = 'Canteen Management';
                 </div>
             </div>
         </div>
+
+        <!-- POS Cart Sidebar -->
+        <div id="posCart" style="position:fixed;top:0;right:-380px;width:360px;height:100vh;background:var(--bg-card);border-left:1px solid var(--border);box-shadow:-4px 0 24px rgba(0,0,0,.15);z-index:1000;display:flex;flex-direction:column;transition:right .3s ease">
+            <div style="padding:20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+                <div style="font-weight:700;font-size:16px">🛒 POS Cart</div>
+                <button class="btn btn-secondary btn-sm" onclick="closeCart()">✕ Close</button>
+            </div>
+            <div id="cartLines" style="flex:1;overflow-y:auto;padding:16px"></div>
+            <div style="padding:16px;border-top:1px solid var(--border)">
+                <div style="display:flex;justify-content:space-between;font-size:18px;font-weight:700;margin-bottom:12px">
+                    <span>Total</span>
+                    <span style="color:var(--accent)" id="cartTotal">₹0.00</span>
+                </div>
+                <select class="form-control" id="cartPaymentMode" style="margin-bottom:12px">
+                    <option value="cash">Cash</option>
+                    <option value="upi">UPI</option>
+                    <option value="card">Card</option>
+                    <option value="wallet">Wallet</option>
+                </select>
+                <button class="btn btn-primary" style="width:100%" onclick="checkoutCart()">⚡ Checkout</button>
+            </div>
+        </div>
+        <div id="cartOverlay" onclick="closeCart()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:999"></div>
     </div>
 </div>
 
@@ -238,7 +261,7 @@ async function loadItems() {
                 <td><span class="badge ${parseInt(i.is_available) ? 'badge-success' : 'badge-danger'}">${parseInt(i.is_available) ? 'In Stock' : 'Out of Stock'}</span></td>
                 <td>
                     <div style="display:flex;gap:6px">
-                        ${parseInt(i.is_available) ? `<button class="btn btn-success btn-sm" onclick="openSell(${i.id}, '${escHtml(i.name)}', ${i.price})">💰 Sell</button>` : ''}
+                        ${parseInt(i.is_available) ? `<button class="btn btn-success btn-sm" onclick="addToCart(${i.id}, '${escHtml(i.name)}', ${i.price})">🛒 Add</button>` : ''}
                         <?php if (in_array(get_current_role(), ['admin', 'superadmin'])): ?>
                         <button class="btn btn-secondary btn-sm" onclick="openEditItem(${i.id}, '${escHtml(i.name)}', '${escHtml(i.category)}', ${i.price}, ${i.available_qty}, ${i.is_available})">✏️</button>
                         <button class="btn btn-danger btn-sm" onclick="deleteItem(${i.id})">🗑️</button>
@@ -314,21 +337,89 @@ async function submitEditItem(e) {
     }
 }
 
-function openSell(id, name, price) {
-    document.getElementById('sellItemId').value = id;
-    document.getElementById('sellItemName').textContent = name;
-    document.getElementById('sellItemPrice').textContent = `Price: ₹${parseFloat(price).toFixed(2)}`;
-    document.getElementById('sellQty').value = 1;
-    currentPrice = price;
-    updateTotal();
-    openModal('sellModal');
+// ── POS Cart ─────────────────────────────────────────────────────────────────
+let cart = {}; // { itemId: { id, name, price, qty } }
+
+function addToCart(id, name, price) {
+    if (cart[id]) {
+        cart[id].qty++;
+    } else {
+        cart[id] = { id, name, price: parseFloat(price), qty: 1 };
+    }
+    renderCart();
+    openCart();
 }
 
-function updateTotal() {
-    const qty = document.getElementById('sellQty').value;
-    const total = qty * currentPrice;
-    document.getElementById('sellTotal').textContent = `₹${total.toFixed(2)}`;
+function openCart() {
+    document.getElementById('posCart').style.right = '0';
+    document.getElementById('cartOverlay').style.display = 'block';
 }
+
+function closeCart() {
+    document.getElementById('posCart').style.right = '-380px';
+    document.getElementById('cartOverlay').style.display = 'none';
+}
+
+function renderCart() {
+    const lines = Object.values(cart);
+    if (!lines.length) {
+        document.getElementById('cartLines').innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted)">Cart is empty.<br>Click 🛒 Add on any item.</div>';
+        document.getElementById('cartTotal').textContent = '₹0.00';
+        return;
+    }
+    const total = lines.reduce((s, l) => s + l.price * l.qty, 0);
+    document.getElementById('cartLines').innerHTML = lines.map(l => `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px;background:var(--surface-container-lowest);border-radius:8px;margin-bottom:8px">
+            <div>
+                <strong style="font-size:13px">${escHtml(l.name)}</strong>
+                <div style="font-size:12px;color:var(--text-muted)">₹${l.price.toFixed(2)} × ${l.qty} = ₹${(l.price * l.qty).toFixed(2)}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px">
+                <button class="btn btn-secondary btn-sm" onclick="changeQty(${l.id},-1)">−</button>
+                <span>${l.qty}</span>
+                <button class="btn btn-secondary btn-sm" onclick="changeQty(${l.id},1)">+</button>
+                <button class="btn btn-danger btn-sm" onclick="removeFromCart(${l.id})">✕</button>
+            </div>
+        </div>`).join('');
+    document.getElementById('cartTotal').textContent = '₹' + total.toLocaleString('en-IN', { minimumFractionDigits: 2 });
+}
+
+function changeQty(id, delta) {
+    if (!cart[id]) return;
+    cart[id].qty += delta;
+    if (cart[id].qty <= 0) delete cart[id];
+    renderCart();
+}
+
+function removeFromCart(id) {
+    delete cart[id];
+    renderCart();
+}
+
+async function checkoutCart() {
+    const lines = Object.values(cart);
+    if (!lines.length) { showToast('Cart is empty', 'warning'); return; }
+    const paymentMode = document.getElementById('cartPaymentMode').value;
+    const cartPayload = lines.map(l => ({ item_id: l.id, quantity: l.qty }));
+    const res = await fetch('/api/canteen/index.php', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() },
+        body: JSON.stringify({ action: 'cart_checkout', cart: cartPayload, payment_mode: paymentMode }),
+    }).then(r => r.json());
+
+    if (res.success) {
+        const total = lines.reduce((s, l) => s + l.price * l.qty, 0);
+        showToast(`✅ Sale recorded! Total: ₹${total.toFixed(2)}`);
+        cart = {};
+        renderCart();
+        closeCart();
+        loadItems();
+        updateSalesToday();
+    } else {
+        showToast(res.error || 'Checkout failed', 'danger');
+    }
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 async function submitAddItem(e) {
     e.preventDefault();
@@ -341,28 +432,6 @@ async function submitAddItem(e) {
         loadItems();
     } else {
         showToast(res.error || 'Failed to add item', 'danger');
-    }
-}
-
-async function submitSale(e) {
-    e.preventDefault();
-    const data = Object.fromEntries(new FormData(e.target));
-    const res = await fetch('/api/canteen/index.php', {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': getCsrfToken()
-        },
-        body: JSON.stringify(data)
-    }).then(r => r.json());
-    
-    if (res.success) {
-        showToast(`Sale recorded! Total: ₹${res.total.toFixed(2)}`);
-        closeModal('sellModal');
-        loadItems();
-        updateSalesToday();
-    } else {
-        showToast(res.error || 'Sale failed', 'danger');
     }
 }
 

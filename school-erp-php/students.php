@@ -643,7 +643,7 @@ async function submitStudent(event) {
 async function archiveStudent(id, name) {
     if (!confirm(`Archive student "${name}"?`)) return;
     const reason = prompt('Discharge reason (optional):', '') || '';
-    const response = await fetch('/api/students/index.php', {
+    const response = await fetch(resolveAppUrl('/api/students/index.php'), {
         method: 'DELETE',
         headers: {
             'Content-Type': 'application/json',
@@ -713,13 +713,13 @@ function openStudentIdCard(studentId) {
 
 function exportData() {
     const classId = document.getElementById('classFilter').value;
-    window.location.href = `/api/students/export.php?class_id=${encodeURIComponent(classId)}`;
+    window.location.href = resolveAppUrl(`/api/students/export.php?class_id=${encodeURIComponent(classId)}`);
 }
 
 async function submitImport(event) {
     event.preventDefault();
     const formData = new FormData(document.getElementById('importForm'));
-    const response = await fetch('/api/students/import.php', {
+    const response = await fetch(resolveAppUrl('/api/students/import.php'), {
         method: 'POST',
         body: formData
     }).then((res) => res.json());

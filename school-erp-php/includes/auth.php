@@ -29,9 +29,93 @@ if (!defined('BASE_URL')) {
     define('BASE_URL', $basePath);
 }
 
+function request_bearer_token()
+{
+    $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+    if ($authHeader === '') {
+        $authHeader = $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
+    }
+
+    if (!is_string($authHeader) || stripos($authHeader, 'Bearer ') !== 0) {
+        return null;
+    }
+
+    $token = trim(substr($authHeader, 7));
+    return $token !== '' ? $token : null;
+}
+
+function resolve_request_user_from_bearer()
+{
+    static $resolved = false;
+    static $user = null;
+
+    if ($resolved) {
+        return $user;
+    }
+
+    $resolved = true;
+    $GLOBALS['bearer_auth_error'] = null;
+
+    if (!is_api_request()) {
+        return null;
+    }
+
+    $token = request_bearer_token();
+    if ($token === null) {
+        return null;
+    }
+
+    require_once __DIR__ . '/jwt.php';
+
+    try {
+        $payload = JWT::decode($token);
+    } catch (RuntimeException $e) {
+        $GLOBALS['bearer_auth_error'] = $e->getMessage();
+        return null;
+    }
+
+    $userId = (int) ($payload['user_id'] ?? 0);
+    if ($userId <= 0) {
+        $GLOBALS['bearer_auth_error'] = 'Invalid token payload';
+        return null;
+    }
+
+    $dbUser = db_fetch("SELECT * FROM users WHERE id = ? AND is_active = 1", [$userId]);
+    if (!$dbUser) {
+        $GLOBALS['bearer_auth_error'] = 'User not found or inactive';
+        return null;
+    }
+
+    $user = [
+        'id' => (int) $dbUser['id'],
+        'name' => $dbUser['name'] ?? '',
+        'email' => $dbUser['email'] ?? '',
+        'role' => normalize_role_name($dbUser['role'] ?? ($payload['role'] ?? '')),
+        'avatar' => $dbUser['avatar'] ?? null,
+        'phone' => $dbUser['phone'] ?? null,
+        'employee_id' => $dbUser['employee_id'] ?? null,
+        'raw' => $dbUser,
+        'jwt_payload' => $payload,
+    ];
+
+    return $user;
+}
+
+function request_uses_bearer_auth()
+{
+    return resolve_request_user_from_bearer() !== null;
+}
+
+function bearer_auth_error_message()
+{
+    resolve_request_user_from_bearer();
+    return $GLOBALS['bearer_auth_error'] ?? null;
+}
+
 function is_logged_in()
 {
-    return isset($_SESSION['user_id']) && !empty($_SESSION['user_id']);
+    return (isset($_SESSION['user_id']) && !empty($_SESSION['user_id']))
+        || resolve_request_user_from_bearer() !== null;
 }
 
 function require_auth()
@@ -39,7 +123,7 @@ function require_auth()
     if (!is_logged_in()) {
         if (is_api_request()) {
             http_response_code(401);
-            die(json_encode(['error' => 'Unauthorized. Please log in.']));
+            die(json_encode(['error' => bearer_auth_error_message() ?: 'Unauthorized. Please log in.']));
         }
         header('Location: ' . BASE_URL . '/index.php');
         exit;
@@ -51,7 +135,7 @@ function require_role($roles)
     require_auth();
     if (!is_array($roles))
         $roles = [$roles];
-    $userRole = $_SESSION['user_role'] ?? '';
+    $userRole = get_current_role();
     if (!role_matches($userRole, $roles)) {
         if (is_api_request()) {
             http_response_code(403);
@@ -69,24 +153,57 @@ function is_api_request()
 
 function get_current_user_id()
 {
-    return $_SESSION['user_id'] ?? null;
+    if (!empty($_SESSION['user_id'])) {
+        return (int) $_SESSION['user_id'];
+    }
+
+    $user = resolve_request_user_from_bearer();
+    return $user['id'] ?? null;
 }
 
 function get_current_role()
 {
-    return $_SESSION['user_role'] ?? null;
+    if (!empty($_SESSION['user_role'])) {
+        return normalize_role_name($_SESSION['user_role']);
+    }
+
+    $user = resolve_request_user_from_bearer();
+    return $user['role'] ?? null;
 }
 
 function get_authenticated_user()
 {
     if (!is_logged_in())
         return null;
+    if (isset($_SESSION['user_id']) && !empty($_SESSION['user_id'])) {
+        return [
+            'id' => (int) $_SESSION['user_id'],
+            'name' => $_SESSION['user_name'],
+            'email' => $_SESSION['user_email'],
+            'role' => normalize_role_name($_SESSION['user_role']),
+            'avatar' => $_SESSION['user_avatar'] ?? null,
+            'phone' => $_SESSION['user_phone'] ?? null,
+        ];
+    }
+
+    $user = resolve_request_user_from_bearer();
+    if ($user) {
+        return [
+            'id' => $user['id'],
+            'name' => $user['name'],
+            'email' => $user['email'],
+            'role' => $user['role'],
+            'avatar' => $user['avatar'],
+            'phone' => $user['phone'] ?? null,
+        ];
+    }
+
     return [
-        'id' => $_SESSION['user_id'],
-        'name' => $_SESSION['user_name'],
-        'email' => $_SESSION['user_email'],
-        'role' => $_SESSION['user_role'],
-        'avatar' => $_SESSION['user_avatar'] ?? null,
+        'id' => null,
+        'name' => null,
+        'email' => null,
+        'role' => null,
+        'avatar' => null,
     ];
 }
 
@@ -97,6 +214,7 @@ function login_user($user)
     $_SESSION['user_email'] = $user['email'];
     $_SESSION['user_role'] = $user['role'];
     $_SESSION['user_avatar'] = $user['avatar'] ?? null;
+    $_SESSION['user_phone'] = $user['phone'] ?? null;
     $_SESSION['logged_in_at'] = time();
 }
 
@@ -125,6 +243,11 @@ function sanitize($value)
 {
     // Use htmlspecialchars only (strip_tags is redundant since htmlspecialchars encodes HTML chars)
     return htmlspecialchars(trim($value), ENT_QUOTES, 'UTF-8');
+}
+
+function normalize_text_input($value)
+{
+    return trim(str_replace("\0", '', (string) $value));
 }
 
 function normalize_role_name($role)
@@ -228,6 +351,64 @@ function current_academic_year_start(DateTime $date = null)
     $month = (int) $date->format('n');
     $startYear = $month >= 4 ? $year : ($year - 1);
     return sprintf('%04d-04-01', $startYear);
+}
+
+function generate_student_id(PDO $pdo = null)
+{
+    $year = date('Y');
+    $counterName = 'student_uid';
+    $ownsTransaction = !db_in_transaction();
+
+    try {
+        ensure_counters_table();
+
+        if ($ownsTransaction) {
+            db_beginTransaction();
+        }
+
+        $counter = db_fetch(
+            "SELECT sequence FROM counters WHERE name = ? AND year = ? FOR UPDATE",
+            [$counterName, $year]
+        );
+
+        $existingSequence = 0;
+        if (db_column_exists('students', 'student_uid')) {
+            $existingStudent = db_fetch(
+                "SELECT student_uid FROM students WHERE student_uid LIKE ? ORDER BY student_uid DESC, id DESC LIMIT 1",
+                ["STU-$year-%"]
+            );
+            if (!empty($existingStudent['student_uid']) && preg_match('/STU-\d{4}-(\d+)$/', $existingStudent['student_uid'], $matches)) {
+                $existingSequence = (int) $matches[1];
+            }
+        }
+
+        if ($counter) {
+            $nextSequence = max((int) $counter['sequence'], $existingSequence) + 1;
+            db_query(
+                "UPDATE counters SET sequence = ? WHERE name = ? AND year = ?",
+                [$nextSequence, $counterName, $year]
+            );
+        } else {
+            $nextSequence = $existingSequence + 1;
+            db_query(
+                "INSERT INTO counters (name, year, sequence) VALUES (?, ?, ?)",
+                [$counterName, $year, $nextSequence]
+            );
+        }
+
+        if ($ownsTransaction) {
+            db_commit();
+        }
+
+        return sprintf('STU-%s-%04d', $year, $nextSequence);
+    } catch (Throwable $e) {
+        if ($ownsTransaction) {
+            db_rollback();
+        }
+
+        error_log('Student ID generation failed: ' . $e->getMessage());
+        throw $e;
+    }
 }
 
 function db_table_exists($table)
@@ -369,16 +550,72 @@ function audit_log($action, $module, $recordIdOrDescription = null, $oldValue = 
 /**
  * Check account lockout status
  */
-function is_account_locked($email)
+function find_user_by_login_identifier($identifier, $columns = ['*'], $onlyActive = false)
+{
+    if (!db_table_exists('users')) {
+        return null;
+    }
+
+    $identifier = trim((string) $identifier);
+    if ($identifier === '') {
+        return null;
+    }
+
+    $hasUsername = db_column_exists('users', 'username');
+    $select = '*';
+
+    if (is_array($columns) && $columns !== ['*']) {
+        $selected = [];
+        foreach ($columns as $column) {
+            if (
+                $column === '*'
+                || db_column_exists('users', $column)
+                || in_array($column, ['id', 'email'], true)
+                || ($column === 'username' && $hasUsername)
+            ) {
+                $selected[] = $column;
+            }
+        }
+
+        if (empty($selected)) {
+            $selected = ['id'];
+        }
+
+        $select = implode(', ', array_unique($selected));
+    }
+
+    $sql = "SELECT $select FROM users WHERE ";
+    $params = [];
+
+    if ($hasUsername) {
+        $sql .= "(email = ? OR username = ?)";
+        $params[] = $identifier;
+        $params[] = $identifier;
+    } else {
+        $sql .= "email = ?";
+        $params[] = $identifier;
+    }
+
+    if ($onlyActive && db_column_exists('users', 'is_active')) {
+        $sql .= " AND is_active = 1";
+    }
+
+    $sql .= " LIMIT 1";
+
+    return db_fetch($sql, $params);
+}
+
+function is_account_locked($identifier)
 {
     if (!defined('LOCKOUT_ENABLED') || !LOCKOUT_ENABLED)
         return false;
 
     if (!db_table_exists('users'))
         return false;
+    if (!db_column_exists('users', 'locked_until'))
+        return false;
 
-    $sql = "SELECT locked_until FROM users WHERE email = ?";
-    $user = db_fetch($sql, [$email]);
+    $user = find_user_by_login_identifier($identifier, ['id', 'locked_until']);
 
     if (!$user || !$user['locked_until']) {
         return false;
@@ -390,49 +627,72 @@ function is_account_locked($email)
     }
 
     // Lock expired - reset
-    reset_lockout($email);
+    reset_lockout($identifier);
     return false;
 }
 
 /**
  * Record failed login attempt
  */
-function record_failed_login($email)
+function record_failed_login($identifier)
 {
     if (!defined('LOCKOUT_ENABLED') || !LOCKOUT_ENABLED)
         return;
     if (!db_column_exists('users', 'login_attempts'))
         return;
+    if (!db_column_exists('users', 'locked_until'))
+        return;
 
-    $sql = "UPDATE users SET login_attempts = login_attempts + 1 WHERE email = ?";
-    db_query($sql, [$email]);
+    $user = find_user_by_login_identifier($identifier, ['id', 'login_attempts']);
+    if (!$user) {
+        return;
+    }
+
+    $sql = "UPDATE users SET login_attempts = login_attempts + 1 WHERE id = ?";
+    db_query($sql, [$user['id']]);
 
     // Check if max attempts reached
-    $user = db_fetch("SELECT login_attempts FROM users WHERE email = ?", [$email]);
+    $user = db_fetch("SELECT login_attempts FROM users WHERE id = ?", [$user['id']]);
     if ($user && ($user['login_attempts'] >= LOCKOUT_MAX_ATTEMPTS)) {
         $lockUntil = date('Y-m-d H:i:s', time() + LOCKOUT_DURATION);
-        db_query("UPDATE users SET locked_until = ? WHERE email = ?", [$lockUntil, $email]);
+        db_query("UPDATE users SET locked_until = ? WHERE id = ?", [$lockUntil, $user['id']]);
     }
 }
 
 /**
  * Reset login attempts
  */
-function reset_login_attempts($email)
+function reset_login_attempts($identifier)
 {
     if (!db_column_exists('users', 'login_attempts'))
         return;
-    db_query("UPDATE users SET login_attempts = 0, locked_until = NULL WHERE email = ?", [$email]);
+    if (!db_column_exists('users', 'locked_until'))
+        return;
+
+    $user = find_user_by_login_identifier($identifier, ['id']);
+    if (!$user) {
+        return;
+    }
+
+    db_query("UPDATE users SET login_attempts = 0, locked_until = NULL WHERE id = ?", [$user['id']]);
 }
 
 /**
  * Reset lockout
  */
-function reset_lockout($email)
+function reset_lockout($identifier)
 {
     if (!db_column_exists('users', 'login_attempts'))
         return;
-    db_query("UPDATE users SET login_attempts = 0, locked_until = NULL WHERE email = ?", [$email]);
+    if (!db_column_exists('users', 'locked_until'))
+        return;
+
+    $user = find_user_by_login_identifier($identifier, ['id']);
+    if (!$user) {
+        return;
+    }
+
+    db_query("UPDATE users SET login_attempts = 0, locked_until = NULL WHERE id = ?", [$user['id']]);
 }
 
 /**
@@ -498,6 +758,7 @@ function login_user_enhanced($user)
     $_SESSION['user_role'] = $user['role'];
     $_SESSION['employee_id'] = $user['employee_id'] ?? null;
     $_SESSION['user_avatar'] = $user['avatar'] ?? null;
+    $_SESSION['user_phone'] = $user['phone'] ?? null;
     $_SESSION['logged_in_at'] = time();
     $_SESSION['ip_address'] = $_SERVER['REMOTE_ADDR'] ?? '';
 

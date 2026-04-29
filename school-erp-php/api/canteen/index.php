@@ -107,6 +107,64 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
     $data = get_post_json();
     $itemId = (int) ($data['item_id'] ?? 0);
     $qty = (int) ($data['quantity'] ?? 0);
+
+    // ── Multi-item cart checkout ──────────────────────────────────────────
+    if (($data['action'] ?? '') === 'cart_checkout') {
+        $cartItems = $data['cart'] ?? [];
+        if (empty($cartItems) || !is_array($cartItems))
+            json_response(['error' => 'Cart is empty'], 400);
+
+        $table        = canteen_sales_table();
+        $amountColumn = canteen_sales_amount_column($table);
+        $buyerColumn  = canteen_sales_buyer_column($table);
+        $sellerColumn = canteen_sales_seller_column($table);
+        $cartTotal    = 0;
+
+        try {
+            db_beginTransaction();
+
+            // Validate stock for all items first
+            foreach ($cartItems as $cartLine) {
+                $ciId  = (int) ($cartLine['item_id'] ?? 0);
+                $ciQty = (int) ($cartLine['quantity'] ?? 1);
+                $ci    = db_fetch("SELECT * FROM canteen_items WHERE id = ? FOR UPDATE", [$ciId]);
+                if (!$ci || !$ci['is_available'])
+                    throw new Exception("Item #{$ciId} is not available.");
+                if ((int)$ci['available_qty'] < $ciQty)
+                    throw new Exception("Insufficient stock for \"{$ci['name']}\".");
+                $cartTotal += (float)$ci['price'] * $ciQty;
+            }
+
+            // Create parent sale record
+            $salePayload = [$amountColumn => $cartTotal];
+            if (db_column_exists($table, 'payment_mode'))
+                $salePayload['payment_mode'] = sanitize($data['payment_mode'] ?? 'cash');
+            if ($buyerColumn)  $salePayload[$buyerColumn]  = get_current_user_id();
+            if ($sellerColumn) $salePayload[$sellerColumn] = get_current_user_id();
+            $saleId = insert_canteen_sale_row($table, $salePayload);
+
+            // Insert each line item and decrement stock
+            foreach ($cartItems as $cartLine) {
+                $ciId  = (int) ($cartLine['item_id'] ?? 0);
+                $ciQty = (int) ($cartLine['quantity'] ?? 1);
+                $ci    = db_fetch("SELECT price FROM canteen_items WHERE id = ?", [$ciId]);
+                db_query(
+                    "INSERT INTO canteen_sale_items (sale_id, item_id, quantity, price) VALUES (?,?,?,?)",
+                    [$saleId, $ciId, $ciQty, (float)$ci['price']]
+                );
+                db_query("UPDATE canteen_items SET available_qty = available_qty - ? WHERE id = ?", [$ciQty, $ciId]);
+            }
+
+            db_commit();
+        } catch (Throwable $e) {
+            db_rollback();
+            json_response(['error' => $e->getMessage()], 400);
+        }
+
+        json_response(['success' => true, 'order_id' => $saleId, 'total' => $cartTotal]);
+    }
+    // ─────────────────────────────────────────────────────────────────────
+
     $item = db_fetch("SELECT * FROM canteen_items WHERE id = ?", [$itemId]);
     if (!$item || !$item['is_available']) {
         json_response(['error' => 'Item not available'], 400);

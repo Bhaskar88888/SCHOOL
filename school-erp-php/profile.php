@@ -16,6 +16,8 @@ $pageTitle = 'My Profile';
         .profile-header { display: flex; align-items: center; gap: 24px; margin-bottom: 30px; background: var(--bg-secondary); padding: 30px; border-radius: var(--radius); border: 1px solid var(--border); }
         .profile-avatar { width: 100px; height: 100px; font-size: 40px; }
         .profile-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .profile-warning { margin-bottom: 20px; padding: 16px 18px; border-radius: var(--radius); border: 1px solid rgba(245, 158, 11, 0.35); background: rgba(245, 158, 11, 0.12); color: var(--text-primary); display: none; }
+        @media (max-width: 768px) { .profile-info-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
@@ -25,6 +27,9 @@ $pageTitle = 'My Profile';
         <?php include __DIR__ . '/includes/header.php'; ?>
 
         <div class="profile-container">
+            <div class="profile-warning" id="defaultPasswordBanner">
+                This account is still using a default or administrator-issued password. Change it now to finish setup.
+            </div>
             <div class="profile-header">
                 <div class="user-avatar profile-avatar" id="lblAvatar">?</div>
                 <div>
@@ -54,12 +59,12 @@ $pageTitle = 'My Profile';
                     </form>
                 </div>
 
-                <div class="card">
+                <div class="card" id="change-password">
                     <h3 style="margin-top:0">Change Password</h3>
                     <form id="passForm" onsubmit="submitPassword(event)">
                         <div class="form-group">
                             <label class="form-label">Current Password</label>
-                            <input type="password" class="form-control" name="old_password" required>
+                            <input type="password" class="form-control" name="current_password" required>
                         </div>
                         <div class="form-group">
                             <label class="form-label">New Password</label>
@@ -81,6 +86,7 @@ $pageTitle = 'My Profile';
 <script>
 async function loadProfile() {
     const user = await apiGet('/api/profile/index.php');
+    const warning = document.getElementById('defaultPasswordBanner');
     
     document.getElementById('lblName').textContent = user.name;
     document.getElementById('lblRole').textContent = user.role.toUpperCase();
@@ -90,6 +96,10 @@ async function loadProfile() {
     document.getElementById('inpName').value = user.name;
     document.getElementById('inpEmail').value = user.email;
     document.getElementById('inpPhone').value = user.phone || '';
+
+    if (warning) {
+        warning.style.display = user.is_default_password ? 'block' : 'none';
+    }
 }
 
 async function submitProfile(e) {
@@ -108,24 +118,12 @@ async function submitProfile(e) {
 async function submitPassword(e) {
     e.preventDefault();
     const data = Object.fromEntries(new FormData(e.target));
-    if (data.new_password !== data.confirm_password) {
-        showToast('Passwords do not match', 'danger');
-        return;
-    }
-    
-    // We reuse the same API endpoint, just passing password fields
-    const profileData = {
-        name: document.getElementById('inpName').value,
-        email: document.getElementById('inpEmail').value,
-        phone: document.getElementById('inpPhone').value,
-        old_password: data.old_password,
-        new_password: data.new_password
-    };
-    
-    const res = await apiPost('/api/profile/index.php', profileData);
+
+    const res = await apiPost('/api/profile/change-password.php', data);
     if (res.success) {
         showToast('Password changed successfully!');
         e.target.reset();
+        loadProfile();
     } else {
         showToast(res.error || 'Failed to change password', 'danger');
     }

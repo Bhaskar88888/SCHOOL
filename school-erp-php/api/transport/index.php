@@ -45,6 +45,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
             "UPDATE bus_routes SET route_name=?, vehicle_id=?, stops=?, monthly_fee=? WHERE id=?",
             [sanitize($data['route_name'] ?? ''), (int) ($data['vehicle_id'] ?? 0), sanitize($data['stops'] ?? ''), (float) ($data['monthly_fee'] ?? 0), $id]
         );
+        // Upsert structured stops
+        if (!empty($data['stops_structured']) && is_array($data['stops_structured'])) {
+            db_query("DELETE FROM bus_stops WHERE route_id = ?", [$id]);
+            foreach ($data['stops_structured'] as $seq => $stop) {
+                db_query(
+                    "INSERT INTO bus_stops (route_id, stop_name, sequence, arrival_time, departure_time) VALUES (?,?,?,?,?)",
+                    [$id, sanitize($stop['name'] ?? ''), (int)$seq + 1, $stop['arrival'] ?? null, $stop['departure'] ?? null]
+                );
+            }
+        }
     }
     json_response(['success' => true]);
 }
@@ -82,6 +92,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             "INSERT INTO bus_routes (route_name, vehicle_id, stops, monthly_fee) VALUES (?,?,?,?)",
             [sanitize($data['route_name'] ?? ''), (int) ($data['vehicle_id'] ?? 0), sanitize($data['stops'] ?? ''), (float) ($data['monthly_fee'] ?? 0)]
         );
+        // Insert structured stops if provided
+        if (!empty($data['stops_structured']) && is_array($data['stops_structured'])) {
+            db_query("DELETE FROM bus_stops WHERE route_id = ?", [$id]);
+            foreach ($data['stops_structured'] as $seq => $stop) {
+                db_query(
+                    "INSERT INTO bus_stops (route_id, stop_name, sequence, arrival_time, departure_time) VALUES (?,?,?,?,?)",
+                    [$id, sanitize($stop['name'] ?? ''), (int)$seq + 1, $stop['arrival'] ?? null, $stop['departure'] ?? null]
+                );
+            }
+        }
         json_response(['success' => true, 'id' => $id]);
     }
 }

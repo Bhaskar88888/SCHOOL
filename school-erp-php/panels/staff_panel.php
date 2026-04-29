@@ -151,7 +151,6 @@ $empRow = db_fetch("SELECT employee_id, phone, department_id FROM users WHERE id
             <div style="margin-top:12px"><a href="<?= BASE_URL ?>/leave.php" style="font-size:12px;color:#7c3aed">Apply for Leave →</a></div>
         <?php else: foreach ($myLeaveRequests as $lr):
             $ls = $lr['status'] ?? 'pending';
-            $lc = ['approved'=>'lv-approved','rejected'=>'lv-rejected']['pending'=>'lv-pending'][$ls] ?? 'lv-pending';
         ?>
         <div class="sf-row">
             <div style="flex:1">

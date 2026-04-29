@@ -25,7 +25,7 @@ CSRFProtection::verifyToken();
 
 $data = get_post_json();
 
-$userId    = (int)($data['user_id']    ?? 0);
+$userId    = (int)($data['user_id']    ?? ($data['id'] ?? 0));
 $studentId = (int)($data['student_id'] ?? 0);
 
 // Resolve user_id from student if not provided directly

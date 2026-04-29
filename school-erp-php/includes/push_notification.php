@@ -9,6 +9,7 @@
  */
 
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/auth.php';
 
 class PushNotification
 {
@@ -47,6 +48,7 @@ class PushNotification
 
         if (empty($tokens)) {
             error_log("[FCM] No device token found for user $userId");
+            self::logNotification($userId, $title, $body, 'failed');
             return false;
         }
 
@@ -72,6 +74,40 @@ class PushNotification
         foreach ($userIds as $uid) {
             self::send((int)$uid, $title, $body, $data);
         }
+    }
+
+    public static function sendToRole(string $role, string $title, string $body, array $data = []): array
+    {
+        $normalizedRole = normalize_role_name($role);
+        $roles = [storage_role_name($normalizedRole)];
+
+        if ($normalizedRole === 'accounts') {
+            $roles[] = 'accountant';
+        }
+
+        $roles = array_values(array_unique($roles));
+
+        $placeholders = implode(', ', array_fill(0, count($roles), '?'));
+        $users = db_fetchAll(
+            "SELECT id FROM users WHERE role IN ($placeholders) AND is_active = 1",
+            $roles
+        );
+
+        $delivered = 0;
+        foreach ($users as $user) {
+            if (self::send((int) $user['id'], $title, $body, $data)) {
+                $delivered++;
+            }
+        }
+
+        $targeted = count($users);
+
+        return [
+            'success' => $delivered > 0,
+            'targeted_users' => $targeted,
+            'delivered_users' => $delivered,
+            'failed_users' => max(0, $targeted - $delivered),
+        ];
     }
 
     /**

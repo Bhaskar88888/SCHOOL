@@ -7,7 +7,7 @@ $_authUser = get_authenticated_user();
 require_once __DIR__ . '/csrf.php';
 $_csrfToken = CSRFProtection::generateToken();
 ?>
-<header class="topbar" id="topbar" data-csrf="<?= htmlspecialchars($_csrfToken) ?>">
+<header class="topbar" id="topbar" data-csrf="<?= htmlspecialchars($_csrfToken) ?>" data-base-url="<?= htmlspecialchars(rtrim(BASE_URL, '/')) ?>">
     <div class="topbar-left">
         <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()" aria-label="Toggle sidebar">
             <svg viewBox="0 0 24 24">

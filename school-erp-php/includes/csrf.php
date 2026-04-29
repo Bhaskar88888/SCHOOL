@@ -39,6 +39,10 @@ class CSRFProtection
             session_start();
         }
 
+        if (function_exists('request_uses_bearer_auth') && request_uses_bearer_auth()) {
+            return true;
+        }
+
         $sessionToken = $_SESSION[self::$tokenKey] ?? null;
         $requestToken = $token ?? ($_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
 

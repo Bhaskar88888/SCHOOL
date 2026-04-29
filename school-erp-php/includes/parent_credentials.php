@@ -38,12 +38,21 @@ class ParentCredentials
         string $email,
         string $phone,
         string $admissionNo = '',
-        string $parentName  = 'Parent'
+        string $parentName  = 'Parent',
+        array &$result = null
     ): ?int {
+        $result = [
+            'created' => false,
+            'existing' => false,
+            'username' => null,
+            'reason' => null,
+        ];
+
         $email = trim(strtolower($email));
         $phone = preg_replace('/\D/', '', $phone);   // digits only
 
         if (empty($email) && empty($phone)) {
+            $result['reason'] = 'missing_contact';
             return null; // nothing to work with
         }
 
@@ -52,6 +61,8 @@ class ParentCredentials
         // ---------------------------------------------------------
         $existing = self::findExisting($email, $phone);
         if ($existing) {
+            $result['existing'] = true;
+            $result['username'] = $existing['username'] ?? null;
             return (int) $existing['id'];
         }
 
@@ -97,12 +108,15 @@ class ParentCredentials
             $userId = db_insert($sql, $params);
         } catch (Throwable $e) {
             error_log("[ParentCredentials] DB insert failed: " . $e->getMessage());
+            $result['reason'] = 'insert_failed';
             return null;
         }
 
         // ---------------------------------------------------------
         // 4. Deliver credentials (non-blocking — errors are logged)
         // ---------------------------------------------------------
+        $result['created'] = true;
+        $result['username'] = $username;
         self::deliverCredentials($email, $phone, $username, $password, $parentName, $admissionNo);
 
         return (int) $userId;
@@ -148,7 +162,7 @@ class ParentCredentials
         // Try email first
         if (!empty($email)) {
             $row = db_fetch(
-                "SELECT id, email FROM users WHERE email = ? AND role = ?",
+                "SELECT id, email, username FROM users WHERE email = ? AND role = ?",
                 [$email, self::PARENT_ROLE]
             );
             if ($row) return $row;
@@ -157,7 +171,7 @@ class ParentCredentials
         // Try phone if column exists
         if (!empty($phone) && db_column_exists('users', 'phone')) {
             $row = db_fetch(
-                "SELECT id, email FROM users WHERE phone = ? AND role = ?",
+                "SELECT id, email, username FROM users WHERE phone = ? AND role = ?",
                 [$phone, self::PARENT_ROLE]
             );
             if ($row) return $row;

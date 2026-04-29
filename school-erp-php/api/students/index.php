@@ -24,7 +24,7 @@ function nullable_text($value, $default = null)
         return $default;
     }
 
-    $value = sanitize((string) $value);
+    $value = normalize_text_input($value);
     return $value === '' ? $default : $value;
 }
 
@@ -283,7 +283,6 @@ if ($method === 'GET' && !isset($_GET['id'])) {
         "SELECT s.*, c.name AS class_name FROM students s LEFT JOIN classes c ON s.class_id = c.id $whereSql ORDER BY s.name ASC LIMIT $limit OFFSET $offset",
         $params
     );
-
     json_response([
         'data' => $students,
         'total' => (int) $total,
@@ -332,55 +331,93 @@ if ($method === 'POST') {
         }
     }
 
-    $id = insert_row('students', $payload);
-    audit_log('CREATE', 'students', $id, null, $payload);
-
-    // ── Auto-generate Student UID (STU-YYYY-NNNN) ─────────────────────
     $studentUid = null;
-    if (db_column_exists('students', 'student_uid')) {
-        $year     = date('Y');
-        $lastRow  = db_fetch(
-            "SELECT student_uid FROM students WHERE student_uid LIKE ? ORDER BY id DESC LIMIT 1",
-            ["STU-{$year}-%"]
-        );
-        $seq = 1;
-        if ($lastRow && preg_match('/STU-\d{4}-(\d+)$/', $lastRow['student_uid'], $m)) {
-            $seq = (int)$m[1] + 1;
+    $id = null;
+    $parentStatus = 'not_started';
+    $messageParts = ['Student saved successfully.'];
+
+    db_beginTransaction();
+
+    try {
+        if (db_column_exists('students', 'student_uid') && empty($payload['student_uid'])) {
+            $studentUid = generate_student_id();
+            $payload['student_uid'] = $studentUid;
+        } elseif (!empty($payload['student_uid'])) {
+            $studentUid = (string) $payload['student_uid'];
         }
-        $studentUid = sprintf('STU-%s-%04d', $year, $seq);
-        db_query("UPDATE students SET student_uid = ? WHERE id = ?", [$studentUid, $id]);
-    }
-    // ── End Student UID generation ─────────────────────────────────────
+
+        $id = insert_row('students', $payload);
 
     // ── Auto-create parent portal account ──────────────────────────────
-    $parentUserId   = null;
-    $parentUsername = null;
-    if (empty($payload['parent_user_id'] ?? null)) {
-        require_once __DIR__ . '/../../includes/parent_credentials.php';
-        $parentEmail = $payload['parent_email'] ?? $data['parent_email'] ?? '';
-        $parentPhone = $payload['parent_phone'] ?? $data['parent_phone'] ?? '';
-        $parentName  = $payload['parent_name']  ?? $data['parent_name']  ?? 'Parent';
-        $admNo       = $payload['admission_no'] ?? $data['admission_no'] ?? (string)$id;
-
-        $parentUserId = ParentCredentials::ensureAccount($parentEmail, $parentPhone, $admNo, $parentName);
-
-        if ($parentUserId) {
-            if (db_column_exists('students', 'parent_user_id')) {
-                db_query("UPDATE students SET parent_user_id = ? WHERE id = ?", [$parentUserId, $id]);
-            }
+        $parentUserId = null;
+        $parentUsername = null;
+        if (!empty($payload['parent_user_id'] ?? null)) {
+            $parentUserId = (int) $payload['parent_user_id'];
             $pRow = db_fetch("SELECT username FROM users WHERE id = ?", [$parentUserId]);
             $parentUsername = $pRow['username'] ?? null;
+            $parentStatus = 'linked_existing';
+        } else {
+            require_once __DIR__ . '/../../includes/parent_credentials.php';
+            $parentEmail = normalize_text_input($payload['parent_email'] ?? $data['parent_email'] ?? '');
+            $parentPhone = normalize_text_input($payload['parent_phone'] ?? $data['parent_phone'] ?? '');
+            $parentName = normalize_text_input($payload['parent_name'] ?? $data['parent_name'] ?? 'Parent');
+            $admNo = $payload['admission_no'] ?? $data['admission_no'] ?? (string) $id;
+            $hasParentContact = ($parentEmail !== '' || $parentPhone !== '');
+            $parentResult = [];
+
+            $parentUserId = ParentCredentials::ensureAccount($parentEmail, $parentPhone, $admNo, $parentName, $parentResult);
+
+            if ($parentUserId) {
+                if (db_column_exists('students', 'parent_user_id')) {
+                    db_query("UPDATE students SET parent_user_id = ? WHERE id = ?", [$parentUserId, $id]);
+                }
+                $parentUsername = $parentResult['username'] ?? null;
+                if ($parentUsername === null) {
+                    $pRow = db_fetch("SELECT username FROM users WHERE id = ?", [$parentUserId]);
+                    $parentUsername = $pRow['username'] ?? null;
+                }
+
+                $parentStatus = !empty($parentResult['created']) ? 'created' : 'linked_existing';
+            } elseif ($hasParentContact) {
+                throw new RuntimeException('Failed to create or link parent account.');
+            } else {
+                $parentStatus = 'skipped_missing_contact';
+            }
         }
-    }
     // ── End parent account auto-creation ──────────────────────────────
 
+        audit_log('CREATE', 'students', $id, null, $payload);
+        db_commit();
+    } catch (Throwable $e) {
+        db_rollback();
+        error_log('Student creation failed: ' . $e->getMessage());
+        json_response([
+            'error' => 'Student could not be saved. Please verify the parent account details and try again.',
+        ], 500);
+    }
+
+    if ($studentUid !== null) {
+        $messageParts[] = 'Student UID generated.';
+    }
+
+    if ($parentStatus === 'created') {
+        $messageParts[] = 'Parent credentials sent.';
+    } elseif ($parentStatus === 'linked_existing') {
+        $messageParts[] = 'Existing parent account linked.';
+    } elseif ($parentStatus === 'skipped_missing_contact') {
+        $messageParts[] = 'Parent account not created because no parent email or phone was provided.';
+    }
+
     json_response([
-        'success'         => true,
-        'id'              => $id,
-        'student_uid'     => $studentUid,
-        'parent_user_id'  => $parentUserId,
+        'success' => true,
+        'id' => $id,
+        'student_id' => $studentUid,
+        'student_uid' => $studentUid,
+        'admission_no' => $payload['admission_no'] ?? null,
+        'parent_user_id' => $parentUserId,
         'parent_username' => $parentUsername,
-        'message'         => 'Student saved successfully. Student UID generated. Parent credentials sent.',
+        'parent_status' => $parentStatus,
+        'message' => implode(' ', $messageParts),
     ]);
 }
 

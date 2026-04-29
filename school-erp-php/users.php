@@ -397,6 +397,7 @@ function renderUsers(users) {
                 <div class="table-actions">
                     <button class="btn btn-secondary btn-sm" type="button" onclick="openIdCard(${user.id})">ID Card</button>
                     <button class="btn btn-secondary btn-sm" type="button" onclick="openUserModal(${user.id})">Edit</button>
+                    ${renderCredentialAction(user)}
                     <button class="btn btn-secondary btn-sm" type="button" onclick="resetPassword(${user.id}, '${escapeJs(user.name || 'User')}')">Reset Password</button>
                     <button class="btn btn-danger btn-sm" type="button" onclick="deleteUser(${user.id}, '${escapeJs(user.name || 'this user')}')">Delete</button>
                 </div>
@@ -411,6 +412,19 @@ function renderSummary(response) {
     document.getElementById('totalUsers').textContent = pagination.total || users.length || 0;
     document.getElementById('activeUsers').textContent = users.filter((user) => Number(user.is_active) === 1).length;
     document.getElementById('visibleUsers').textContent = users.length;
+}
+
+function renderCredentialAction(user) {
+    const role = String(user.role || '').toLowerCase();
+    if (role === 'parent') {
+        return `<button class="btn btn-secondary btn-sm" type="button" onclick="resendCredentials(${user.id}, '${escapeJs(role)}', '${escapeJs(user.name || 'User')}')">Resend Credentials</button>`;
+    }
+
+    if (['teacher', 'staff', 'hr', 'accounts', 'accountant', 'librarian', 'canteen', 'conductor', 'driver'].includes(role)) {
+        return `<button class="btn btn-secondary btn-sm" type="button" onclick="resendCredentials(${user.id}, '${escapeJs(role)}', '${escapeJs(user.name || 'User')}')">Resend Credentials</button>`;
+    }
+
+    return '';
 }
 
 function renderPagination(pagination) {
@@ -508,7 +522,7 @@ async function deleteUser(userId, userName) {
     }
 
     try {
-        const response = await fetch('/api/users/index.php', {
+        const response = await fetch(resolveAppUrl('/api/users/index.php'), {
             method: 'DELETE',
             headers: {
                 'Content-Type': 'application/json',
@@ -523,6 +537,32 @@ async function deleteUser(userId, userName) {
         loadUsers(currentPage);
     } catch (error) {
         showToast(error.message || 'Failed to delete user', 'error');
+    }
+}
+
+async function resendCredentials(userId, userRole, userName) {
+    if (!confirm(`Regenerate and resend credentials for ${userName}?`)) {
+        return;
+    }
+
+    const role = String(userRole || '').toLowerCase();
+    const endpoint = role === 'parent'
+        ? '/api/parent-credentials/resend.php'
+        : '/api/users/resend-credentials.php';
+    const payload = role === 'parent'
+        ? { user_id: userId }
+        : { user_id: userId };
+
+    try {
+        const response = await apiPost(endpoint, payload);
+        if (response && response.success) {
+            const extra = response.temp_password ? ` Temporary password: ${response.temp_password}` : '';
+            showToast((response.message || 'Credentials resent successfully.') + extra);
+        } else {
+            showToast(response.error || 'Failed to resend credentials', 'error');
+        }
+    } catch (error) {
+        showToast('A network error occurred while resending credentials', 'error');
     }
 }
 

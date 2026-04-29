@@ -508,9 +508,12 @@ async function submitStaff(event) {
 
     if (editingId) {
         payload.id = editingId;
-        response = await fetch('/api/hr/index.php', {
+        response = await fetch(resolveAppUrl('/api/hr/index.php'), {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': getCsrfToken()
+            },
             body: JSON.stringify(payload)
         }).then((res) => res.json());
     } else {
@@ -530,7 +533,10 @@ async function submitStaff(event) {
 
 async function archiveStaff(id, name) {
     if (!confirm(`Archive "${name}"?`)) return;
-    const response = await fetch(`/api/hr/index.php?id=${id}`, { method: 'DELETE' }).then((res) => res.json());
+    const response = await fetch(resolveAppUrl(`/api/hr/index.php?id=${id}`), {
+        method: 'DELETE',
+        headers: { 'X-CSRF-TOKEN': getCsrfToken() }
+    }).then((res) => res.json());
     if (response.success) {
         showToast('Staff member archived.');
         loadStaff();

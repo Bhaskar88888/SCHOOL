@@ -19,7 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 CSRFProtection::verifyToken();
 
 $data = get_post_json();
-$userId = (int)($data['id'] ?? 0);
+$userId = (int)($data['id'] ?? ($data['user_id'] ?? 0));
 $newPassword = trim($data['password'] ?? '');
 
 if ($userId <= 0 || empty($newPassword)) {

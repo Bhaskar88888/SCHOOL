@@ -24,7 +24,7 @@ require_once __DIR__ . '/../../includes/csrf.php';
 CSRFProtection::verifyToken();
 
 $data   = get_post_json();
-$userId = (int)($data['user_id'] ?? 0);
+$userId = (int)($data['user_id'] ?? ($data['id'] ?? 0));
 
 if ($userId <= 0) {
     json_response(['error' => 'user_id required'], 400);

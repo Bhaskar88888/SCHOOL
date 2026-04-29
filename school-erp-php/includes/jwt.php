@@ -12,7 +12,7 @@ class JWT
     // Token lifetimes
     const ACCESS_TTL  = 30 * 24 * 3600;   // 30 days  (mobile app)
     const REFRESH_TTL = 90 * 24 * 3600;   // 90 days
-    const SSO_TTL     = 5  * 60;           // 5  minutes (WebView SSO)
+    const SSO_TTL     = 60;                // 60 seconds (WebView SSO)
 
     // ------------------------------------------------------------------
     // Encode

@@ -30,9 +30,37 @@ function toggleNotifications() {
     }
 }
 
+function getAppBaseUrl() {
+    const explicitBase = window.APP_BASE_URL || document.getElementById('topbar')?.dataset?.baseUrl || '';
+    if (!explicitBase || explicitBase === '/') {
+        return '';
+    }
+    return explicitBase.replace(/\/+$/, '');
+}
+
+function resolveAppUrl(url) {
+    if (typeof url !== 'string' || url === '') {
+        return url;
+    }
+
+    if (/^(?:https?:)?\/\//i.test(url)) {
+        return url;
+    }
+
+    const baseUrl = getAppBaseUrl();
+    if (url.startsWith('/')) {
+        if (baseUrl && (url === baseUrl || url.startsWith(`${baseUrl}/`))) {
+            return url;
+        }
+        return baseUrl ? `${baseUrl}${url}` : url;
+    }
+
+    return baseUrl ? `${baseUrl}/${url.replace(/^\/+/, '')}` : url;
+}
+
 function loadNotifications() {
     const list = document.getElementById('notifList');
-    fetch('/api/notifications/list.php')
+    fetch(resolveAppUrl('/api/notifications/list.php'))
         .then((response) => response.json())
         .then((data) => {
             if (!list) {
@@ -63,12 +91,12 @@ function getCsrfToken() {
 
 // ---- AJAX Helpers ----
 async function apiGet(url) {
-    const response = await fetch(url);
+    const response = await fetch(resolveAppUrl(url));
     return response.json();
 }
 
 async function apiPost(url, data) {
-    const response = await fetch(url, {
+    const response = await fetch(resolveAppUrl(url), {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -80,7 +108,7 @@ async function apiPost(url, data) {
 }
 
 async function apiPut(url, data) {
-    const response = await fetch(url, {
+    const response = await fetch(resolveAppUrl(url), {
         method: 'PUT',
         headers: {
             'Content-Type': 'application/json',
@@ -91,11 +119,19 @@ async function apiPut(url, data) {
     return response.json();
 }
 
-async function apiDelete(url) {
-    const response = await fetch(url, {
+async function apiDelete(url, data = null) {
+    const headers = { 'X-CSRF-TOKEN': getCsrfToken() };
+    const options = {
         method: 'DELETE',
-        headers: { 'X-CSRF-TOKEN': getCsrfToken() }
-    });
+        headers
+    };
+
+    if (data != null) {
+        headers['Content-Type'] = 'application/json';
+        options.body = JSON.stringify(data);
+    }
+
+    const response = await fetch(resolveAppUrl(url), options);
     return response.json();
 }
 
@@ -234,6 +270,7 @@ function downloadCsv(filename, rows) {
 window.roleLabel = roleLabel;
 window.role_label = roleLabel;
 window.downloadCsv = downloadCsv;
+window.resolveAppUrl = resolveAppUrl;
 
 // ---- Chatbot ----
 let chatbotOpen = false;
@@ -282,7 +319,7 @@ function initChatbot() {
     }
 
     // Include lang in URL
-    fetch(`/api/chatbot/bootstrap.php?lang=${chatbotLanguage}`)
+    fetch(resolveAppUrl(`/api/chatbot/bootstrap.php?lang=${chatbotLanguage}`))
         .then(response => response.json())
         .then(data => {
             if (data.welcome) {
@@ -390,7 +427,7 @@ function sendChatMessage() {
     body.appendChild(typing);
     body.scrollTop = body.scrollHeight;
 
-    fetch('/api/chatbot/chat.php', {
+    fetch(resolveAppUrl('/api/chatbot/chat.php'), {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

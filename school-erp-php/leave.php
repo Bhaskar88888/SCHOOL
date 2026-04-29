@@ -221,9 +221,12 @@ async function submitAction(event) {
     event.preventDefault();
     const payload = Object.fromEntries(new FormData(event.target));
     payload.status = pendingStatus;
-    const response = await fetch('/api/leave/index.php', {
+    const response = await fetch(resolveAppUrl('/api/leave/index.php'), {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': getCsrfToken()
+        },
         body: JSON.stringify(payload)
     }).then((res) => res.json());
 
