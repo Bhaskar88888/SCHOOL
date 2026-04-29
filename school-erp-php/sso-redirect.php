@@ -47,7 +47,7 @@ if (!$user) {
 }
 
 // Create session — exactly the same as normal login
-login_user_enhanced($user);
+login_user($user);
 
 // Update last_login
 if (db_column_exists('users', 'last_login_at')) {

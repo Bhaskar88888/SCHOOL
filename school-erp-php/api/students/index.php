@@ -335,9 +335,26 @@ if ($method === 'POST') {
     $id = insert_row('students', $payload);
     audit_log('CREATE', 'students', $id, null, $payload);
 
+    // ── Auto-generate Student UID (STU-YYYY-NNNN) ─────────────────────
+    $studentUid = null;
+    if (db_column_exists('students', 'student_uid')) {
+        $year     = date('Y');
+        $lastRow  = db_fetch(
+            "SELECT student_uid FROM students WHERE student_uid LIKE ? ORDER BY id DESC LIMIT 1",
+            ["STU-{$year}-%"]
+        );
+        $seq = 1;
+        if ($lastRow && preg_match('/STU-\d{4}-(\d+)$/', $lastRow['student_uid'], $m)) {
+            $seq = (int)$m[1] + 1;
+        }
+        $studentUid = sprintf('STU-%s-%04d', $year, $seq);
+        db_query("UPDATE students SET student_uid = ? WHERE id = ?", [$studentUid, $id]);
+    }
+    // ── End Student UID generation ─────────────────────────────────────
+
     // ── Auto-create parent portal account ──────────────────────────────
-    // Only runs when parent_email or parent_phone is provided AND the
-    // admin did not already manually link a parent account.
+    $parentUserId   = null;
+    $parentUsername = null;
     if (empty($payload['parent_user_id'] ?? null)) {
         require_once __DIR__ . '/../../includes/parent_credentials.php';
         $parentEmail = $payload['parent_email'] ?? $data['parent_email'] ?? '';
@@ -347,13 +364,24 @@ if ($method === 'POST') {
 
         $parentUserId = ParentCredentials::ensureAccount($parentEmail, $parentPhone, $admNo, $parentName);
 
-        if ($parentUserId && db_column_exists('students', 'parent_user_id')) {
-            db_query("UPDATE students SET parent_user_id = ? WHERE id = ?", [$parentUserId, $id]);
+        if ($parentUserId) {
+            if (db_column_exists('students', 'parent_user_id')) {
+                db_query("UPDATE students SET parent_user_id = ? WHERE id = ?", [$parentUserId, $id]);
+            }
+            $pRow = db_fetch("SELECT username FROM users WHERE id = ?", [$parentUserId]);
+            $parentUsername = $pRow['username'] ?? null;
         }
     }
     // ── End parent account auto-creation ──────────────────────────────
 
-    json_response(['success' => true, 'id' => $id, 'message' => 'Student saved successfully. Parent credentials sent.']);
+    json_response([
+        'success'         => true,
+        'id'              => $id,
+        'student_uid'     => $studentUid,
+        'parent_user_id'  => $parentUserId,
+        'parent_username' => $parentUsername,
+        'message'         => 'Student saved successfully. Student UID generated. Parent credentials sent.',
+    ]);
 }
 
 if ($method === 'PUT') {

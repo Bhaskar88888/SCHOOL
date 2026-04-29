@@ -54,6 +54,9 @@ $stops = ($routeId && db_table_exists('bus_stops'))
 .vehicle-icon { width: 56px; height: 56px; background: rgba(99,102,241,.15); color: var(--accent); border-radius: 14px; display: grid; place-items: center; font-size: 26px; flex-shrink: 0; }
 .notice-item { background: rgba(99,102,241,.06); border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0; padding: 10px 12px; margin-bottom: 8px; font-size: 13px; }
 .stop-badge { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; background: var(--accent); color: #fff; border-radius: 50%; font-size: 10px; font-weight: 700; flex-shrink: 0; }
+.qa { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px; }
+.qa a { padding:8px 14px; border-radius:999px; font-size:12px; font-weight:600; border:1px solid rgba(172, 179, 180, 0.15); background:var(--surface-container-lowest); text-decoration:none; color:var(--ink); transition:background .15s; }
+.qa a:hover { background:var(--accent); color:#fff; border-color:var(--accent); }
 </style>
 
 <!-- Hero -->
@@ -110,6 +113,12 @@ $stops = ($routeId && db_table_exists('bus_stops'))
         <div class="drv-kpi-v"><?= date('H:i') ?></div>
         <div class="drv-kpi-l">Current Time</div>
     </div>
+</div>
+
+<div class="qa">
+    <a href="<?= BASE_URL ?>/messages.php">✉ Messages</a>
+    <a href="<?= BASE_URL ?>/notices.php">📢 Notices</a>
+    <a href="<?= BASE_URL ?>/profile.php">👤 Profile</a>
 </div>
 
 <!-- Stops + Notices -->

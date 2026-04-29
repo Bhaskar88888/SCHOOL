@@ -44,7 +44,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             json_response(['error' => 'Current password incorrect'], 400);
         }
         $newPass = password_hash($data['new_password'], PASSWORD_DEFAULT);
-        db_query("UPDATE users SET password = ? WHERE id = ?", [$newPass, $userId]);
+        $updates = ['password = ?', 'password_change_required = 0'];
+        if (db_column_exists('users', 'portal_generated')) {
+            $updates[] = 'portal_generated = 0';
+        }
+        db_query("UPDATE users SET " . implode(', ', $updates) . " WHERE id = ?", [$newPass, $userId]);
     }
 
     json_response(['success' => true]);

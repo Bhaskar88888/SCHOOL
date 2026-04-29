@@ -56,6 +56,9 @@ $recentIssues  = db_table_exists('library_issues') && db_table_exists('library_b
 
 <div class="qa">
     <a href="<?= BASE_URL ?>/library.php">📚 Open Library</a>
+    <a href="<?= BASE_URL ?>/messages.php">✉ Messages</a>
+    <a href="<?= BASE_URL ?>/notices.php">📢 Notices</a>
+    <a href="<?= BASE_URL ?>/profile.php">👤 Profile</a>
 </div>
 
 <div class="lib-cols">

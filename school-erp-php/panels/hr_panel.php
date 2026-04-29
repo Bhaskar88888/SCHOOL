@@ -54,6 +54,7 @@ $pendingLeaveList = db_table_exists('leave_applications')
 
 <div class="qa">
     <a href="<?= BASE_URL ?>/users.php">👤 Manage Staff</a>
+    <a href="<?= BASE_URL ?>/departments.php">🏢 Departments</a>
     <a href="<?= BASE_URL ?>/leave.php">⏰ Leave Requests</a>
     <a href="<?= BASE_URL ?>/staff-attendance.php">✅ Staff Attendance</a>
     <a href="<?= BASE_URL ?>/salary-setup.php">💳 Salary Setup</a>

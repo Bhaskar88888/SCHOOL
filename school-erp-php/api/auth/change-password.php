@@ -34,7 +34,12 @@ if (strlen($data['new_password']) < 8) {
 
 $hashedPassword = password_hash($data['new_password'], PASSWORD_BCRYPT);
 
-db_query("UPDATE users SET password = ?, password_change_required = 0 WHERE id = ?", [$hashedPassword, $userId]);
+$updates = ['password = ?', 'password_change_required = 0'];
+if (db_column_exists('users', 'portal_generated')) {
+    $updates[] = 'portal_generated = 0';
+}
+db_query("UPDATE users SET " . implode(', ', $updates) . " WHERE id = ?", [$hashedPassword, $userId]);
+
 audit_log('PASSWORD_CHANGE', 'auth', $userId);
 
 json_response(['message' => 'Password changed successfully']);

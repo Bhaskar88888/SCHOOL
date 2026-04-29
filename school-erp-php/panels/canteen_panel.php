@@ -66,6 +66,9 @@ if (db_table_exists('canteen_sales') || db_table_exists('canteen_orders')) {
 
 <div class="qa">
     <a href="<?= BASE_URL ?>/canteen.php">🍔 Manage Menu</a>
+    <a href="<?= BASE_URL ?>/messages.php">✉ Messages</a>
+    <a href="<?= BASE_URL ?>/notices.php">📢 Notices</a>
+    <a href="<?= BASE_URL ?>/profile.php">👤 Profile</a>
 </div>
 
 <div class="can-cols">

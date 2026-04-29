@@ -397,6 +397,7 @@ function renderUsers(users) {
                 <div class="table-actions">
                     <button class="btn btn-secondary btn-sm" type="button" onclick="openIdCard(${user.id})">ID Card</button>
                     <button class="btn btn-secondary btn-sm" type="button" onclick="openUserModal(${user.id})">Edit</button>
+                    <button class="btn btn-secondary btn-sm" type="button" onclick="resetPassword(${user.id}, '${escapeJs(user.name || 'User')}')">Reset Password</button>
                     <button class="btn btn-danger btn-sm" type="button" onclick="deleteUser(${user.id}, '${escapeJs(user.name || 'this user')}')">Delete</button>
                 </div>
             </td>
@@ -522,6 +523,27 @@ async function deleteUser(userId, userName) {
         loadUsers(currentPage);
     } catch (error) {
         showToast(error.message || 'Failed to delete user', 'error');
+    }
+}
+
+async function resetPassword(userId, userName) {
+    const newPassword = prompt(`Enter a new password for ${userName} (min 8 chars):`);
+    if (newPassword === null) return; // User cancelled
+    
+    if (newPassword.trim().length < 8) {
+        showToast('Password must be at least 8 characters long.', 'error');
+        return;
+    }
+
+    try {
+        const response = await apiPost('/api/users/reset-password.php', { id: userId, password: newPassword.trim() });
+        if (response && response.success) {
+            showToast(response.message || 'Password reset successfully.');
+        } else {
+            showToast(response.error || 'Failed to reset password', 'error');
+        }
+    } catch (error) {
+        showToast('A network error occurred while resetting password', 'error');
     }
 }
 

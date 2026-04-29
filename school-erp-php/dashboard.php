@@ -20,6 +20,7 @@ $panelMap = [
     'canteen'    => 'canteen_panel.php',
     'conductor'  => 'conductor_panel.php',
     'driver'     => 'driver_panel.php',
+    'staff'      => 'staff_panel.php',     // ← Staff role panel
 ];
 
 $panelFile = isset($panelMap[$role])

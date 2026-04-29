@@ -62,6 +62,9 @@ $notices = db_table_exists('notices')
 .route-card { background: var(--surface-container-lowest); border: 1px solid rgba(172,179,180,.15); border-radius: 14px; padding: 18px 22px; margin-bottom: 20px; display: flex; align-items: center; gap: 18px; }
 .route-icon { width: 52px; height: 52px; background: rgba(99,102,241,.15); color: var(--accent); border-radius: 12px; display: grid; place-items: center; font-size: 24px; flex-shrink: 0; }
 .notice-item { background: rgba(99,102,241,.06); border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0; padding: 10px 12px; margin-bottom: 8px; font-size: 13px; }
+.qa { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px; }
+.qa a { padding:8px 14px; border-radius:999px; font-size:12px; font-weight:600; border:1px solid rgba(172, 179, 180, 0.15); background:var(--surface-container-lowest); text-decoration:none; color:var(--ink); transition:background .15s; }
+.qa a:hover { background:var(--accent); color:#fff; border-color:var(--accent); }
 </style>
 
 <!-- Hero -->
@@ -110,6 +113,12 @@ $notices = db_table_exists('notices')
         <div class="con-kpi-v"><?= max(0, $studentCount - $presentToday) ?></div>
         <div class="con-kpi-l">Absent Today</div>
     </div>
+</div>
+
+<div class="qa">
+    <a href="<?= BASE_URL ?>/messages.php">✉ Messages</a>
+    <a href="<?= BASE_URL ?>/notices.php">📢 Notices</a>
+    <a href="<?= BASE_URL ?>/profile.php">👤 Profile</a>
 </div>
 
 <!-- Student Manifest + Notices -->
